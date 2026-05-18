@@ -1,0 +1,43 @@
+schema: spec-driven
+project: GESTEC — Sistema de gestión de recursos IT (Tesis IES Córdoba)
+team: Frane, Nico, Fede
+
+context: |
+  Monorepo: frontend/ (React+Vite+TS) · backend/ (Express+TS) · openspec/ (SDD)
+  Frontend: React 18 + Vite + TypeScript + Tailwind CSS v4 + shadcn/ui — Figma Make, NO modificar estética
+  Backend: Node.js + Express + TypeScript — MVC estricta (routes → controllers → services)
+  ORM/DB: Prisma 6 + PostgreSQL (Supabase) — schema en backend/prisma/schema.prisma
+  Auth: JWT (bcryptjs) — middleware en backend/src/middlewares/auth.middleware.ts
+  Roles RBAC: administrador | operaciones | docente_empleado
+  Estado actual: backend scaffoldeado completo, frontend aún usa mock (apiClient.ts)
+  Próximo paso: conectar frontend al backend reemplazando apiClient.ts con fetch real
+
+rules:
+  proposal:
+    - Identificar qué archivos del frontend Y del backend se ven afectados
+    - Incluir plan de rollback (el mock en apiClient.ts actúa como fallback)
+    - Marcar si el cambio requiere migración de DB (prisma migrate dev)
+  specs:
+    - Usar formato Given/When/Then para escenarios
+    - Usar RFC 2119 (MUST, SHALL, SHOULD, MAY)
+    - Especificar el endpoint REST afectado cuando aplique (ej: POST /api/tickets)
+  design:
+    - Incluir diagrama de flujo para cambios que afecten auth o RBAC
+    - Documentar la firma del endpoint (método, ruta, body, response)
+    - Indicar si se necesita transacción Prisma ($transaction)
+  tasks:
+    - Agrupar por fase: Backend → Frontend → Integración → Verificación
+    - Numeración jerárquica (1.1, 1.2...)
+    - Cada tarea debe ser completable en menos de 30 minutos
+  apply:
+    - En el frontend, reemplazar funciones de apiClient.ts una por una (no borrar todo de golpe)
+    - En el backend, siempre envolver lógica en services — los controllers solo llaman al service y hacen next(err)
+    - Agregar addLog() en todo service que mute datos
+    - Importar toast desde 'sonner@2.0.3' (con versión en el path — convención Figma Make)
+  verify:
+    - No hay test runner configurado — verificar manualmente con el dev server corriendo
+    - Probar los 3 roles (admin, operaciones, docente) para cada flujo de permisos
+    - Confirmar que el mock (apiClient.ts) sigue funcionando si el backend está caído
+  archive:
+    - Actualizar CLAUDE.md si el cambio modifica la arquitectura o agrega comandos nuevos
+    - Si se modificó schema.prisma, documentar el nombre de la migración generada

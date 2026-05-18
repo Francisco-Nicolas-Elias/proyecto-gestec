@@ -1,0 +1,482 @@
+// GESTEC — Prisma Schema
+// Base de datos: PostgreSQL vía Supabase
+// Ejecutar migraciones: pnpm prisma migrate dev
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum Rol {
+  administrador
+  operaciones
+  docente_empleado
+}
+
+enum EstadoActivo {
+  activa
+  inactiva
+}
+
+enum AccionComponente {
+  creado
+  instalado
+  removido
+  transferido
+}
+
+enum PrioridadTicket {
+  baja
+  media
+  alta
+  urgente
+}
+
+enum EstadoTicket {
+  nuevo
+  en_progreso
+  resuelto
+}
+
+enum PrioridadTarea {
+  baja
+  media
+  alta
+}
+
+enum EstadoTarea {
+  pendiente
+  en_curso
+  finalizada
+}
+
+enum TipoMovimientoStock {
+  entrada
+  salida
+  ajuste
+}
+
+enum TipoAdjunto {
+  imagen
+  video
+  audio
+}
+
+enum ModuloLog {
+  Equipos
+  Tickets
+  Stock
+  Tareas
+  Administracion
+  Sistema
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CATÁLOGO
+// ─────────────────────────────────────────────────────────────────────────────
+
+model TipoComponente {
+  id          String       @id @default(cuid())
+  nombre      String       @unique
+  componentes Componente[]
+  stockItems  StockItem[]
+
+  @@map("tipos_componente")
+}
+
+model Marca {
+  id          String       @id @default(cuid())
+  nombre      String       @unique
+  componentes Componente[]
+
+  @@map("marcas")
+}
+
+model Proveedor {
+  id          String       @id @default(cuid())
+  nombre      String
+  contacto    String?
+  telefono    String?
+  componentes Componente[]
+  stockItems  StockItem[]
+
+  @@map("proveedores")
+}
+
+model Ubicacion {
+  id      String   @id @default(cuid())
+  sector  String   @unique
+  piso    String
+  activos Activo[]
+
+  @@map("ubicaciones")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// USUARIOS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Usuario {
+  id       String  @id @default(cuid())
+  nombre   String
+  email    String  @unique
+  password String
+  rol      Rol
+  area     String?
+
+  ticketsCreados    Ticket[]           @relation("TicketCreador")
+  ticketsAsignados  Ticket[]           @relation("TicketAsignado")
+  tareasCreadas     Tarea[]            @relation("TareaCreador")
+  tareasFinalizadas Tarea[]            @relation("TareaFinalizador")
+  tareasAsignadas   TareaAsignado[]
+  comentariosTicket ComentarioTicket[]
+  comentariosTarea  ComentarioTarea[]
+  stockMovimientos  StockMovimiento[]
+  logs              LogEntry[]
+
+  @@map("usuarios")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ACTIVOS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Activo {
+  id              String       @id @default(cuid())
+  nroPc           String       @unique
+  ubicacionId     String
+  ubicacion       Ubicacion    @relation(fields: [ubicacionId], references: [id])
+  oficina         String       @default("")
+  usuarioAsignado String       @default("")
+  microModelo     String       @default("")
+  microMarca      String       @default("")
+  microNroSerie   String       @default("")
+  ramTotal        String       @default("")
+  almacenamientoTotal String   @default("")
+  ip              String       @default("")
+  mac             String       @default("")
+  idAD            String       @default("")
+  pAD             String       @default("")
+  sistemaOperativo String      @default("")
+  impresoraModelo  String      @default("")
+  impresoraMarca   String      @default("")
+  impresoraNroSerie String     @default("")
+  observaciones   String       @default("")
+  fechaCambioPC             DateTime?
+  fechaUltimoMantenimiento  DateTime?
+  estado          EstadoActivo @default(activa)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  componentes    Componente[]
+  mantenimientos MantenimientoRecord[]
+  intervenciones Intervencion[]
+  tickets        Ticket[]
+  tareas         Tarea[]
+
+  @@map("activos")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENTES
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Componente {
+  id               String         @id @default(cuid())
+  idManual         String         @unique
+  tipoComponenteId String
+  tipoComponente   TipoComponente @relation(fields: [tipoComponenteId], references: [id])
+  marcaId          String
+  marca            Marca          @relation(fields: [marcaId], references: [id])
+  modelo           String
+  numeroSerie      String         @unique
+  capacidad        String?
+  proveedorId      String?
+  proveedor        Proveedor?     @relation(fields: [proveedorId], references: [id])
+  activoId         String?
+  activo           Activo?        @relation(fields: [activoId], references: [id])
+  responsable      String
+  fechaIngreso     DateTime       @default(now())
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  historial HistorialMovimientoComponente[]
+
+  @@map("componentes")
+}
+
+model HistorialMovimientoComponente {
+  id               String           @id @default(cuid())
+  componenteId     String
+  componente       Componente       @relation(fields: [componenteId], references: [id], onDelete: Cascade)
+  activoId         String?
+  activoCodigo     String?
+  activoNombre     String?
+  accion           AccionComponente
+  ubicacionOrigen  String?
+  ubicacionDestino String?
+  fecha            DateTime
+  responsable      String
+  observaciones    String?
+
+  @@map("historial_movimientos_componente")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MANTENIMIENTO E INTERVENCIONES
+// ─────────────────────────────────────────────────────────────────────────────
+
+model MantenimientoRecord {
+  id          String   @id @default(cuid())
+  activoId    String
+  activo      Activo   @relation(fields: [activoId], references: [id], onDelete: Cascade)
+  fecha       DateTime
+  tipo        String
+  descripcion String
+  tecnico     String
+
+  @@map("mantenimiento_records")
+}
+
+model Intervencion {
+  id             String   @id @default(cuid())
+  activoId       String
+  activo         Activo   @relation(fields: [activoId], references: [id])
+  fecha          DateTime
+  tipo           String
+  diagnostico    String
+  accion         String
+  tecnico        String
+  tiempoEstimado Int?
+  tiempoReal     Int?
+  resultado      String
+  comentarios    String?
+  createdAt      DateTime @default(now())
+
+  repuestos RepuestoIntervencion[]
+
+  @@map("intervenciones")
+}
+
+model RepuestoIntervencion {
+  id             String       @id @default(cuid())
+  intervencionId String
+  intervencion   Intervencion @relation(fields: [intervencionId], references: [id], onDelete: Cascade)
+  item           String
+  cantidad       Int
+
+  @@map("repuestos_intervencion")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TICKETS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Ticket {
+  id                 String           @id @default(cuid())
+  titulo             String?
+  creadorId          String
+  creador            Usuario          @relation("TicketCreador", fields: [creadorId], references: [id])
+  activoId           String?
+  activo             Activo?          @relation(fields: [activoId], references: [id])
+  ubicacion          String
+  descripcion        String
+  prioridad          PrioridadTicket?
+  estado             EstadoTicket     @default(nuevo)
+  asignadoId         String?
+  asignado           Usuario?         @relation("TicketAsignado", fields: [asignadoId], references: [id])
+  tipo               String
+  fechaCreacion      DateTime         @default(now())
+  fechaActualizacion DateTime         @updatedAt
+
+  comentarios ComentarioTicket[]
+  adjuntos    Adjunto[]          @relation("AdjuntosTicket")
+
+  @@map("tickets")
+}
+
+model ComentarioTicket {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  autorId   String
+  autor     Usuario  @relation(fields: [autorId], references: [id])
+  fecha     DateTime @default(now())
+  texto     String
+  esInterno Boolean  @default(false)
+  adjuntos  Adjunto[] @relation("AdjuntosComentarioTicket")
+
+  @@map("comentarios_ticket")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TAREAS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Tarea {
+  id              String         @id @default(cuid())
+  titulo          String
+  descripcion     String
+  prioridad       PrioridadTarea @default(media)
+  estado          EstadoTarea    @default(pendiente)
+  fechaLimite     DateTime?
+  ubicacionTexto  String?
+  activoId        String?
+  activo          Activo?        @relation(fields: [activoId], references: [id])
+  creadoPorId     String
+  creadoPor       Usuario        @relation("TareaCreador", fields: [creadoPorId], references: [id])
+  finalizadoPorId String?
+  finalizadoPor   Usuario?       @relation("TareaFinalizador", fields: [finalizadoPorId], references: [id])
+  fechaCreacion     DateTime  @default(now())
+  fechaInicio       DateTime?
+  fechaFinalizacion DateTime?
+
+  asignados   TareaAsignado[]
+  historial   TareaHistorial[]
+  comentarios ComentarioTarea[]
+  adjuntos    Adjunto[]         @relation("AdjuntosTarea")
+
+  @@map("tareas")
+}
+
+model TareaAsignado {
+  tareaId   String
+  tarea     Tarea   @relation(fields: [tareaId], references: [id], onDelete: Cascade)
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id])
+
+  @@id([tareaId, usuarioId])
+  @@map("tareas_asignados")
+}
+
+model TareaHistorial {
+  id      String   @id @default(cuid())
+  tareaId String
+  tarea   Tarea    @relation(fields: [tareaId], references: [id], onDelete: Cascade)
+  fecha   DateTime @default(now())
+  accion  String
+  usuario String
+
+  @@map("tareas_historial")
+}
+
+model ComentarioTarea {
+  id       String   @id @default(cuid())
+  tareaId  String
+  tarea    Tarea    @relation(fields: [tareaId], references: [id], onDelete: Cascade)
+  autorId  String
+  autor    Usuario  @relation(fields: [autorId], references: [id])
+  fecha    DateTime @default(now())
+  texto    String
+  adjuntos Adjunto[] @relation("AdjuntosComentarioTarea")
+
+  @@map("comentarios_tarea")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ADJUNTOS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Adjunto {
+  id     String      @id @default(cuid())
+  nombre String
+  tipo   TipoAdjunto
+  url    String
+  tamano String
+
+  ticketId           String?
+  ticket             Ticket?           @relation("AdjuntosTicket", fields: [ticketId], references: [id], onDelete: Cascade)
+  comentarioTicketId String?
+  comentarioTicket   ComentarioTicket? @relation("AdjuntosComentarioTicket", fields: [comentarioTicketId], references: [id], onDelete: Cascade)
+  tareaId            String?
+  tarea              Tarea?            @relation("AdjuntosTarea", fields: [tareaId], references: [id], onDelete: Cascade)
+  comentarioTareaId  String?
+  comentarioTarea    ComentarioTarea?  @relation("AdjuntosComentarioTarea", fields: [comentarioTareaId], references: [id], onDelete: Cascade)
+
+  @@map("adjuntos")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STOCK
+// ─────────────────────────────────────────────────────────────────────────────
+
+model StockItem {
+  id               String          @id @default(cuid())
+  nombre           String
+  tipoComponenteId String?
+  tipoComponente   TipoComponente? @relation(fields: [tipoComponenteId], references: [id])
+  proveedorId      String?
+  proveedor        Proveedor?      @relation(fields: [proveedorId], references: [id])
+  cantidad         Int             @default(0)
+  minimoRequerido  Int             @default(1)
+  ubicacion        String          @default("Depósito IT")
+  ultimaActualizacion DateTime     @default(now())
+  movimientos      StockMovimiento[]
+
+  @@map("stock_items")
+}
+
+model StockMovimiento {
+  id                     String              @id @default(cuid())
+  stockItemId            String
+  stockItem              StockItem           @relation(fields: [stockItemId], references: [id])
+  tipo                   TipoMovimientoStock
+  cantidad               Int
+  motivo                 String
+  fecha                  DateTime            @default(now())
+  usuarioId              String?
+  usuario                Usuario?            @relation(fields: [usuarioId], references: [id])
+  referenciaIntervencion String?
+
+  @@map("stock_movimientos")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONFIGURACIÓN
+// ─────────────────────────────────────────────────────────────────────────────
+
+model InfoOperaciones {
+  id               String                @id @default("config")
+  telefono         String
+  telefonoInterno  String
+  horariosAtencion String
+  updatedAt        DateTime              @updatedAt
+  emails           InfoOperacionesEmail[]
+
+  @@map("info_operaciones")
+}
+
+model InfoOperacionesEmail {
+  id                String          @id @default(cuid())
+  infoOperacionesId String
+  infoOperaciones   InfoOperaciones @relation(fields: [infoOperacionesId], references: [id], onDelete: Cascade)
+  email             String
+
+  @@map("info_operaciones_emails")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AUDITORÍA
+// ─────────────────────────────────────────────────────────────────────────────
+
+model LogEntry {
+  id            String    @id @default(cuid())
+  accion        String
+  modulo        ModuloLog
+  usuarioId     String?
+  usuario       Usuario?  @relation(fields: [usuarioId], references: [id])
+  usuarioNombre String
+  usuarioRol    String
+  fechaHora     DateTime  @default(now())
+
+  @@map("logs")
+}

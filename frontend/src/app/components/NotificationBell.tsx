@@ -1,0 +1,185 @@
+import { useState, useEffect, useRef } from 'react';
+import { Bell, X } from 'lucide-react';
+import { useNavigate } from 'react-router';
+import { useAuth } from './AuthContext';
+import { getTickets, sendNotificationEmail } from '../services/apiClient';
+import { toast } from 'sonner@2.0.3';
+
+export default function NotificationBell() {
+  const auth = useAuth();
+  const navigate = useNavigate();
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Solo mostrar para administradores y operaciones
+  const shouldShowNotifications = auth?.usuario?.rol === 'administrador' || auth?.usuario?.rol === 'operaciones';
+
+  useEffect(() => {
+    if (shouldShowNotifications) {
+      loadNotifications();
+      // Actualizar cada 30 segundos
+      const interval = setInterval(loadNotifications, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [shouldShowNotifications]);
+
+  useEffect(() => {
+    // Cerrar dropdown al hacer click fuera
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isOpen]);
+
+  const loadNotifications = async () => {
+    try {
+      const tickets = await getTickets();
+      // Filtrar solo tickets nuevos
+      const newTickets = tickets.filter((t: any) => t.estado === 'nuevo');
+      
+      // Verificar si hay nuevos tickets desde la última carga
+      const previousCount = notifications.length;
+      const currentCount = newTickets.length;
+      
+      if (currentCount > previousCount && previousCount > 0) {
+        // Hay nuevos reportes, enviar email
+        const newReports = newTickets.slice(0, currentCount - previousCount);
+        await sendNotificationEmail({
+          to: auth?.usuario?.email || '',
+          reportes: newReports,
+          usuarioNombre: auth?.usuario?.nombre || '',
+        });
+      }
+      
+      setNotifications(newTickets);
+      setUnreadCount(newTickets.length);
+    } catch (error) {
+      console.error('Error loading notifications:', error);
+    }
+  };
+
+  const handleNotificationClick = (ticketId: string) => {
+    navigate(`/tickets/${ticketId}`);
+    setIsOpen(false);
+  };
+
+  const handleMarkAllAsRead = () => {
+    setNotifications([]);
+    setUnreadCount(0);
+    toast.success('Notificaciones marcadas como leídas');
+  };
+
+  if (!shouldShowNotifications) {
+    return null;
+  }
+
+  return (
+    <div className="fixed top-4 right-4 lg:right-6 z-50" ref={dropdownRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="relative p-3 bg-white dark:bg-gray-800 rounded-full shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        aria-label="Notificaciones"
+      >
+        <Bell className="text-gray-700 dark:text-gray-300" size={20} />
+        {unreadCount > 0 && (
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
+        )}
+      </button>
+
+      {isOpen && (
+        <div className="absolute top-14 right-0 w-96 max-w-[calc(100vw-2rem)] bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-[#00a6d6] text-white">
+            <div>
+              <h3 className="font-semibold">Notificaciones</h3>
+              <p className="text-xs opacity-90">Tickets nuevos</p>
+            </div>
+            <button
+              onClick={() => setIsOpen(false)}
+              className="p-1 hover:bg-white/20 rounded transition-colors"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          {/* Notifications List */}
+          <div className="max-h-96 overflow-y-auto">
+            {notifications.length === 0 ? (
+              <div className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                <Bell size={40} className="mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No hay tickets nuevos</p>
+              </div>
+            ) : (
+              <>
+                {notifications.map((ticket) => (
+                  <button
+                    key={ticket.id}
+                    onClick={() => handleNotificationClick(ticket.id)}
+                    className="w-full px-4 py-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 w-2 h-2 bg-red-500 rounded-full mt-2"></div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm text-gray-900 dark:text-white truncate">
+                          {ticket.titulo}
+                        </p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-2">
+                          {ticket.descripcion}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {ticket.creador}
+                          </span>
+                          <span className="text-xs text-gray-400 dark:text-gray-500">•</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {new Date(ticket.fechaCreacion).toLocaleDateString('es-ES', {
+                              day: '2-digit',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </>
+            )}
+          </div>
+
+          {/* Footer */}
+          {notifications.length > 0 && (
+            <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex items-center justify-between">
+              <button
+                onClick={handleMarkAllAsRead}
+                className="text-xs text-[#00a6d6] dark:text-[#00b8e6] hover:text-[#008bb8] dark:hover:text-[#00a6d6] font-medium"
+              >
+                Marcar todas como leídas
+              </button>
+              <button
+                onClick={() => {
+                  navigate('/tickets?estado=nuevo');
+                  setIsOpen(false);
+                }}
+                className="text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white font-medium"
+              >
+                Ver todos los tickets →
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

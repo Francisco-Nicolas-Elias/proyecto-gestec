@@ -1,0 +1,35 @@
+# Dependencias
+node_modules/
+
+# Build outputs
+dist/
+build/
+
+# Variables de entorno (nunca commitear, solo .env.example)
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editores
+.vscode/settings.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Prisma
+frontend/prisma/
+
+# TypeScript build info
+*.tsbuildinfo
