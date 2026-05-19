@@ -133,7 +133,7 @@ export default function Admin() {
       setTiposComponente([...tiposComponenteData].sort((a, b) => a.nombre.localeCompare(b.nombre)));
       setMarcas([...marcasData].sort((a, b) => a.nombre.localeCompare(b.nombre)));
       setProveedores([...proveedoresData].sort((a, b) => a.nombre.localeCompare(b.nombre)));
-      setLogs(getLogs());
+      setLogs(await getLogs());
     } catch (error) {
       console.error('Error loading data:', error);
       toast.error('Error al cargar datos');
@@ -806,7 +806,7 @@ export default function Admin() {
                   <h3 className="font-semibold dark:text-white">Historial de Acciones del Sistema</h3>
                   <div className="flex items-center gap-2 flex-wrap">
                     <button
-                      onClick={() => { setLogs(getLogs()); toast.success('Logs actualizados'); }}
+                      onClick={async () => { setLogs(await getLogs()); toast.success('Logs actualizados'); }}
                       title="Actualizar"
                       className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm text-gray-600 dark:text-gray-300"
                     >
@@ -1480,8 +1480,8 @@ export default function Admin() {
               className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors dark:text-white text-sm">
               Cancelar
             </button>
-            <button onClick={() => {
-              clearLogs();
+            <button onClick={async () => {
+              await clearLogs();
               setLogs([]);
               setShowClearLogsModal(false);
               toast.success('Historial de logs limpiado');

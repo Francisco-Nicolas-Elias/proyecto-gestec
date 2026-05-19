@@ -289,7 +289,7 @@ export default function Dashboard() {
       setAllTickets(tickets);
       setAllTareas(tareas);
       setAllStock(stock);
-      setLogs(getLogs().slice(0, 10));
+      setLogs((await getLogs()).slice(0, 10));
     } catch (e) {
       console.error('Error loading dashboard:', e);
     } finally {

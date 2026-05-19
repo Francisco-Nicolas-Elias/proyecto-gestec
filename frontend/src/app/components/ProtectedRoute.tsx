@@ -1,12 +1,12 @@
 import { Navigate } from 'react-router';
-import { getCurrentUser } from '../services/apiClient';
+import { useAuth } from './AuthContext';
+import LoadingSpinner from './LoadingSpinner';
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const usuario = getCurrentUser();
+  const { usuario, loading } = useAuth();
 
-  if (!usuario) {
-    return <Navigate to="/login" replace />;
-  }
+  if (loading) return <LoadingSpinner />;
+  if (!usuario) return <Navigate to="/login" replace />;
 
   return <>{children}</>;
 }

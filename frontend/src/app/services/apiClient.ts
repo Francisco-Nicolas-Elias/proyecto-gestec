@@ -1,5 +1,6 @@
-// API Client con funciones mock para simular backend
-// En producción, estas funciones harán fetch a endpoints REST reales
+import * as http from './http';
+
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -27,20 +28,22 @@ const MOCK_USUARIOS: Usuario[] = [
 ];
 
 export const login = async (email: string, password: string): Promise<Usuario> => {
-  await delay(500);
-  
-  // Mock: acepta cualquier contraseña
-  const usuario = MOCK_USUARIOS.find(u => u.email === email);
-  if (!usuario) {
-    throw new Error('Usuario o contraseña incorrectos');
+  if (USE_MOCK) {
+    await delay(500);
+    const usuario = MOCK_USUARIOS.find(u => u.email === email);
+    if (!usuario) throw new Error('Usuario o contraseña incorrectos');
+    localStorage.setItem('usuario', JSON.stringify(usuario));
+    return usuario;
   }
-  
-  localStorage.setItem('usuario', JSON.stringify(usuario));
-  return usuario;
+  const data = await http.post<{ token: string; usuario: Usuario }>('/auth/login', { email, password });
+  localStorage.setItem('gestec_token', data.token);
+  localStorage.setItem('usuario', JSON.stringify(data.usuario));
+  return data.usuario;
 };
 
 export const logout = async (): Promise<void> => {
-  await delay(200);
+  if (USE_MOCK) await delay(200);
+  localStorage.removeItem('gestec_token');
   localStorage.removeItem('usuario');
 };
 
@@ -398,102 +401,156 @@ const MOCK_INTERVENCIONES: Intervencion[] = [
 ];
 
 export const getActivos = async (filters?: any): Promise<Activo[]> => {
-  await delay(300);
-  let activos = [...MOCK_ACTIVOS];
-  if (filters?.sector) activos = activos.filter(a => a.sector === filters.sector);
-  if (filters?.estado) activos = activos.filter(a => a.estado === filters.estado);
-  if (filters?.search) {
-    const q = filters.search.toLowerCase();
-    activos = activos.filter(a =>
-      a.nroPc.toLowerCase().includes(q) ||
-      a.usuario.toLowerCase().includes(q) ||
-      a.sector.toLowerCase().includes(q) ||
-      a.ip.toLowerCase().includes(q) ||
-      a.sistemaOperativo.toLowerCase().includes(q)
-    );
+  if (USE_MOCK) {
+    await delay(300);
+    let activos = [...MOCK_ACTIVOS];
+    if (filters?.sector) activos = activos.filter(a => a.sector === filters.sector);
+    if (filters?.estado) activos = activos.filter(a => a.estado === filters.estado);
+    if (filters?.search) {
+      const q = filters.search.toLowerCase();
+      activos = activos.filter(a =>
+        a.nroPc.toLowerCase().includes(q) ||
+        a.usuario.toLowerCase().includes(q) ||
+        a.sector.toLowerCase().includes(q) ||
+        a.ip.toLowerCase().includes(q) ||
+        a.sistemaOperativo.toLowerCase().includes(q)
+      );
+    }
+    return activos;
   }
-  return activos;
+  const params = new URLSearchParams();
+  if (filters?.sector) params.set('sector', filters.sector);
+  if (filters?.estado) params.set('estado', filters.estado);
+  if (filters?.search) params.set('search', filters.search);
+  const qs = params.toString();
+  return http.get<Activo[]>(`/activos${qs ? `?${qs}` : ''}`);
 };
 
 export const getActivoById = async (id: string): Promise<Activo | null> => {
-  await delay(200);
-  return MOCK_ACTIVOS.find(a => a.id === id) || null;
+  if (USE_MOCK) {
+    await delay(200);
+    return MOCK_ACTIVOS.find(a => a.id === id) || null;
+  }
+  return http.get<Activo>(`/activos/${id}`);
 };
 
 export const createActivo = async (activo: Partial<Activo>): Promise<Activo> => {
-  await delay(400);
-  const piso = activo.piso || SECTOR_PISO_MAP[activo.sector || ''] || '';
-  const newActivo: Activo = {
-    id: Date.now().toString(),
-    nroPc: activo.nroPc || '', sector: activo.sector || '', piso, oficina: activo.oficina || '',
-    usuario: activo.usuario || '',
-    microModelo: activo.microModelo || '', microMarca: activo.microMarca || '', microNroSerie: activo.microNroSerie || '',
-    ramModulos: activo.ramModulos || [], ramTotal: activo.ramTotal || '',
-    almacenamientoModulos: activo.almacenamientoModulos || [], almacenamientoTotal: activo.almacenamientoTotal || '',
-    discoModelo: activo.discoModelo || '', discoMarca: activo.discoMarca || '', discoNroSerie: activo.discoNroSerie || '', discoTotal: activo.discoTotal || '',
-    placaVideoModelo: activo.placaVideoModelo || '', placaVideoMarca: activo.placaVideoMarca || '', placaVideoNroSerie: activo.placaVideoNroSerie || '',
-    ip: activo.ip || '', mac: activo.mac || '', idAD: activo.idAD || '', pAD: activo.pAD || '',
-    sistemaOperativo: activo.sistemaOperativo || '',
-    impresoraModelo: activo.impresoraModelo || '', impresoraMarca: activo.impresoraMarca || '', impresoraNroSerie: activo.impresoraNroSerie || '',
-    observaciones: activo.observaciones || '',
-    fechaCambioPC: activo.fechaCambioPC || '', fechaUltimoMantenimiento: activo.fechaUltimoMantenimiento || '',
-    estado: activo.estado || 'activa', historialMantenimiento: activo.historialMantenimiento || [],
-    codigo: activo.nroPc || '', ubicacion: `${activo.sector || ''} - ${piso}`,
-    tipo: 'PC', marca: activo.microMarca || '', modelo: activo.microModelo || '',
-    responsable: activo.usuario || '', tags: [],
-  };
-  MOCK_ACTIVOS.push(newActivo);
+  if (USE_MOCK) {
+    await delay(400);
+    const piso = activo.piso || SECTOR_PISO_MAP[activo.sector || ''] || '';
+    const newActivo: Activo = {
+      id: Date.now().toString(),
+      nroPc: activo.nroPc || '', sector: activo.sector || '', piso, oficina: activo.oficina || '',
+      usuario: activo.usuario || '',
+      microModelo: activo.microModelo || '', microMarca: activo.microMarca || '', microNroSerie: activo.microNroSerie || '',
+      ramModulos: activo.ramModulos || [], ramTotal: activo.ramTotal || '',
+      almacenamientoModulos: activo.almacenamientoModulos || [], almacenamientoTotal: activo.almacenamientoTotal || '',
+      discoModelo: activo.discoModelo || '', discoMarca: activo.discoMarca || '', discoNroSerie: activo.discoNroSerie || '', discoTotal: activo.discoTotal || '',
+      placaVideoModelo: activo.placaVideoModelo || '', placaVideoMarca: activo.placaVideoMarca || '', placaVideoNroSerie: activo.placaVideoNroSerie || '',
+      ip: activo.ip || '', mac: activo.mac || '', idAD: activo.idAD || '', pAD: activo.pAD || '',
+      sistemaOperativo: activo.sistemaOperativo || '',
+      impresoraModelo: activo.impresoraModelo || '', impresoraMarca: activo.impresoraMarca || '', impresoraNroSerie: activo.impresoraNroSerie || '',
+      observaciones: activo.observaciones || '',
+      fechaCambioPC: activo.fechaCambioPC || '', fechaUltimoMantenimiento: activo.fechaUltimoMantenimiento || '',
+      estado: activo.estado || 'activa', historialMantenimiento: activo.historialMantenimiento || [],
+      codigo: activo.nroPc || '', ubicacion: `${activo.sector || ''} - ${piso}`,
+      tipo: 'PC', marca: activo.microMarca || '', modelo: activo.microModelo || '',
+      responsable: activo.usuario || '', tags: [],
+    };
+    MOCK_ACTIVOS.push(newActivo);
+    emitActivosChange();
+    return newActivo;
+  }
+  const result = await http.post<Activo>('/activos', activo);
   emitActivosChange();
-  return newActivo;
+  return result;
 };
 
 export const updateActivo = async (id: string, data: Partial<Activo>): Promise<Activo> => {
-  await delay(400);
-  const index = MOCK_ACTIVOS.findIndex(a => a.id === id);
-  if (index === -1) throw new Error('Activo no encontrado');
-  const base = MOCK_ACTIVOS[index];
-  const piso = data.piso || (data.sector ? SECTOR_PISO_MAP[data.sector] : base.piso) || base.piso;
-  MOCK_ACTIVOS[index] = {
-    ...base, ...data, piso,
-    codigo: data.nroPc || base.nroPc,
-    ubicacion: `${data.sector || base.sector} - ${piso}`,
-    marca: data.microMarca || base.microMarca,
-    modelo: data.microModelo || base.microModelo,
-    responsable: data.usuario || base.usuario,
-  };
+  if (USE_MOCK) {
+    await delay(400);
+    const index = MOCK_ACTIVOS.findIndex(a => a.id === id);
+    if (index === -1) throw new Error('Activo no encontrado');
+    const base = MOCK_ACTIVOS[index];
+    const piso = data.piso || (data.sector ? SECTOR_PISO_MAP[data.sector] : base.piso) || base.piso;
+    MOCK_ACTIVOS[index] = {
+      ...base, ...data, piso,
+      codigo: data.nroPc || base.nroPc,
+      ubicacion: `${data.sector || base.sector} - ${piso}`,
+      marca: data.microMarca || base.microMarca,
+      modelo: data.microModelo || base.microModelo,
+      responsable: data.usuario || base.usuario,
+    };
+    emitActivosChange();
+    return MOCK_ACTIVOS[index];
+  }
+  const result = await http.put<Activo>(`/activos/${id}`, data);
   emitActivosChange();
-  return MOCK_ACTIVOS[index];
+  return result;
 };
 
 export const deleteActivo = async (id: string): Promise<void> => {
-  await delay(300);
-  const index = MOCK_ACTIVOS.findIndex(a => a.id === id);
-  if (index === -1) throw new Error('Activo no encontrado');
-  MOCK_ACTIVOS.splice(index, 1);
+  if (USE_MOCK) {
+    await delay(300);
+    const index = MOCK_ACTIVOS.findIndex(a => a.id === id);
+    if (index === -1) throw new Error('Activo no encontrado');
+    MOCK_ACTIVOS.splice(index, 1);
+    emitActivosChange();
+    return;
+  }
+  await http.del(`/activos/${id}`);
   emitActivosChange();
 };
 
 export const getIntervenciones = async (activoId: string): Promise<Intervencion[]> => {
-  await delay(200);
-  return MOCK_INTERVENCIONES.filter(i => i.activoId === activoId);
+  if (USE_MOCK) {
+    await delay(200);
+    return MOCK_INTERVENCIONES.filter(i => i.activoId === activoId);
+  }
+  return http.get<Intervencion[]>(`/activos/${activoId}/intervenciones`);
 };
 
 export const createIntervencion = async (intervencion: Partial<Intervencion>): Promise<Intervencion> => {
-  await delay(400);
-  const newIntervencion: Intervencion = {
-    id: Date.now().toString(),
-    activoId: intervencion.activoId || '',
-    fecha: intervencion.fecha || new Date().toISOString().split('T')[0],
-    tipo: intervencion.tipo || '',
-    diagnostico: intervencion.diagnostico || '',
-    accion: intervencion.accion || '',
-    repuestos: intervencion.repuestos || [],
-    tecnico: intervencion.tecnico || '',
-    resultado: intervencion.resultado || '',
-    ...intervencion,
-  };
-  MOCK_INTERVENCIONES.push(newIntervencion);
-  return newIntervencion;
+  if (USE_MOCK) {
+    await delay(400);
+    const newIntervencion: Intervencion = {
+      id: Date.now().toString(),
+      activoId: intervencion.activoId || '',
+      fecha: intervencion.fecha || new Date().toISOString().split('T')[0],
+      tipo: intervencion.tipo || '',
+      diagnostico: intervencion.diagnostico || '',
+      accion: intervencion.accion || '',
+      repuestos: intervencion.repuestos || [],
+      tecnico: intervencion.tecnico || '',
+      resultado: intervencion.resultado || '',
+      ...intervencion,
+    };
+    MOCK_INTERVENCIONES.push(newIntervencion);
+    return newIntervencion;
+  }
+  const { activoId, ...rest } = intervencion;
+  return http.post<Intervencion>(`/activos/${activoId}/intervenciones`, rest);
+};
+
+export const addMantenimientoRecord = async (activoId: string, data: Partial<MantenimientoRecord>): Promise<MantenimientoRecord> => {
+  if (USE_MOCK) {
+    await delay(300);
+    const record: MantenimientoRecord = {
+      id: Date.now().toString(),
+      fecha: data.fecha || new Date().toISOString().split('T')[0],
+      tipo: data.tipo || '',
+      descripcion: data.descripcion || '',
+      tecnico: data.tecnico || '',
+      ...data,
+    };
+    const activo = MOCK_ACTIVOS.find(a => a.id === activoId);
+    if (activo) {
+      activo.historialMantenimiento.push(record);
+      activo.fechaUltimoMantenimiento = record.fecha;
+    }
+    return record;
+  }
+  return http.post<MantenimientoRecord>(`/activos/${activoId}/mantenimiento`, data);
 };
 
 // ============ TICKETS ============
@@ -641,115 +698,126 @@ const MOCK_TICKETS: Ticket[] = [
 ];
 
 export const getTickets = async (filters?: any): Promise<Ticket[]> => {
-  await delay(300);
-  let tickets = [...MOCK_TICKETS];
-  
-  const usuario = getCurrentUser();
-  
-  // Filtrar por rol
-  if (usuario?.rol === 'docente_empleado') {
-    tickets = tickets.filter(t => t.creadorEmail === usuario.email);
+  if (USE_MOCK) {
+    await delay(300);
+    let tickets = [...MOCK_TICKETS];
+    const usuario = getCurrentUser();
+    if (usuario?.rol === 'docente_empleado') {
+      tickets = tickets.filter(t => t.creadorEmail === usuario.email);
+    }
+    if (filters?.estado) tickets = tickets.filter(t => t.estado === filters.estado);
+    if (filters?.prioridad) tickets = tickets.filter(t => t.prioridad === filters.prioridad);
+    if (filters?.asignado) tickets = tickets.filter(t => t.asignado === filters.asignado);
+    return tickets.sort((a, b) => parseInt(a.id) - parseInt(b.id));
   }
-  
-  if (filters?.estado) {
-    tickets = tickets.filter(t => t.estado === filters.estado);
-  }
-  if (filters?.prioridad) {
-    tickets = tickets.filter(t => t.prioridad === filters.prioridad);
-  }
-  if (filters?.asignado) {
-    tickets = tickets.filter(t => t.asignado === filters.asignado);
-  }
-  
-  return tickets.sort((a, b) => parseInt(a.id) - parseInt(b.id));
+  const params = new URLSearchParams();
+  if (filters?.estado) params.set('estado', filters.estado);
+  if (filters?.prioridad) params.set('prioridad', filters.prioridad);
+  if (filters?.asignado) params.set('asignado', filters.asignado);
+  const qs = params.toString();
+  return http.get<Ticket[]>(`/tickets${qs ? `?${qs}` : ''}`);
 };
 
 export const getTicketById = async (id: string): Promise<Ticket | null> => {
-  await delay(200);
-  return MOCK_TICKETS.find(t => t.id === id) || null;
+  if (USE_MOCK) {
+    await delay(200);
+    return MOCK_TICKETS.find(t => t.id === id) || null;
+  }
+  return http.get<Ticket>(`/tickets/${id}`);
 };
 
 export const createTicket = async (ticket: Partial<Ticket>): Promise<Ticket> => {
-  await delay(400);
-  const usuario = getCurrentUser();
-  const nextId = (Math.max(0, ...MOCK_TICKETS.map(t => parseInt(t.id) || 0)) + 1).toString();
-  const newTicket: Ticket = {
-    id: nextId,
-    creador: usuario?.nombre || '',
-    creadorEmail: usuario?.email || '',
-    ubicacion: ticket.ubicacion || '',
-    descripcion: ticket.descripcion || '',
-    prioridad: ticket.prioridad ?? null,
-    estado: 'nuevo',
-    fechaCreacion: new Date().toISOString(),
-    fechaActualizacion: new Date().toISOString(),
-    tipo: ticket.tipo || '',
-    comentarios: [],
-    adjuntos: ticket.adjuntos || [],
-    ...ticket,
-  };
-  MOCK_TICKETS.push(newTicket);
-  return newTicket;
+  if (USE_MOCK) {
+    await delay(400);
+    const usuario = getCurrentUser();
+    const nextId = (Math.max(0, ...MOCK_TICKETS.map(t => parseInt(t.id) || 0)) + 1).toString();
+    const newTicket: Ticket = {
+      id: nextId,
+      creador: usuario?.nombre || '',
+      creadorEmail: usuario?.email || '',
+      ubicacion: ticket.ubicacion || '',
+      descripcion: ticket.descripcion || '',
+      prioridad: ticket.prioridad ?? null,
+      estado: 'nuevo',
+      fechaCreacion: new Date().toISOString(),
+      fechaActualizacion: new Date().toISOString(),
+      tipo: ticket.tipo || '',
+      comentarios: [],
+      adjuntos: ticket.adjuntos || [],
+      ...ticket,
+    };
+    MOCK_TICKETS.push(newTicket);
+    return newTicket;
+  }
+  return http.post<Ticket>('/tickets', ticket);
 };
 
 export const updateTicketStatus = async (id: string, estado: Ticket['estado'], asignado?: string): Promise<Ticket> => {
-  await delay(300);
-  const index = MOCK_TICKETS.findIndex(t => t.id === id);
-  if (index === -1) throw new Error('Ticket no encontrado');
-  
-  MOCK_TICKETS[index].estado = estado;
-  MOCK_TICKETS[index].fechaActualizacion = new Date().toISOString();
-  if (asignado) MOCK_TICKETS[index].asignado = asignado;
-  
-  return MOCK_TICKETS[index];
+  if (USE_MOCK) {
+    await delay(300);
+    const index = MOCK_TICKETS.findIndex(t => t.id === id);
+    if (index === -1) throw new Error('Ticket no encontrado');
+    MOCK_TICKETS[index].estado = estado;
+    MOCK_TICKETS[index].fechaActualizacion = new Date().toISOString();
+    if (asignado) MOCK_TICKETS[index].asignado = asignado;
+    return MOCK_TICKETS[index];
+  }
+  return http.put<Ticket>(`/tickets/${id}`, { estado, asignado });
 };
 
 export const updateTicketAdjuntos = async (id: string, adjuntos: Adjunto[]): Promise<Ticket> => {
-  await delay(250);
-  const index = MOCK_TICKETS.findIndex(t => t.id === id);
-  if (index === -1) throw new Error('Ticket no encontrado');
-  MOCK_TICKETS[index].adjuntos = adjuntos;
-  MOCK_TICKETS[index].fechaActualizacion = new Date().toISOString();
-  return MOCK_TICKETS[index];
+  if (USE_MOCK) {
+    await delay(250);
+    const index = MOCK_TICKETS.findIndex(t => t.id === id);
+    if (index === -1) throw new Error('Ticket no encontrado');
+    MOCK_TICKETS[index].adjuntos = adjuntos;
+    MOCK_TICKETS[index].fechaActualizacion = new Date().toISOString();
+    return MOCK_TICKETS[index];
+  }
+  return http.put<Ticket>(`/tickets/${id}`, { adjuntos });
 };
 
 export const updateTicket = async (id: string, data: Partial<Ticket>): Promise<Ticket> => {
-  await delay(400);
-  const index = MOCK_TICKETS.findIndex(t => t.id === id);
-  if (index === -1) throw new Error('Ticket no encontrado');
-  MOCK_TICKETS[index] = {
-    ...MOCK_TICKETS[index],
-    ...data,
-    fechaActualizacion: new Date().toISOString(),
-  };
-  return MOCK_TICKETS[index];
+  if (USE_MOCK) {
+    await delay(400);
+    const index = MOCK_TICKETS.findIndex(t => t.id === id);
+    if (index === -1) throw new Error('Ticket no encontrado');
+    MOCK_TICKETS[index] = { ...MOCK_TICKETS[index], ...data, fechaActualizacion: new Date().toISOString() };
+    return MOCK_TICKETS[index];
+  }
+  return http.put<Ticket>(`/tickets/${id}`, data);
 };
 
 export const deleteTicket = async (id: string): Promise<void> => {
-  await delay(300);
-  const index = MOCK_TICKETS.findIndex(t => t.id === id);
-  if (index === -1) throw new Error('Ticket no encontrado');
-  MOCK_TICKETS.splice(index, 1);
+  if (USE_MOCK) {
+    await delay(300);
+    const index = MOCK_TICKETS.findIndex(t => t.id === id);
+    if (index === -1) throw new Error('Ticket no encontrado');
+    MOCK_TICKETS.splice(index, 1);
+    return;
+  }
+  return http.del(`/tickets/${id}`);
 };
 
 export const addComentario = async (ticketId: string, texto: string, esInterno: boolean): Promise<Comentario> => {
-  await delay(300);
-  const usuario = getCurrentUser();
-  const comentario: Comentario = {
-    id: Date.now().toString(),
-    autor: usuario?.nombre || '',
-    fecha: new Date().toISOString(),
-    texto,
-    esInterno,
-  };
-  
-  const ticket = MOCK_TICKETS.find(t => t.id === ticketId);
-  if (ticket) {
-    ticket.comentarios.push(comentario);
-    ticket.fechaActualizacion = new Date().toISOString();
+  if (USE_MOCK) {
+    await delay(300);
+    const usuario = getCurrentUser();
+    const comentario: Comentario = {
+      id: Date.now().toString(),
+      autor: usuario?.nombre || '',
+      fecha: new Date().toISOString(),
+      texto,
+      esInterno,
+    };
+    const ticket = MOCK_TICKETS.find(t => t.id === ticketId);
+    if (ticket) {
+      ticket.comentarios.push(comentario);
+      ticket.fechaActualizacion = new Date().toISOString();
+    }
+    return comentario;
   }
-  
-  return comentario;
+  return http.post<Comentario>(`/tickets/${ticketId}/comentarios`, { texto, esInterno });
 };
 
 // ============ STOCK ============
@@ -843,78 +911,71 @@ export const calcularEstadoStock = (cantidad: number): 'ok' | 'bajo' | 'critico'
   return 'ok';
 };
 
-// getStock deriva automáticamente desde MOCK_COMPONENTES
 export const getStock = async (filters?: any): Promise<StockItem[]> => {
-  await delay(300);
-
-  // Agregar por tipoComponente
-  const groups: Record<string, { total: number; enDeposito: number; instalados: number; fecha: string }> = {};
-  for (const c of MOCK_COMPONENTES) {
-    if (!groups[c.tipoComponente]) {
-      groups[c.tipoComponente] = { total: 0, enDeposito: 0, instalados: 0, fecha: c.fecha };
+  if (USE_MOCK) {
+    await delay(300);
+    const groups: Record<string, { total: number; enDeposito: number; instalados: number; fecha: string }> = {};
+    for (const c of MOCK_COMPONENTES) {
+      if (!groups[c.tipoComponente]) {
+        groups[c.tipoComponente] = { total: 0, enDeposito: 0, instalados: 0, fecha: c.fecha };
+      }
+      const g = groups[c.tipoComponente];
+      g.total++;
+      if (c.activoId) g.instalados++; else g.enDeposito++;
+      if (c.fecha > g.fecha) g.fecha = c.fecha;
     }
-    const g = groups[c.tipoComponente];
-    g.total++;
-    if (c.activoId) g.instalados++;
-    else g.enDeposito++;
-    if (c.fecha > g.fecha) g.fecha = c.fecha;
+    let items: StockItem[] = Object.entries(groups).map(([tipo, g]) => {
+      const minimo = STOCK_MINIMOS[tipo] ?? 1;
+      const cantidad = g.enDeposito;
+      return { id: tipo, nombre: tipo, categoria: 'Componentes', cantidad, minimo, ubicacion: 'Depósito IT', proveedor: undefined, estado: calcularEstadoStock(cantidad), ultimaActualizacion: g.fecha, totalRegistrados: g.total, instalados: g.instalados };
+    });
+    if (filters?.estado) items = items.filter(i => i.estado === filters.estado);
+    if (filters?.categoria) items = items.filter(i => i.categoria === filters.categoria);
+    return items.sort((a, b) => a.nombre.localeCompare(b.nombre));
   }
-
-  let items: StockItem[] = Object.entries(groups).map(([tipo, g]) => {
-    const minimo = STOCK_MINIMOS[tipo] ?? 1;
-    const cantidad = g.enDeposito; // "disponible" = lo que está en depósito
-    const estado = calcularEstadoStock(cantidad);
-    return {
-      id: tipo,
-      nombre: tipo,
-      categoria: 'Componentes',
-      cantidad,
-      minimo,
-      ubicacion: 'Depósito IT',
-      proveedor: undefined,
-      estado,
-      ultimaActualizacion: g.fecha,
-      totalRegistrados: g.total,
-      instalados: g.instalados,
-    };
-  });
-
-  if (filters?.estado) items = items.filter(i => i.estado === filters.estado);
-  if (filters?.categoria) items = items.filter(i => i.categoria === filters.categoria);
-
-  return items.sort((a, b) => a.nombre.localeCompare(b.nombre));
+  const params = new URLSearchParams();
+  if (filters?.estado) params.set('estado', filters.estado);
+  const qs = params.toString();
+  return http.get<StockItem[]>(`/stock/componentes${qs ? `?${qs}` : ''}`);
 };
 
 export const getStockById = async (id: string): Promise<StockItem | null> => {
-  await delay(200);
-  return MOCK_STOCK.find(s => s.id === id) || null;
+  if (USE_MOCK) {
+    await delay(200);
+    return MOCK_STOCK.find(s => s.id === id) || null;
+  }
+  return http.get<StockItem>(`/stock/items/${id}`);
 };
 
 export const createStockMovimiento = async (movimiento: Partial<StockMovimiento>): Promise<StockMovimiento> => {
-  await delay(400);
-  const usuario = getCurrentUser();
-  const newMovimiento: StockMovimiento = {
-    id: Date.now().toString(),
-    itemId: movimiento.itemId || '',
-    itemNombre: movimiento.itemNombre || '',
-    tipo: movimiento.tipo || 'ajuste',
-    cantidad: movimiento.cantidad || 0,
-    motivo: movimiento.motivo || '',
-    fecha: new Date().toISOString(),
-    usuario: usuario?.nombre || '',
-    ...movimiento,
-  };
-  
-  MOCK_MOVIMIENTOS.push(newMovimiento);
-  return newMovimiento;
+  if (USE_MOCK) {
+    await delay(400);
+    const usuario = getCurrentUser();
+    const newMovimiento: StockMovimiento = {
+      id: Date.now().toString(),
+      itemId: movimiento.itemId || '',
+      itemNombre: movimiento.itemNombre || '',
+      tipo: movimiento.tipo || 'ajuste',
+      cantidad: movimiento.cantidad || 0,
+      motivo: movimiento.motivo || '',
+      fecha: new Date().toISOString(),
+      usuario: usuario?.nombre || '',
+      ...movimiento,
+    };
+    MOCK_MOVIMIENTOS.push(newMovimiento);
+    return newMovimiento;
+  }
+  return http.post<StockMovimiento>('/stock/movimientos', movimiento);
 };
 
 export const getStockMovimientos = async (itemId?: string): Promise<StockMovimiento[]> => {
-  await delay(300);
-  if (itemId) {
-    return MOCK_MOVIMIENTOS.filter(m => m.itemId === itemId);
+  if (USE_MOCK) {
+    await delay(300);
+    if (itemId) return MOCK_MOVIMIENTOS.filter(m => m.itemId === itemId);
+    return [...MOCK_MOVIMIENTOS].sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
   }
-  return [...MOCK_MOVIMIENTOS].sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+  const qs = itemId ? `?itemId=${itemId}` : '';
+  return http.get<StockMovimiento[]>(`/stock/movimientos${qs}`);
 };
 
 // ============ COMPONENTES ============
@@ -1146,149 +1207,182 @@ const computeUbicacionComponente = (activoId?: string): string => {
 };
 
 export const getComponentes = async (): Promise<Componente[]> => {
-  await delay(300);
-  return MOCK_COMPONENTES.map(c => ({
-    ...c,
-    ubicacion: computeUbicacionComponente(c.activoId),
-  }));
+  if (USE_MOCK) {
+    await delay(300);
+    return MOCK_COMPONENTES.map(c => ({
+      ...c,
+      ubicacion: computeUbicacionComponente(c.activoId),
+    }));
+  }
+  return http.get<Componente[]>('/componentes');
 };
 
-// Buscar componente por número de serie
 export const buscarComponentePorSerie = async (numeroSerie: string): Promise<Componente | null> => {
-  await delay(100);
-  const componente = MOCK_COMPONENTES.find(c => c.numeroSerie === numeroSerie);
-  return componente || null;
+  if (USE_MOCK) {
+    await delay(100);
+    return MOCK_COMPONENTES.find(c => c.numeroSerie === numeroSerie) || null;
+  }
+  return http.get<Componente>(`/componentes/serie/${encodeURIComponent(numeroSerie)}`);
 };
 
 export const createComponente = async (data: Omit<Componente, 'id'>): Promise<Componente> => {
-  await delay(400);
-  const newComp: Componente = { ...data, id: 'c-' + Date.now().toString() };
-  MOCK_COMPONENTES.push(newComp);
-  const ubicacionCalculada = computeUbicacionComponente(newComp.activoId);
-  // Registrar evento "creado" en historial
-  MOCK_HISTORIAL_COMPONENTES.push({
-    id: 'h-' + Date.now().toString(),
-    componenteId: newComp.id,
-    accion: 'creado',
-    ubicacionDestino: ubicacionCalculada,
-    fecha: new Date().toISOString(),
-    responsable: newComp.responsable,
-    observaciones: 'Componente registrado en el sistema',
-  });
-  return { ...newComp, ubicacion: ubicacionCalculada };
+  if (USE_MOCK) {
+    await delay(400);
+    const newComp: Componente = { ...data, id: 'c-' + Date.now().toString() };
+    MOCK_COMPONENTES.push(newComp);
+    const ubicacionCalculada = computeUbicacionComponente(newComp.activoId);
+    MOCK_HISTORIAL_COMPONENTES.push({
+      id: 'h-' + Date.now().toString(),
+      componenteId: newComp.id,
+      accion: 'creado',
+      ubicacionDestino: ubicacionCalculada,
+      fecha: new Date().toISOString(),
+      responsable: newComp.responsable,
+      observaciones: 'Componente registrado en el sistema',
+    });
+    return { ...newComp, ubicacion: ubicacionCalculada };
+  }
+  return http.post<Componente>('/componentes', data);
 };
 
 export const updateComponente = async (id: string, data: Partial<Omit<Componente, 'id'>>): Promise<Componente> => {
-  await delay(400);
-  const index = MOCK_COMPONENTES.findIndex(c => c.id === id);
-  if (index === -1) throw new Error('Componente no encontrado');
-  const prev = MOCK_COMPONENTES[index];
-  MOCK_COMPONENTES[index] = { ...prev, ...data };
-  const updated = MOCK_COMPONENTES[index];
-  const ubicacionAnterior = computeUbicacionComponente(prev.activoId);
-  const ubicacionNueva = computeUbicacionComponente(updated.activoId);
-  // Si cambió la asignación, registrar movimiento en historial
-  if (data.activoId !== undefined && data.activoId !== prev.activoId) {
-    MOCK_HISTORIAL_COMPONENTES.push({
-      id: 'h-' + Date.now().toString(),
-      componenteId: id,
-      accion: data.activoId ? 'instalado' : 'removido',
-      ubicacionOrigen: ubicacionAnterior,
-      ubicacionDestino: ubicacionNueva,
-      fecha: new Date().toISOString(),
-      responsable: data.responsable || prev.responsable,
-      observaciones: 'Ubicación actualizada desde el formulario de edición',
-    });
+  if (USE_MOCK) {
+    await delay(400);
+    const index = MOCK_COMPONENTES.findIndex(c => c.id === id);
+    if (index === -1) throw new Error('Componente no encontrado');
+    const prev = MOCK_COMPONENTES[index];
+    MOCK_COMPONENTES[index] = { ...prev, ...data };
+    const updated = MOCK_COMPONENTES[index];
+    const ubicacionAnterior = computeUbicacionComponente(prev.activoId);
+    const ubicacionNueva = computeUbicacionComponente(updated.activoId);
+    if (data.activoId !== undefined && data.activoId !== prev.activoId) {
+      MOCK_HISTORIAL_COMPONENTES.push({
+        id: 'h-' + Date.now().toString(),
+        componenteId: id,
+        accion: data.activoId ? 'instalado' : 'removido',
+        ubicacionOrigen: ubicacionAnterior,
+        ubicacionDestino: ubicacionNueva,
+        fecha: new Date().toISOString(),
+        responsable: data.responsable || prev.responsable,
+        observaciones: 'Ubicación actualizada desde el formulario de edición',
+      });
+    }
+    return { ...updated, ubicacion: ubicacionNueva };
   }
-  return { ...updated, ubicacion: ubicacionNueva };
+  return http.put<Componente>(`/componentes/${id}`, data);
 };
 
 export const deleteComponente = async (id: string): Promise<void> => {
-  await delay(300);
-  MOCK_COMPONENTES = MOCK_COMPONENTES.filter(c => c.id !== id);
-  MOCK_HISTORIAL_COMPONENTES = MOCK_HISTORIAL_COMPONENTES.filter(h => h.componenteId !== id);
+  if (USE_MOCK) {
+    await delay(300);
+    MOCK_COMPONENTES = MOCK_COMPONENTES.filter(c => c.id !== id);
+    MOCK_HISTORIAL_COMPONENTES = MOCK_HISTORIAL_COMPONENTES.filter(h => h.componenteId !== id);
+    return;
+  }
+  return http.del(`/componentes/${id}`);
 };
 
 export const getHistorialComponente = async (componenteId: string): Promise<HistorialMovimientoComponente[]> => {
-  await delay(200);
-  return MOCK_HISTORIAL_COMPONENTES
-    .filter(h => h.componenteId === componenteId)
-    .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+  if (USE_MOCK) {
+    await delay(200);
+    return MOCK_HISTORIAL_COMPONENTES
+      .filter(h => h.componenteId === componenteId)
+      .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+  }
+  return http.get<HistorialMovimientoComponente[]>(`/componentes/${componenteId}/historial`);
 };
 
 // — Tipos de Componente —
 export const getTiposComponente = async (): Promise<TipoComponente[]> => {
-  await delay(200);
-  return [...MOCK_TIPOS_COMPONENTE];
+  if (USE_MOCK) { await delay(200); return [...MOCK_TIPOS_COMPONENTE]; }
+  return http.get<TipoComponente[]>('/admin/tipos-componente');
 };
 
 export const createTipoComponente = async (nombre: string): Promise<TipoComponente> => {
-  await delay(300);
-  const t: TipoComponente = { id: Date.now().toString(), nombre };
-  MOCK_TIPOS_COMPONENTE.push(t);
-  return t;
+  if (USE_MOCK) {
+    await delay(300);
+    const t: TipoComponente = { id: Date.now().toString(), nombre };
+    MOCK_TIPOS_COMPONENTE.push(t);
+    return t;
+  }
+  return http.post<TipoComponente>('/admin/tipos-componente', { nombre });
 };
 
 export const updateTipoComponente = async (id: string, nombre: string): Promise<TipoComponente> => {
-  await delay(300);
-  const t = MOCK_TIPOS_COMPONENTE.find(x => x.id === id);
-  if (t) t.nombre = nombre;
-  return t!;
+  if (USE_MOCK) {
+    await delay(300);
+    const t = MOCK_TIPOS_COMPONENTE.find(x => x.id === id);
+    if (t) t.nombre = nombre;
+    return t!;
+  }
+  return http.put<TipoComponente>(`/admin/tipos-componente/${id}`, { nombre });
 };
 
 export const deleteTipoComponente = async (id: string): Promise<void> => {
-  await delay(300);
-  MOCK_TIPOS_COMPONENTE = MOCK_TIPOS_COMPONENTE.filter(x => x.id !== id);
+  if (USE_MOCK) { await delay(300); MOCK_TIPOS_COMPONENTE = MOCK_TIPOS_COMPONENTE.filter(x => x.id !== id); return; }
+  return http.del(`/admin/tipos-componente/${id}`);
 };
 
 // — Marcas —
 export const getMarcas = async (): Promise<Marca[]> => {
-  await delay(200);
-  return [...MOCK_MARCAS];
+  if (USE_MOCK) { await delay(200); return [...MOCK_MARCAS]; }
+  return http.get<Marca[]>('/admin/marcas');
 };
 
 export const createMarca = async (nombre: string): Promise<Marca> => {
-  await delay(300);
-  const m: Marca = { id: Date.now().toString(), nombre };
-  MOCK_MARCAS.push(m);
-  return m;
+  if (USE_MOCK) {
+    await delay(300);
+    const m: Marca = { id: Date.now().toString(), nombre };
+    MOCK_MARCAS.push(m);
+    return m;
+  }
+  return http.post<Marca>('/admin/marcas', { nombre });
 };
 
 export const updateMarca = async (id: string, nombre: string): Promise<Marca> => {
-  await delay(300);
-  const m = MOCK_MARCAS.find(x => x.id === id);
-  if (m) m.nombre = nombre;
-  return m!;
+  if (USE_MOCK) {
+    await delay(300);
+    const m = MOCK_MARCAS.find(x => x.id === id);
+    if (m) m.nombre = nombre;
+    return m!;
+  }
+  return http.put<Marca>(`/admin/marcas/${id}`, { nombre });
 };
 
 export const deleteMarca = async (id: string): Promise<void> => {
-  await delay(300);
-  MOCK_MARCAS = MOCK_MARCAS.filter(x => x.id !== id);
+  if (USE_MOCK) { await delay(300); MOCK_MARCAS = MOCK_MARCAS.filter(x => x.id !== id); return; }
+  return http.del(`/admin/marcas/${id}`);
 };
 
 // — Proveedores —
 export const getProveedores = async (): Promise<Proveedor[]> => {
-  await delay(200);
-  return [...MOCK_PROVEEDORES];
+  if (USE_MOCK) { await delay(200); return [...MOCK_PROVEEDORES]; }
+  return http.get<Proveedor[]>('/admin/proveedores');
 };
 
 export const createProveedor = async (data: Omit<Proveedor, 'id'>): Promise<Proveedor> => {
-  await delay(300);
-  const p: Proveedor = { ...data, id: Date.now().toString() };
-  MOCK_PROVEEDORES.push(p);
-  return p;
+  if (USE_MOCK) {
+    await delay(300);
+    const p: Proveedor = { ...data, id: Date.now().toString() };
+    MOCK_PROVEEDORES.push(p);
+    return p;
+  }
+  return http.post<Proveedor>('/admin/proveedores', data);
 };
 
 export const updateProveedor = async (id: string, data: Omit<Proveedor, 'id'>): Promise<Proveedor> => {
-  await delay(300);
-  const p = MOCK_PROVEEDORES.find(x => x.id === id);
-  if (p) { p.nombre = data.nombre; p.contacto = data.contacto; p.telefono = data.telefono; }
-  return p!;
+  if (USE_MOCK) {
+    await delay(300);
+    const p = MOCK_PROVEEDORES.find(x => x.id === id);
+    if (p) { p.nombre = data.nombre; p.contacto = data.contacto; p.telefono = data.telefono; }
+    return p!;
+  }
+  return http.put<Proveedor>(`/admin/proveedores/${id}`, data);
 };
 
 export const deleteProveedor = async (id: string): Promise<void> => {
-  await delay(300);
-  MOCK_PROVEEDORES = MOCK_PROVEEDORES.filter(x => x.id !== id);
+  if (USE_MOCK) { await delay(300); MOCK_PROVEEDORES = MOCK_PROVEEDORES.filter(x => x.id !== id); return; }
+  return http.del(`/admin/proveedores/${id}`);
 };
 
 // ============ TAREAS ============
@@ -1376,146 +1470,140 @@ const MOCK_TAREAS: Tarea[] = [
 ];
 
 export const getTareas = async (estado?: string): Promise<Tarea[]> => {
-  await delay(300);
-  let tareas = [...MOCK_TAREAS];
-  
-  if (estado) {
-    tareas = tareas.filter(t => t.estado === estado);
+  if (USE_MOCK) {
+    await delay(300);
+    let tareas = [...MOCK_TAREAS];
+    if (estado) tareas = tareas.filter(t => t.estado === estado);
+    return tareas;
   }
-  
-  return tareas;
+  const qs = estado ? `?estado=${estado}` : '';
+  return http.get<Tarea[]>(`/tareas${qs}`);
 };
 
 export const getTareaById = async (id: string): Promise<Tarea | null> => {
-  await delay(200);
-  return MOCK_TAREAS.find(t => t.id === id) || null;
+  if (USE_MOCK) {
+    await delay(200);
+    return MOCK_TAREAS.find(t => t.id === id) || null;
+  }
+  return http.get<Tarea>(`/tareas/${id}`);
 };
 
 export const createTarea = async (tarea: Partial<Tarea>): Promise<Tarea> => {
-  await delay(400);
-  const usuario = getCurrentUser();
-  const newTarea: Tarea = {
-    id: Date.now().toString(),
-    titulo: tarea.titulo || '',
-    descripcion: tarea.descripcion || '',
-    prioridad: tarea.prioridad || 'media',
-    estado: 'pendiente',
-    creadoPor: usuario?.nombre || '',
-    asignados: tarea.asignados || [],
-    fechaCreacion: new Date().toISOString(),
-    comentarios: [],
-    adjuntos: tarea.adjuntos || [],
-    historial: [
-      {
-        fecha: new Date().toISOString(),
-        accion: 'Tarea creada',
-        usuario: usuario?.nombre || '',
-      },
-    ],
-    ...tarea,
-  };
-  MOCK_TAREAS.push(newTarea);
-  return newTarea;
+  if (USE_MOCK) {
+    await delay(400);
+    const usuario = getCurrentUser();
+    const newTarea: Tarea = {
+      id: Date.now().toString(),
+      titulo: tarea.titulo || '',
+      descripcion: tarea.descripcion || '',
+      prioridad: tarea.prioridad || 'media',
+      estado: 'pendiente',
+      creadoPor: usuario?.nombre || '',
+      asignados: tarea.asignados || [],
+      fechaCreacion: new Date().toISOString(),
+      comentarios: [],
+      adjuntos: tarea.adjuntos || [],
+      historial: [{ fecha: new Date().toISOString(), accion: 'Tarea creada', usuario: usuario?.nombre || '' }],
+      ...tarea,
+    };
+    MOCK_TAREAS.push(newTarea);
+    return newTarea;
+  }
+  return http.post<Tarea>('/tareas', tarea);
 };
 
 export const updateTaskStatus = async (id: string, estado: Tarea['estado'], asignados?: string[]): Promise<Tarea> => {
-  await delay(300);
-  const usuario = getCurrentUser();
-  const index = MOCK_TAREAS.findIndex(t => t.id === id);
-  if (index === -1) throw new Error('Tarea no encontrada');
-  
-  const tarea = MOCK_TAREAS[index];
-  const oldEstado = tarea.estado;
-  tarea.estado = estado;
-  
-  if (asignados) tarea.asignados = asignados;
-  
-  if (estado === 'en_curso' && oldEstado === 'pendiente') {
-    tarea.fechaInicio = new Date().toISOString();
-    tarea.historial.push({
-      fecha: new Date().toISOString(),
-      accion: `Iniciada por ${usuario?.nombre}`,
-      usuario: usuario?.nombre || '',
-    });
-  } else if (estado === 'finalizada' && oldEstado !== 'finalizada') {
-    tarea.fechaFinalizacion = new Date().toISOString();
-    tarea.finalizadoPor = usuario?.nombre;
-    tarea.historial.push({
-      fecha: new Date().toISOString(),
-      accion: `Finalizada por ${usuario?.nombre}`,
-      usuario: usuario?.nombre || '',
-    });
+  if (USE_MOCK) {
+    await delay(300);
+    const usuario = getCurrentUser();
+    const index = MOCK_TAREAS.findIndex(t => t.id === id);
+    if (index === -1) throw new Error('Tarea no encontrada');
+    const tarea = MOCK_TAREAS[index];
+    const oldEstado = tarea.estado;
+    tarea.estado = estado;
+    if (asignados) tarea.asignados = asignados;
+    if (estado === 'en_curso' && oldEstado === 'pendiente') {
+      tarea.fechaInicio = new Date().toISOString();
+      tarea.historial.push({ fecha: new Date().toISOString(), accion: `Iniciada por ${usuario?.nombre}`, usuario: usuario?.nombre || '' });
+    } else if (estado === 'finalizada' && oldEstado !== 'finalizada') {
+      tarea.fechaFinalizacion = new Date().toISOString();
+      tarea.finalizadoPor = usuario?.nombre;
+      tarea.historial.push({ fecha: new Date().toISOString(), accion: `Finalizada por ${usuario?.nombre}`, usuario: usuario?.nombre || '' });
+    }
+    return tarea;
   }
-  
-  return tarea;
+  return http.patch<Tarea>(`/tareas/${id}/estado`, { estado, asignados });
 };
 
 export const addComentarioTarea = async (tareaId: string, texto: string, adjuntos?: Adjunto[]): Promise<Comentario> => {
-  await delay(300);
-  const usuario = getCurrentUser();
-  const comentario: Comentario = {
-    id: Date.now().toString(),
-    autor: usuario?.nombre || 'Desconocido',
-    fecha: new Date().toISOString(),
-    texto,
-    esInterno: false,
-    adjuntos: adjuntos && adjuntos.length > 0 ? adjuntos : undefined,
-  };
-
-  const tarea = MOCK_TAREAS.find(t => t.id === tareaId);
-  if (tarea) {
-    tarea.comentarios = [...tarea.comentarios, comentario];
-    tarea.historial.push({
+  if (USE_MOCK) {
+    await delay(300);
+    const usuario = getCurrentUser();
+    const comentario: Comentario = {
+      id: Date.now().toString(),
+      autor: usuario?.nombre || 'Desconocido',
       fecha: new Date().toISOString(),
-      accion: `Comentario agregado por ${usuario?.nombre}`,
-      usuario: usuario?.nombre || '',
-    });
+      texto,
+      esInterno: false,
+      adjuntos: adjuntos && adjuntos.length > 0 ? adjuntos : undefined,
+    };
+    const tarea = MOCK_TAREAS.find(t => t.id === tareaId);
+    if (tarea) {
+      tarea.comentarios = [...tarea.comentarios, comentario];
+      tarea.historial.push({ fecha: new Date().toISOString(), accion: `Comentario agregado`, usuario: usuario?.nombre || '' });
+    }
+    return comentario;
   }
-
-  return comentario;
+  return http.post<Comentario>(`/tareas/${tareaId}/comentarios`, { texto, adjuntos });
 };
 
 export const updateComentarioTarea = async (tareaId: string, comentarioId: string, nuevoTexto: string): Promise<Comentario> => {
-  await delay(250);
-  const tarea = MOCK_TAREAS.find(t => t.id === tareaId);
-  if (!tarea) throw new Error('Tarea no encontrada');
-  const comentario = tarea.comentarios.find(c => c.id === comentarioId);
-  if (!comentario) throw new Error('Comentario no encontrado');
-  comentario.texto = nuevoTexto;
-  return { ...comentario };
+  if (USE_MOCK) {
+    await delay(250);
+    const tarea = MOCK_TAREAS.find(t => t.id === tareaId);
+    if (!tarea) throw new Error('Tarea no encontrada');
+    const comentario = tarea.comentarios.find(c => c.id === comentarioId);
+    if (!comentario) throw new Error('Comentario no encontrado');
+    comentario.texto = nuevoTexto;
+    return { ...comentario };
+  }
+  return http.put<Comentario>(`/tareas/${tareaId}/comentarios/${comentarioId}`, { texto: nuevoTexto });
 };
 
 export const deleteComentarioTarea = async (tareaId: string, comentarioId: string): Promise<void> => {
-  await delay(250);
-  const tarea = MOCK_TAREAS.find(t => t.id === tareaId);
-  if (!tarea) throw new Error('Tarea no encontrada');
-  const idx = tarea.comentarios.findIndex(c => c.id === comentarioId);
-  if (idx === -1) throw new Error('Comentario no encontrado');
-  tarea.comentarios = tarea.comentarios.filter(c => c.id !== comentarioId);
+  if (USE_MOCK) {
+    await delay(250);
+    const tarea = MOCK_TAREAS.find(t => t.id === tareaId);
+    if (!tarea) throw new Error('Tarea no encontrada');
+    tarea.comentarios = tarea.comentarios.filter(c => c.id !== comentarioId);
+    return;
+  }
+  return http.del(`/tareas/${tareaId}/comentarios/${comentarioId}`);
 };
 
 export const updateTarea = async (id: string, cambios: Partial<Tarea>): Promise<Tarea> => {
-  await delay(350);
-  const usuario = getCurrentUser();
-  const index = MOCK_TAREAS.findIndex(t => t.id === id);
-  if (index === -1) throw new Error('Tarea no encontrada');
-
-  const tarea = MOCK_TAREAS[index];
-  Object.assign(tarea, cambios);
-  tarea.historial.push({
-    fecha: new Date().toISOString(),
-    accion: `Editada por ${usuario?.nombre}`,
-    usuario: usuario?.nombre || '',
-  });
-
-  return { ...tarea };
+  if (USE_MOCK) {
+    await delay(350);
+    const usuario = getCurrentUser();
+    const index = MOCK_TAREAS.findIndex(t => t.id === id);
+    if (index === -1) throw new Error('Tarea no encontrada');
+    const tarea = MOCK_TAREAS[index];
+    Object.assign(tarea, cambios);
+    tarea.historial.push({ fecha: new Date().toISOString(), accion: `Editada por ${usuario?.nombre}`, usuario: usuario?.nombre || '' });
+    return { ...tarea };
+  }
+  return http.put<Tarea>(`/tareas/${id}`, cambios);
 };
 
 export const deleteTarea = async (id: string): Promise<void> => {
-  await delay(300);
-  const index = MOCK_TAREAS.findIndex(t => t.id === id);
-  if (index === -1) throw new Error('Tarea no encontrada');
-  MOCK_TAREAS.splice(index, 1);
+  if (USE_MOCK) {
+    await delay(300);
+    const index = MOCK_TAREAS.findIndex(t => t.id === id);
+    if (index === -1) throw new Error('Tarea no encontrada');
+    MOCK_TAREAS.splice(index, 1);
+    return;
+  }
+  return http.del(`/tareas/${id}`);
 };
 
 // ============ INFORMACIÓN DE OPERACIONES ============
@@ -1534,28 +1622,37 @@ let MOCK_INFO_OPERACIONES: InfoOperaciones = {
 };
 
 export const getInfoOperaciones = async (): Promise<InfoOperaciones> => {
-  await delay(200);
-  return { ...MOCK_INFO_OPERACIONES, mailsContacto: [...MOCK_INFO_OPERACIONES.mailsContacto] };
+  if (USE_MOCK) {
+    await delay(200);
+    return { ...MOCK_INFO_OPERACIONES, mailsContacto: [...MOCK_INFO_OPERACIONES.mailsContacto] };
+  }
+  return http.get<InfoOperaciones>('/info');
 };
 
 export const updateInfoOperaciones = async (data: InfoOperaciones): Promise<InfoOperaciones> => {
-  await delay(300);
-  MOCK_INFO_OPERACIONES = { ...data, mailsContacto: [...data.mailsContacto] };
-  return { ...MOCK_INFO_OPERACIONES, mailsContacto: [...MOCK_INFO_OPERACIONES.mailsContacto] };
+  if (USE_MOCK) {
+    await delay(300);
+    MOCK_INFO_OPERACIONES = { ...data, mailsContacto: [...data.mailsContacto] };
+    return { ...MOCK_INFO_OPERACIONES, mailsContacto: [...MOCK_INFO_OPERACIONES.mailsContacto] };
+  }
+  return http.put<InfoOperaciones>('/info', data);
 };
 
 // ============ ADMINISTRACIÓN ============
 export const getUsuarios = async (): Promise<Usuario[]> => {
-  await delay(300);
-  return [...MOCK_USUARIOS];
+  if (USE_MOCK) { await delay(300); return [...MOCK_USUARIOS]; }
+  return http.get<Usuario[]>('/admin/usuarios');
 };
 
 export const updateUsuario = async (id: string, data: Partial<Usuario>): Promise<Usuario> => {
-  await delay(300);
-  const idx = MOCK_USUARIOS.findIndex(u => u.id === id);
-  if (idx === -1) throw new Error('Usuario no encontrado');
-  MOCK_USUARIOS[idx] = { ...MOCK_USUARIOS[idx], ...data };
-  return MOCK_USUARIOS[idx];
+  if (USE_MOCK) {
+    await delay(300);
+    const idx = MOCK_USUARIOS.findIndex(u => u.id === id);
+    if (idx === -1) throw new Error('Usuario no encontrado');
+    MOCK_USUARIOS[idx] = { ...MOCK_USUARIOS[idx], ...data };
+    return MOCK_USUARIOS[idx];
+  }
+  return http.put<Usuario>(`/admin/usuarios/${id}`, data);
 };
 
 // ── Ubicaciones estructuradas ──────────────────────────────────────────────
@@ -1573,49 +1670,65 @@ export const getPisoForSector = (sector: string): string =>
   MOCK_UBICACIONES_STRUCT.find(u => u.sector === sector)?.piso ?? '';
 
 export const getUbicacionesStruct = async (): Promise<UbicacionEntry[]> => {
-  await delay(200);
-  return [...MOCK_UBICACIONES_STRUCT].sort((a, b) => a.sector.localeCompare(b.sector));
+  if (USE_MOCK) {
+    await delay(200);
+    return [...MOCK_UBICACIONES_STRUCT].sort((a, b) => a.sector.localeCompare(b.sector));
+  }
+  return http.get<UbicacionEntry[]>('/admin/ubicaciones');
 };
 
 export const createUbicacionEntry = async (data: Omit<UbicacionEntry, 'id'>): Promise<UbicacionEntry> => {
-  await delay(300);
-  const entry: UbicacionEntry = { ...data, id: Date.now().toString() };
-  MOCK_UBICACIONES_STRUCT.push(entry);
-  (SECTOR_PISO_MAP as Record<string, string>)[data.sector] = data.piso;
-  return entry;
+  if (USE_MOCK) {
+    await delay(300);
+    const entry: UbicacionEntry = { ...data, id: Date.now().toString() };
+    MOCK_UBICACIONES_STRUCT.push(entry);
+    (SECTOR_PISO_MAP as Record<string, string>)[data.sector] = data.piso;
+    return entry;
+  }
+  return http.post<UbicacionEntry>('/admin/ubicaciones', data);
 };
 
 export const updateUbicacionEntry = async (id: string, data: Omit<UbicacionEntry, 'id'>): Promise<UbicacionEntry> => {
-  await delay(300);
-  const idx = MOCK_UBICACIONES_STRUCT.findIndex(u => u.id === id);
-  if (idx === -1) throw new Error('Ubicación no encontrada');
-  const old = MOCK_UBICACIONES_STRUCT[idx];
-  delete (SECTOR_PISO_MAP as Record<string, string>)[old.sector];
-  MOCK_UBICACIONES_STRUCT[idx] = { id, ...data };
-  (SECTOR_PISO_MAP as Record<string, string>)[data.sector] = data.piso;
-  return MOCK_UBICACIONES_STRUCT[idx];
+  if (USE_MOCK) {
+    await delay(300);
+    const idx = MOCK_UBICACIONES_STRUCT.findIndex(u => u.id === id);
+    if (idx === -1) throw new Error('Ubicación no encontrada');
+    const old = MOCK_UBICACIONES_STRUCT[idx];
+    delete (SECTOR_PISO_MAP as Record<string, string>)[old.sector];
+    MOCK_UBICACIONES_STRUCT[idx] = { id, ...data };
+    (SECTOR_PISO_MAP as Record<string, string>)[data.sector] = data.piso;
+    return MOCK_UBICACIONES_STRUCT[idx];
+  }
+  return http.put<UbicacionEntry>(`/admin/ubicaciones/${id}`, data);
 };
 
 export const deleteUbicacionEntry = async (id: string): Promise<void> => {
-  await delay(300);
-  const entry = MOCK_UBICACIONES_STRUCT.find(u => u.id === id);
-  if (entry) {
-    delete (SECTOR_PISO_MAP as Record<string, string>)[entry.sector];
-    MOCK_UBICACIONES_STRUCT = MOCK_UBICACIONES_STRUCT.filter(u => u.id !== id);
+  if (USE_MOCK) {
+    await delay(300);
+    const entry = MOCK_UBICACIONES_STRUCT.find(u => u.id === id);
+    if (entry) {
+      delete (SECTOR_PISO_MAP as Record<string, string>)[entry.sector];
+      MOCK_UBICACIONES_STRUCT = MOCK_UBICACIONES_STRUCT.filter(u => u.id !== id);
+    }
+    return;
   }
+  return http.del(`/admin/ubicaciones/${id}`);
 };
 
-export const createUsuario = async (usuario: Partial<Usuario>): Promise<Usuario> => {
-  await delay(400);
-  const newUsuario: Usuario = {
-    id: Date.now().toString(),
-    nombre: usuario.nombre || '',
-    email: usuario.email || '',
-    rol: usuario.rol || 'docente_empleado',
-    area: usuario.area,
-  };
-  MOCK_USUARIOS.push(newUsuario);
-  return newUsuario;
+export const createUsuario = async (usuario: Partial<Usuario> & { password?: string }): Promise<Usuario> => {
+  if (USE_MOCK) {
+    await delay(400);
+    const newUsuario: Usuario = {
+      id: Date.now().toString(),
+      nombre: usuario.nombre || '',
+      email: usuario.email || '',
+      rol: usuario.rol || 'docente_empleado',
+      area: usuario.area,
+    };
+    MOCK_USUARIOS.push(newUsuario);
+    return newUsuario;
+  }
+  return http.post<Usuario>('/admin/usuarios', usuario);
 };
 
 // Catálogos
@@ -1645,19 +1758,6 @@ export const getSectores = async (): Promise<string[]> => {
   return [...MOCK_UBICACIONES_STRUCT]
     .map(u => u.sector)
     .sort((a, b) => a.localeCompare(b));
-};
-
-export const addMantenimientoRecord = async (
-  activoId: string,
-  record: Omit<MantenimientoRecord, 'id'>
-): Promise<MantenimientoRecord> => {
-  await delay(300);
-  const activo = MOCK_ACTIVOS.find(a => a.id === activoId);
-  if (!activo) throw new Error('Activo no encontrado');
-  const newRecord: MantenimientoRecord = { ...record, id: Date.now().toString() };
-  activo.historialMantenimiento = [newRecord, ...activo.historialMantenimiento];
-  activo.fechaUltimoMantenimiento = record.fecha;
-  return newRecord;
 };
 
 // ============ NOTIFICACIONES Y EMAILS ============
