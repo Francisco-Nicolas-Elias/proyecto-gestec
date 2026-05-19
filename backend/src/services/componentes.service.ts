@@ -3,9 +3,16 @@ import { prisma } from '../lib/prisma';
 import { AppError } from '../middlewares/error.middleware';
 import { addLogService } from './logs.service';
 
+const COMPONENTE_INCLUDE = {
+  tipoComponente: true,
+  marca: true,
+  proveedor: true,
+  activo: { include: { ubicacion: true } },
+} as const;
+
 export async function getComponentesService() {
   return prisma.componente.findMany({
-    include: { tipoComponente: true, marca: true, proveedor: true, activo: true },
+    include: COMPONENTE_INCLUDE,
     orderBy: { idManual: 'asc' },
   });
 }
@@ -13,7 +20,7 @@ export async function getComponentesService() {
 export async function getComponenteByIdService(id: string) {
   const c = await prisma.componente.findUnique({
     where: { id },
-    include: { tipoComponente: true, marca: true, proveedor: true, activo: true },
+    include: COMPONENTE_INCLUDE,
   });
   if (!c) throw new AppError(404, 'Componente no encontrado');
   return c;
@@ -22,7 +29,7 @@ export async function getComponenteByIdService(id: string) {
 export async function buscarPorSerieService(numeroSerie: string) {
   return prisma.componente.findUnique({
     where: { numeroSerie },
-    include: { tipoComponente: true, marca: true },
+    include: COMPONENTE_INCLUDE,
   });
 }
 

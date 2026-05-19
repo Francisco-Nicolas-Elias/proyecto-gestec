@@ -34,12 +34,18 @@ function mapActivo(a: any): any {
 }
 
 function mapComponente(c: any): any {
+  let ubicacion = 'Depósito IT';
+  if (c.activo) {
+    const sector = c.activo.ubicacion?.sector ?? '';
+    ubicacion = sector ? `${c.activo.nroPc} — ${sector}` : c.activo.nroPc;
+  }
   return {
     ...c,
     tipoComponente: c.tipoComponente?.nombre ?? c.tipoComponente ?? '',
     marca: c.marca?.nombre ?? c.marca ?? '',
     proveedor: c.proveedor?.nombre ?? c.proveedor ?? '',
     fecha: toDateStr(c.fechaIngreso ?? c.fecha),
+    ubicacion,
   };
 }
 
@@ -50,6 +56,29 @@ function mapTicket(t: any): any {
     creadorEmail: t.creador?.email ?? t.creadorEmail ?? '',
     asignado: t.asignado?.nombre ?? t.asignado,
     comentarios: (t.comentarios ?? []).map(mapComentario),
+  };
+}
+
+const STOCK_MINIMOS: Record<string, number> = {
+  'RAM': 2, 'SSD': 2, 'HDD': 1, 'M.2': 1,
+  'Procesador': 1, 'Placa de video': 1, 'Fuente de alimentación': 1,
+  'Cabezal de impresora': 1, 'Tóner': 2, 'Placa de red': 1, 'Batería': 1,
+};
+
+function mapStockItem(s: any): any {
+  const cantidad = s.enDeposito ?? s.cantidad ?? 0;
+  return {
+    id: s.tipoComponenteId ?? s.id,
+    nombre: s.nombre,
+    categoria: 'Componentes',
+    cantidad,
+    minimo: STOCK_MINIMOS[s.nombre] ?? 1,
+    ubicacion: 'Depósito IT',
+    proveedor: undefined,
+    estado: s.estado ?? calcularEstadoStock(cantidad),
+    ultimaActualizacion: s.ultimaActualizacion ?? '',
+    totalRegistrados: s.total ?? s.totalRegistrados ?? 0,
+    instalados: s.instalados ?? 0,
   };
 }
 
@@ -1004,12 +1033,6 @@ const MOCK_MOVIMIENTOS: StockMovimiento[] = [
   },
 ];
 
-// Mínimos de repuesto en depósito por tipo de componente
-const STOCK_MINIMOS: Record<string, number> = {
-  'RAM': 2, 'SSD': 2, 'HDD': 1, 'M.2': 1,
-  'Procesador': 1, 'Placa de video': 1, 'Fuente de alimentación': 1,
-  'Cabezal de impresora': 1, 'Tóner': 2, 'Placa de red': 1, 'Batería': 1,
-};
 
 // 0–3 → crítico | 4–10 → bajo | 11+ → ok
 export const calcularEstadoStock = (cantidad: number): 'ok' | 'bajo' | 'critico' => {
@@ -1043,7 +1066,7 @@ export const getStock = async (filters?: any): Promise<StockItem[]> => {
   const params = new URLSearchParams();
   if (filters?.estado) params.set('estado', filters.estado);
   const qs = params.toString();
-  return http.get<StockItem[]>(`/stock/componentes${qs ? `?${qs}` : ''}`);
+  return http.get<any[]>(`/stock/componentes${qs ? `?${qs}` : ''}`).then(arr => arr.map(mapStockItem));
 };
 
 export const getStockById = async (id: string): Promise<StockItem | null> => {
@@ -1733,12 +1756,19 @@ let MOCK_INFO_OPERACIONES: InfoOperaciones = {
   mailsContacto: ['soporte.it@ies.edu.ar', 'operaciones@ies.edu.ar'],
 };
 
+const mapInfo = (r: any): InfoOperaciones => ({
+  telefono: r.telefono ?? '',
+  telefonoInterno: r.telefonoInterno ?? '',
+  horariosAtencion: r.horariosAtencion ?? '',
+  mailsContacto: (r.emails ?? []).map((e: any) => e.email ?? e),
+});
+
 export const getInfoOperaciones = async (): Promise<InfoOperaciones> => {
   if (USE_MOCK) {
     await delay(200);
     return { ...MOCK_INFO_OPERACIONES, mailsContacto: [...MOCK_INFO_OPERACIONES.mailsContacto] };
   }
-  return http.get<InfoOperaciones>('/info');
+  return http.get<any>('/info').then(mapInfo);
 };
 
 export const updateInfoOperaciones = async (data: InfoOperaciones): Promise<InfoOperaciones> => {
@@ -1747,7 +1777,12 @@ export const updateInfoOperaciones = async (data: InfoOperaciones): Promise<Info
     MOCK_INFO_OPERACIONES = { ...data, mailsContacto: [...data.mailsContacto] };
     return { ...MOCK_INFO_OPERACIONES, mailsContacto: [...MOCK_INFO_OPERACIONES.mailsContacto] };
   }
-  return http.put<InfoOperaciones>('/info', data);
+  return http.put<any>('/info', {
+    telefono: data.telefono,
+    telefonoInterno: data.telefonoInterno,
+    horariosAtencion: data.horariosAtencion,
+    emails: data.mailsContacto,
+  }).then(mapInfo);
 };
 
 // ============ ADMINISTRACIÓN ============
