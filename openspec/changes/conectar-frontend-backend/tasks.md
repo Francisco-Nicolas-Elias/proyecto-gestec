@@ -1,17 +1,17 @@
 # Tasks: Conectar frontend al backend
 
-## Estado general: 🟡 En progreso
+## Estado general: 🟡 En progreso — Fase 4 pendiente
 
 ---
 
 ## Fase 1 — Backend: verificación y ajustes
 
-- [x] **1.1** Instalar dependencias del backend (`cd backend && pnpm install`) — ya estaban instaladas
-- [ ] **1.2** Configurar `backend/.env` con `DATABASE_URL` y `DIRECT_URL` de Supabase — archivo creado, **usuario debe completar las URLs reales**
-- [ ] **1.3** Ejecutar primera migración: `pnpm prisma migrate dev --name init`
-- [ ] **1.4** Ejecutar seed: `pnpm db:seed` — verificar que crea usuarios, activos y tickets
-- [ ] **1.5** Levantar el backend: `pnpm dev` — confirmar `GET /health` responde `{ status: "ok" }`
-- [ ] **1.6** Probar login manual: `POST /api/auth/login` con `admin@institucion.edu / Admin123!` → recibir JWT
+- [x] **1.1** Instalar dependencias del backend (`cd backend && pnpm install`)
+- [x] **1.2** Configurar `backend/.env` con `DATABASE_URL` y `DIRECT_URL` de Supabase
+- [x] **1.3** Ejecutar primera migración: `pnpm prisma migrate dev --name init`
+- [x] **1.4** Ejecutar seed: `pnpm db:seed` — creó 4 usuarios, 3 activos, 13 componentes, 5 tickets, 2 tareas
+- [x] **1.5** Levantar el backend: `pnpm dev` — `GET /health` responde `{ status: "ok" }`
+- [x] **1.6** Probar login manual: `POST /api/auth/login` con `admin@institucion.edu / Admin123!` → JWT recibido
 
 ---
 

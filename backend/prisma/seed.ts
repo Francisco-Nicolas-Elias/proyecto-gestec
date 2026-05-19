@@ -81,10 +81,11 @@ async function main() {
 
   const activosCreados: Record<string, string> = {};
   for (const a of activosData) {
+    const { ubicacion: ubicacionNombre, ...rest } = a;
     const activo = await prisma.activo.upsert({
-      where: { nroPc: a.nroPc },
+      where: { nroPc: rest.nroPc },
       update: {},
-      create: { ...a, ubicacionId: ubMap[a.ubicacion], estado: EstadoActivo.activa },
+      create: { ...rest, ubicacionId: ubMap[ubicacionNombre], estado: EstadoActivo.activa },
     });
     activosCreados[a.nroPc] = activo.id;
   }
