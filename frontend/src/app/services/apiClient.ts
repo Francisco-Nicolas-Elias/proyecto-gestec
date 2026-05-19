@@ -4,6 +4,111 @@ const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+// ── Mappers: backend (relaciones anidadas) → frontend (campos planos) ─────
+
+const toDateStr = (d: any): string => (d ? new Date(d).toISOString().split('T')[0] : '');
+
+function mapComentario(c: any): any {
+  return { id: c.id, autor: c.autor?.nombre ?? c.autor ?? '', fecha: c.fecha, texto: c.texto, esInterno: c.esInterno ?? false, adjuntos: c.adjuntos };
+}
+
+function mapActivo(a: any): any {
+  const ub = a.ubicacion ?? {};
+  const s = ub.sector ?? a.sector ?? '';
+  const p = ub.piso ?? a.piso ?? '';
+  return {
+    ...a,
+    sector: s, piso: p,
+    usuario: a.usuarioAsignado ?? a.usuario ?? '',
+    fechaCambioPC: toDateStr(a.fechaCambioPC),
+    fechaUltimoMantenimiento: toDateStr(a.fechaUltimoMantenimiento),
+    codigo: a.nroPc, tipo: 'PC',
+    ubicacion: s ? `${s} - ${p}` : '',
+    marca: a.microMarca ?? '', modelo: a.microModelo ?? '',
+    responsable: a.usuarioAsignado ?? '', tags: [],
+    historialMantenimiento: (a.mantenimientos ?? []).map((m: any) => ({
+      id: m.id, fecha: toDateStr(m.fecha), tipo: m.tipo, descripcion: m.descripcion, tecnico: m.tecnico,
+    })),
+    ramModulos: [], almacenamientoModulos: [],
+  };
+}
+
+function mapComponente(c: any): any {
+  return {
+    ...c,
+    tipoComponente: c.tipoComponente?.nombre ?? c.tipoComponente ?? '',
+    marca: c.marca?.nombre ?? c.marca ?? '',
+    proveedor: c.proveedor?.nombre ?? c.proveedor ?? '',
+    fecha: toDateStr(c.fechaIngreso ?? c.fecha),
+  };
+}
+
+function mapTicket(t: any): any {
+  return {
+    ...t,
+    creador: t.creador?.nombre ?? t.creador ?? '',
+    creadorEmail: t.creador?.email ?? t.creadorEmail ?? '',
+    asignado: t.asignado?.nombre ?? t.asignado,
+    comentarios: (t.comentarios ?? []).map(mapComentario),
+  };
+}
+
+function mapTarea(t: any): any {
+  return {
+    ...t,
+    creadoPor: t.creadoPor?.nombre ?? t.creadoPor ?? '',
+    finalizadoPor: t.finalizadoPor?.nombre ?? t.finalizadoPor,
+    asignados: (t.asignados ?? []).map((a: any) => a.usuario?.nombre ?? a),
+    comentarios: (t.comentarios ?? []).map(mapComentario),
+    historial: (t.historial ?? []).map((h: any) => ({ fecha: h.fecha, accion: h.accion, usuario: h.usuario })),
+    fechaLimite: t.fechaLimite ? toDateStr(t.fechaLimite) : undefined,
+  };
+}
+
+// ── Write helpers: resuelven nombres de catálogo → IDs con caché ──────────
+
+let _ubCache: any[] | null = null;
+let _tiposIdCache: any[] | null = null;
+let _marcasIdCache: any[] | null = null;
+let _provIdCache: any[] | null = null;
+let _usersIdCache: any[] | null = null;
+
+const getUbCache = async () => { if (!_ubCache) _ubCache = await http.get<any[]>('/admin/ubicaciones'); return _ubCache!; };
+const getTiposIdCache = async () => { if (!_tiposIdCache) _tiposIdCache = await http.get<any[]>('/admin/tipos-componente'); return _tiposIdCache!; };
+const getMarcasIdCache = async () => { if (!_marcasIdCache) _marcasIdCache = await http.get<any[]>('/admin/marcas'); return _marcasIdCache!; };
+const getProvIdCache = async () => { if (!_provIdCache) _provIdCache = await http.get<any[]>('/admin/proveedores'); return _provIdCache!; };
+const getUsersIdCache = async () => { if (!_usersIdCache) _usersIdCache = await http.get<any[]>('/admin/usuarios'); return _usersIdCache!; };
+
+async function activoPayload(a: any): Promise<any> {
+  const { sector, piso, usuario, ubicacion: _ub, codigo, tipo, marca: _m, modelo: _mo,
+    responsable, tags, historialMantenimiento, ramModulos, almacenamientoModulos, ...rest } = a;
+  let ubicacionId = rest.ubicacionId;
+  if (!ubicacionId && sector) {
+    const ubs = await getUbCache();
+    ubicacionId = ubs.find((u: any) => u.sector === sector)?.id;
+  }
+  return { ...rest, ...(ubicacionId ? { ubicacionId } : {}), ...(usuario !== undefined ? { usuarioAsignado: usuario } : {}) };
+}
+
+async function componentePayload(c: any): Promise<any> {
+  const { tipoComponente: tipoNombre, marca: marcaNombre, proveedor: provNombre, fecha, ubicacion: _ub, ...rest } = c;
+  const [tipos, marcas, provs] = await Promise.all([getTiposIdCache(), getMarcasIdCache(), getProvIdCache()]);
+  const tipoComponenteId = tipos.find((t: any) => t.nombre === tipoNombre)?.id;
+  const marcaId = marcas.find((m: any) => m.nombre === marcaNombre)?.id;
+  const proveedorId = provNombre ? provs.find((p: any) => p.nombre === provNombre)?.id : undefined;
+  return { ...rest, ...(tipoComponenteId ? { tipoComponenteId } : {}), ...(marcaId ? { marcaId } : {}), ...(proveedorId ? { proveedorId } : {}) };
+}
+
+async function tareaPayload(t: any): Promise<any> {
+  const { creadoPor, finalizadoPor, asignados, comentarios, historial, activoCodigo, adjuntos, ...rest } = t;
+  let asignadosIds: string[] | undefined;
+  if (asignados?.length) {
+    const users = await getUsersIdCache();
+    asignadosIds = asignados.map((n: string) => users.find((u: any) => u.nombre === n)?.id).filter(Boolean);
+  }
+  return { ...rest, ...(asignadosIds !== undefined ? { asignadosIds } : {}) };
+}
+
 // ============ EVENT BUS PARA ACTIVOS ============
 type ActivosListener = () => void;
 const activosListeners = new Set<ActivosListener>();
@@ -423,7 +528,7 @@ export const getActivos = async (filters?: any): Promise<Activo[]> => {
   if (filters?.estado) params.set('estado', filters.estado);
   if (filters?.search) params.set('search', filters.search);
   const qs = params.toString();
-  return http.get<Activo[]>(`/activos${qs ? `?${qs}` : ''}`);
+  return http.get<any[]>(`/activos${qs ? `?${qs}` : ''}`).then(arr => arr.map(mapActivo));
 };
 
 export const getActivoById = async (id: string): Promise<Activo | null> => {
@@ -431,7 +536,7 @@ export const getActivoById = async (id: string): Promise<Activo | null> => {
     await delay(200);
     return MOCK_ACTIVOS.find(a => a.id === id) || null;
   }
-  return http.get<Activo>(`/activos/${id}`);
+  return http.get<any>(`/activos/${id}`).then(mapActivo);
 };
 
 export const createActivo = async (activo: Partial<Activo>): Promise<Activo> => {
@@ -461,7 +566,8 @@ export const createActivo = async (activo: Partial<Activo>): Promise<Activo> => 
     emitActivosChange();
     return newActivo;
   }
-  const result = await http.post<Activo>('/activos', activo);
+  const payload = await activoPayload(activo);
+  const result = await http.post<any>('/activos', payload).then(mapActivo);
   emitActivosChange();
   return result;
 };
@@ -484,7 +590,8 @@ export const updateActivo = async (id: string, data: Partial<Activo>): Promise<A
     emitActivosChange();
     return MOCK_ACTIVOS[index];
   }
-  const result = await http.put<Activo>(`/activos/${id}`, data);
+  const payload = await activoPayload(data);
+  const result = await http.put<any>(`/activos/${id}`, payload).then(mapActivo);
   emitActivosChange();
   return result;
 };
@@ -715,7 +822,7 @@ export const getTickets = async (filters?: any): Promise<Ticket[]> => {
   if (filters?.prioridad) params.set('prioridad', filters.prioridad);
   if (filters?.asignado) params.set('asignado', filters.asignado);
   const qs = params.toString();
-  return http.get<Ticket[]>(`/tickets${qs ? `?${qs}` : ''}`);
+  return http.get<any[]>(`/tickets${qs ? `?${qs}` : ''}`).then(arr => arr.map(mapTicket));
 };
 
 export const getTicketById = async (id: string): Promise<Ticket | null> => {
@@ -723,7 +830,7 @@ export const getTicketById = async (id: string): Promise<Ticket | null> => {
     await delay(200);
     return MOCK_TICKETS.find(t => t.id === id) || null;
   }
-  return http.get<Ticket>(`/tickets/${id}`);
+  return http.get<any>(`/tickets/${id}`).then(mapTicket);
 };
 
 export const createTicket = async (ticket: Partial<Ticket>): Promise<Ticket> => {
@@ -749,7 +856,7 @@ export const createTicket = async (ticket: Partial<Ticket>): Promise<Ticket> => 
     MOCK_TICKETS.push(newTicket);
     return newTicket;
   }
-  return http.post<Ticket>('/tickets', ticket);
+  return http.post<any>('/tickets', ticket).then(mapTicket);
 };
 
 export const updateTicketStatus = async (id: string, estado: Ticket['estado'], asignado?: string): Promise<Ticket> => {
@@ -762,7 +869,7 @@ export const updateTicketStatus = async (id: string, estado: Ticket['estado'], a
     if (asignado) MOCK_TICKETS[index].asignado = asignado;
     return MOCK_TICKETS[index];
   }
-  return http.put<Ticket>(`/tickets/${id}`, { estado, asignado });
+  return http.put<any>(`/tickets/${id}`, { estado, asignado }).then(mapTicket);
 };
 
 export const updateTicketAdjuntos = async (id: string, adjuntos: Adjunto[]): Promise<Ticket> => {
@@ -774,7 +881,7 @@ export const updateTicketAdjuntos = async (id: string, adjuntos: Adjunto[]): Pro
     MOCK_TICKETS[index].fechaActualizacion = new Date().toISOString();
     return MOCK_TICKETS[index];
   }
-  return http.put<Ticket>(`/tickets/${id}`, { adjuntos });
+  return http.put<any>(`/tickets/${id}`, { adjuntos }).then(mapTicket);
 };
 
 export const updateTicket = async (id: string, data: Partial<Ticket>): Promise<Ticket> => {
@@ -785,7 +892,7 @@ export const updateTicket = async (id: string, data: Partial<Ticket>): Promise<T
     MOCK_TICKETS[index] = { ...MOCK_TICKETS[index], ...data, fechaActualizacion: new Date().toISOString() };
     return MOCK_TICKETS[index];
   }
-  return http.put<Ticket>(`/tickets/${id}`, data);
+  return http.put<any>(`/tickets/${id}`, data).then(mapTicket);
 };
 
 export const deleteTicket = async (id: string): Promise<void> => {
@@ -1214,7 +1321,7 @@ export const getComponentes = async (): Promise<Componente[]> => {
       ubicacion: computeUbicacionComponente(c.activoId),
     }));
   }
-  return http.get<Componente[]>('/componentes');
+  return http.get<any[]>('/componentes').then(arr => arr.map(mapComponente));
 };
 
 export const buscarComponentePorSerie = async (numeroSerie: string): Promise<Componente | null> => {
@@ -1222,7 +1329,7 @@ export const buscarComponentePorSerie = async (numeroSerie: string): Promise<Com
     await delay(100);
     return MOCK_COMPONENTES.find(c => c.numeroSerie === numeroSerie) || null;
   }
-  return http.get<Componente>(`/componentes/serie/${encodeURIComponent(numeroSerie)}`);
+  return http.get<any>(`/componentes/serie/${encodeURIComponent(numeroSerie)}`).then(c => c ? mapComponente(c) : null);
 };
 
 export const createComponente = async (data: Omit<Componente, 'id'>): Promise<Componente> => {
@@ -1242,7 +1349,7 @@ export const createComponente = async (data: Omit<Componente, 'id'>): Promise<Co
     });
     return { ...newComp, ubicacion: ubicacionCalculada };
   }
-  return http.post<Componente>('/componentes', data);
+  return componentePayload(data).then(p => http.post<any>('/componentes', p)).then(mapComponente);
 };
 
 export const updateComponente = async (id: string, data: Partial<Omit<Componente, 'id'>>): Promise<Componente> => {
@@ -1269,7 +1376,7 @@ export const updateComponente = async (id: string, data: Partial<Omit<Componente
     }
     return { ...updated, ubicacion: ubicacionNueva };
   }
-  return http.put<Componente>(`/componentes/${id}`, data);
+  return componentePayload(data).then(p => http.put<any>(`/componentes/${id}`, p)).then(mapComponente);
 };
 
 export const deleteComponente = async (id: string): Promise<void> => {
@@ -1477,7 +1584,7 @@ export const getTareas = async (estado?: string): Promise<Tarea[]> => {
     return tareas;
   }
   const qs = estado ? `?estado=${estado}` : '';
-  return http.get<Tarea[]>(`/tareas${qs}`);
+  return http.get<any[]>(`/tareas${qs}`).then(arr => arr.map(mapTarea));
 };
 
 export const getTareaById = async (id: string): Promise<Tarea | null> => {
@@ -1485,7 +1592,7 @@ export const getTareaById = async (id: string): Promise<Tarea | null> => {
     await delay(200);
     return MOCK_TAREAS.find(t => t.id === id) || null;
   }
-  return http.get<Tarea>(`/tareas/${id}`);
+  return http.get<any>(`/tareas/${id}`).then(mapTarea);
 };
 
 export const createTarea = async (tarea: Partial<Tarea>): Promise<Tarea> => {
@@ -1509,7 +1616,7 @@ export const createTarea = async (tarea: Partial<Tarea>): Promise<Tarea> => {
     MOCK_TAREAS.push(newTarea);
     return newTarea;
   }
-  return http.post<Tarea>('/tareas', tarea);
+  return tareaPayload(tarea).then(p => http.post<any>('/tareas', p)).then(mapTarea);
 };
 
 export const updateTaskStatus = async (id: string, estado: Tarea['estado'], asignados?: string[]): Promise<Tarea> => {
@@ -1532,7 +1639,12 @@ export const updateTaskStatus = async (id: string, estado: Tarea['estado'], asig
     }
     return tarea;
   }
-  return http.patch<Tarea>(`/tareas/${id}/estado`, { estado, asignados });
+  let asignadosIds: string[] | undefined;
+  if (asignados?.length) {
+    const users = await getUsersIdCache();
+    asignadosIds = asignados.map(n => users.find((u: any) => u.nombre === n)?.id).filter(Boolean);
+  }
+  return http.patch<any>(`/tareas/${id}/estado`, { estado, asignadosIds }).then(mapTarea);
 };
 
 export const addComentarioTarea = async (tareaId: string, texto: string, adjuntos?: Adjunto[]): Promise<Comentario> => {
@@ -1592,7 +1704,7 @@ export const updateTarea = async (id: string, cambios: Partial<Tarea>): Promise<
     tarea.historial.push({ fecha: new Date().toISOString(), accion: `Editada por ${usuario?.nombre}`, usuario: usuario?.nombre || '' });
     return { ...tarea };
   }
-  return http.put<Tarea>(`/tareas/${id}`, cambios);
+  return tareaPayload(cambios).then(p => http.put<any>(`/tareas/${id}`, p)).then(mapTarea);
 };
 
 export const deleteTarea = async (id: string): Promise<void> => {
