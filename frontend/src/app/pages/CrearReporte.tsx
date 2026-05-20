@@ -279,7 +279,7 @@ export default function CrearReporte() {
             className="flex items-center gap-2 bg-[#00a6d6] hover:bg-[#0095c0] text-white px-6 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <Send size={18} />
-            {saving ? 'Enviando...' : 'Enviar Reporte'}
+            {saving ? 'Enviando...' : 'Enviar Ticket'}
           </button>
         </div>
       </form>

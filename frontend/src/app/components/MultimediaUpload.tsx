@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Image, Video, Mic, Play, Pause, X, Upload, Loader2, FileAudio, ZoomIn } from 'lucide-react';
 
 export interface Adjunto {
@@ -36,6 +36,18 @@ export default function MultimediaUpload({
   const [uploading, setUploading] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [lightboxNombre, setLightboxNombre] = useState<string>('');
+  const [duraciones, setDuraciones] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    adjuntos.filter(a => a.tipo === 'audio' && !duraciones[a.id]).forEach(adj => {
+      const audio = new Audio(adj.url);
+      audio.addEventListener('loadedmetadata', () => {
+        if (isFinite(audio.duration)) {
+          setDuraciones(prev => ({ ...prev, [adj.id]: formatTime(Math.round(audio.duration)) }));
+        }
+      });
+    });
+  }, [adjuntos]);
 
   // Voice recording
   const [isRecording, setIsRecording] = useState(false);
@@ -243,7 +255,7 @@ export default function MultimediaUpload({
                   <p className="text-sm text-gray-800 dark:text-gray-200 truncate">{adj.nombre}</p>
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 capitalize">
-                  {adj.tipo} · {adj.tamano}
+                  {adj.tipo}{adj.tipo === 'audio' && duraciones[adj.id] ? ` · ${duraciones[adj.id]}` : ''} · {adj.tamano}
                 </p>
               </div>
 
