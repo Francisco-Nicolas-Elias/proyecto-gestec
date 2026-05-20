@@ -282,29 +282,7 @@ export default function TicketDetalle() {
           <div className="flex items-center gap-3 mb-2 flex-wrap">
             <span className="font-mono text-sm text-gray-500 dark:text-gray-400">{ticket.nro}</span>
             <StatusBadge status={ticket.estado} type="ticket" />
-            {canEditPrioridad ? (
-              <select
-                value={ticket.prioridad || ''}
-                onChange={e => handlePrioridadChange(e.target.value)}
-                disabled={savingPrioridad}
-                title="Cambiar prioridad"
-                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border-0 cursor-pointer appearance-none focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-[#00a6d6] disabled:opacity-60
-                  ${!ticket.prioridad ? 'text-gray-400 bg-transparent' : ''}
-                  ${ticket.prioridad === 'baja'    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : ''}
-                  ${ticket.prioridad === 'media'   ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' : ''}
-                  ${ticket.prioridad === 'alta'    ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' : ''}
-                  ${ticket.prioridad === 'urgente' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : ''}
-                `}
-              >
-                <option value="">Sin prioridad</option>
-                <option value="baja">Baja</option>
-                <option value="media">Media</option>
-                <option value="alta">Alta</option>
-                <option value="urgente">Urgente</option>
-              </select>
-            ) : (
-              <StatusBadge status={ticket.prioridad} type="prioridad" />
-            )}
+            <StatusBadge status={ticket.prioridad} type="prioridad" />
           </div>
           {!editMode && (
             <>
@@ -683,6 +661,31 @@ export default function TicketDetalle() {
                       : 'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
                   >
                     {estado.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Cambiar Prioridad */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+              <h3 className="font-semibold mb-3 dark:text-white">Cambiar Prioridad</h3>
+              <div className="space-y-2">
+                {[
+                  { value: '', label: 'Sin prioridad' },
+                  { value: 'baja', label: 'Baja' },
+                  { value: 'media', label: 'Media' },
+                  { value: 'alta', label: 'Alta' },
+                  { value: 'urgente', label: 'Urgente' },
+                ].map(op => (
+                  <button
+                    key={op.value}
+                    onClick={() => handlePrioridadChange(op.value)}
+                    disabled={savingPrioridad || ticket.prioridad === (op.value || null)}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${(ticket.prioridad === op.value || (!ticket.prioridad && op.value === ''))
+                      ? 'bg-[#00a6d6]/10 text-[#00a6d6] dark:text-[#00c4f0] font-medium'
+                      : 'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
+                  >
+                    {op.label}
                   </button>
                 ))}
               </div>
