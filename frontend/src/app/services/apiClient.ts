@@ -891,7 +891,8 @@ export const createTicket = async (ticket: Partial<Ticket>): Promise<Ticket> => 
     MOCK_TICKETS.push(newTicket);
     return newTicket;
   }
-  return http.post<any>('/tickets', ticket).then(mapTicket);
+  const { activo: _a, adjuntos: _adj, creador: _c, creadorEmail: _ce, comentarios: _co, nro: _n, ...ticketPayload } = ticket as any;
+  return http.post<any>('/tickets', ticketPayload).then(mapTicket);
 };
 
 export const updateTicketStatus = async (id: string, estado: Ticket['estado'], asignado?: string): Promise<Ticket> => {

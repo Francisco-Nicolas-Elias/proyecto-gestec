@@ -118,7 +118,7 @@ export default function Tickets() {
     {
       key: 'nro',
       label: '#',
-      render: (value: number) => <span className="font-mono text-xs font-semibold text-gray-600 dark:text-gray-400">#{value}</span>,
+      render: (value: number) => <span className="font-mono text-xs font-semibold text-gray-600 dark:text-gray-400">{value}</span>,
     },
     {
       key: 'descripcion',

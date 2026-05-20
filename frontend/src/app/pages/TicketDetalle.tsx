@@ -257,7 +257,7 @@ export default function TicketDetalle() {
         </button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 mb-2 flex-wrap">
-            <span className="font-mono text-sm text-gray-500 dark:text-gray-400">#{ticket.nro}</span>
+            <span className="font-mono text-sm text-gray-500 dark:text-gray-400">{ticket.nro}</span>
             <StatusBadge status={ticket.estado} type="ticket" />
             <StatusBadge status={ticket.prioridad} type="prioridad" />
           </div>
@@ -311,7 +311,7 @@ export default function TicketDetalle() {
             <div>
               <p className="text-sm font-semibold text-red-800 dark:text-red-300">¿Eliminar este reporte?</p>
               <p className="text-sm text-red-600 dark:text-red-400 mt-0.5">
-                Esta acción no se puede deshacer. Se eliminará el reporte <strong>#{ticket.nro}</strong> permanentemente.
+                Esta acción no se puede deshacer. Se eliminará el reporte <strong>{ticket.nro}</strong> permanentemente.
               </p>
             </div>
           </div>

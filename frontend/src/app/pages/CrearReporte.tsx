@@ -107,7 +107,7 @@ export default function CrearReporte() {
       navigate(`/tickets/${ticket.id}`);
     } catch (error) {
       console.error('Error creating ticket:', error);
-      toast.error('Error al crear el reporte');
+      toast.error('Error al crear el ticket');
     } finally {
       setSaving(false);
     }
