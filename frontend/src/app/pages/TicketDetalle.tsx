@@ -115,9 +115,15 @@ export default function TicketDetalle() {
     setAdjuntos(nuevosAdjuntos);
     setSavingAdjuntos(true);
     try {
-      await updateTicketAdjuntos(id!, nuevosAdjuntos);
-      toast.success(nuevosAdjuntos.length < prev.length ? 'Archivo eliminado' : 'Archivo agregado');
+      await updateTicketAdjuntos(id!, nuevosAdjuntos, prev);
+      const agregando = nuevosAdjuntos.length > prev.length;
+      toast.success(agregando ? 'Archivo agregado' : 'Archivo eliminado');
+      if (agregando) {
+        const updated = await import('../services/apiClient').then(m => m.getTicketById(id!));
+        if (updated) setAdjuntos(updated.adjuntos || []);
+      }
     } catch {
+      setAdjuntos(prev);
       toast.error('Error al actualizar los archivos adjuntos');
     } finally {
       setSavingAdjuntos(false);

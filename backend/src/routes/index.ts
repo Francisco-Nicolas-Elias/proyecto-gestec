@@ -7,6 +7,7 @@ import tareasRoutes from './tareas.routes';
 import stockRoutes from './stock.routes';
 import adminRoutes from './admin.routes';
 import infoRoutes from './info.routes';
+import adjuntosRoutes from './adjuntos.routes';
 
 export const router = Router();
 
@@ -18,3 +19,4 @@ router.use('/tareas', tareasRoutes);
 router.use('/stock', stockRoutes);
 router.use('/admin', adminRoutes);
 router.use('/info', infoRoutes);
+router.use('/adjuntos', adjuntosRoutes);

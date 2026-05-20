@@ -1,5 +1,25 @@
 import * as http from './http';
 
+// ── Adjuntos: upload a Supabase Storage vía backend ──────────────────────────
+export async function uploadAdjunto(
+  fileOrBlob: File | Blob,
+  nombre: string,
+  context?: { ticketId?: string; tareaId?: string; comentarioTicketId?: string; comentarioTareaId?: string },
+): Promise<import('../components/MultimediaUpload').Adjunto> {
+  const formData = new FormData();
+  formData.append('file', fileOrBlob, nombre);
+  if (context?.ticketId) formData.append('ticketId', context.ticketId);
+  if (context?.tareaId) formData.append('tareaId', context.tareaId);
+  if (context?.comentarioTicketId) formData.append('comentarioTicketId', context.comentarioTicketId);
+  if (context?.comentarioTareaId) formData.append('comentarioTareaId', context.comentarioTareaId);
+  const raw = await http.uploadFile<any>('/adjuntos', formData);
+  return { id: raw.id, nombre: raw.nombre, tipo: raw.tipo, url: raw.url, tamano: raw.tamano };
+}
+
+export async function deleteAdjunto(id: string): Promise<void> {
+  return http.del(`/adjuntos/${id}`);
+}
+
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -57,6 +77,9 @@ function mapTicket(t: any): any {
     asignado: t.asignado?.nombre ?? t.asignado,
     activo: t.activo?.nroPc ?? (typeof t.activo === 'string' ? t.activo : undefined),
     comentarios: (t.comentarios ?? []).map(mapComentario),
+    adjuntos: (t.adjuntos ?? []).map((a: any) => ({
+      id: a.id, nombre: a.nombre, tipo: a.tipo, url: a.url, tamano: a.tamano,
+    })),
   };
 }
 
@@ -892,8 +915,16 @@ export const createTicket = async (ticket: Partial<Ticket>): Promise<Ticket> => 
     MOCK_TICKETS.push(newTicket);
     return newTicket;
   }
-  const { activo: _a, adjuntos: _adj, creador: _c, creadorEmail: _ce, comentarios: _co, nro: _n, ...ticketPayload } = ticket as any;
-  return http.post<any>('/tickets', ticketPayload).then(mapTicket);
+  const { activo: _a, adjuntos: localAdjuntos, creador: _c, creadorEmail: _ce, comentarios: _co, nro: _n, ...ticketPayload } = ticket as any;
+  const created = await http.post<any>('/tickets', ticketPayload).then(mapTicket);
+  if (localAdjuntos?.length) {
+    await Promise.all((localAdjuntos as Adjunto[]).map(async (adj) => {
+      const res = await fetch(adj.url);
+      const blob = await res.blob();
+      await uploadAdjunto(blob, adj.nombre, { ticketId: created.id });
+    }));
+  }
+  return http.get<any>(`/tickets/${created.id}`).then(mapTicket);
 };
 
 export const updateTicketStatus = async (id: string, estado: Ticket['estado'], asignado?: string): Promise<Ticket> => {
@@ -909,16 +940,27 @@ export const updateTicketStatus = async (id: string, estado: Ticket['estado'], a
   return http.put<any>(`/tickets/${id}`, { estado, asignado }).then(mapTicket);
 };
 
-export const updateTicketAdjuntos = async (id: string, adjuntos: Adjunto[]): Promise<Ticket> => {
+export const updateTicketAdjuntos = async (
+  id: string,
+  nuevos: Adjunto[],
+  previos: Adjunto[],
+): Promise<void> => {
   if (USE_MOCK) {
     await delay(250);
     const index = MOCK_TICKETS.findIndex(t => t.id === id);
-    if (index === -1) throw new Error('Ticket no encontrado');
-    MOCK_TICKETS[index].adjuntos = adjuntos;
-    MOCK_TICKETS[index].fechaActualizacion = new Date().toISOString();
-    return MOCK_TICKETS[index];
+    if (index !== -1) MOCK_TICKETS[index].adjuntos = nuevos;
+    return;
   }
-  return http.put<any>(`/tickets/${id}`, { adjuntos }).then(mapTicket);
+  const eliminados = previos.filter(p => !nuevos.some(n => n.id === p.id));
+  const agregados = nuevos.filter(n => n.url.startsWith('data:') || n.url.startsWith('blob:'));
+  await Promise.all([
+    ...eliminados.map(a => deleteAdjunto(a.id)),
+    ...agregados.map(async (adj) => {
+      const res = await fetch(adj.url);
+      const blob = await res.blob();
+      await uploadAdjunto(blob, adj.nombre, { ticketId: id });
+    }),
+  ]);
 };
 
 export const updateTicket = async (id: string, data: Partial<Ticket>): Promise<Ticket> => {
