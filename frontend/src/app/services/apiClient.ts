@@ -55,6 +55,7 @@ function mapTicket(t: any): any {
     creador: t.creador?.nombre ?? t.creador ?? '',
     creadorEmail: t.creador?.email ?? t.creadorEmail ?? '',
     asignado: t.asignado?.nombre ?? t.asignado,
+    activo: t.activo?.nroPc ?? (typeof t.activo === 'string' ? t.activo : undefined),
     comentarios: (t.comentarios ?? []).map(mapComentario),
   };
 }

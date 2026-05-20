@@ -117,7 +117,7 @@ export default function Tickets() {
   const columns = isOperations ? [
     {
       key: 'nro',
-      label: '#',
+      label: 'ID',
       render: (value: number) => <span className="font-mono text-xs font-semibold text-gray-600 dark:text-gray-400">{value}</span>,
     },
     {

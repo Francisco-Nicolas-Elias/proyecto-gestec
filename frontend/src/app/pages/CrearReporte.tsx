@@ -102,7 +102,7 @@ export default function CrearReporte() {
       };
 
       const ticket = await createTicket({ ...ticketData, adjuntos });
-      toast.success('Reporte creado correctamente');
+      toast.success('Ticket creado correctamente');
       clearAll(); // ← Limpiar draft al guardar con éxito
       navigate(`/tickets/${ticket.id}`);
     } catch (error) {
