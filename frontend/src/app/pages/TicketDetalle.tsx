@@ -35,6 +35,9 @@ export default function TicketDetalle() {
   const [esInterno, setEsInterno] = useState(false);
   const [enviandoComentario, setEnviandoComentario] = useState(false);
 
+  // Prioridad inline
+  const [savingPrioridad, setSavingPrioridad] = useState(false);
+
   // Adjuntos
   const [adjuntos, setAdjuntos] = useState<Adjunto[]>([]);
   const [savingAdjuntos, setSavingAdjuntos] = useState(false);
@@ -182,6 +185,20 @@ export default function TicketDetalle() {
     }
   };
 
+  // Cambio inline de prioridad
+  const handlePrioridadChange = async (nueva: string) => {
+    if (!ticket) return;
+    setSavingPrioridad(true);
+    try {
+      const updated = await updateTicket(id!, { prioridad: (nueva || null) as any });
+      setTicket(updated);
+    } catch {
+      toast.error('Error al actualizar la prioridad');
+    } finally {
+      setSavingPrioridad(false);
+    }
+  };
+
   // Al cambiar ubicación en edición, resetear activo
   const handleEditUbicacionChange = (value: string) => {
     setEditForm(p => ({ ...p, ubicacion: value, activoId: '', activoCodigo: '' }));
@@ -265,7 +282,29 @@ export default function TicketDetalle() {
           <div className="flex items-center gap-3 mb-2 flex-wrap">
             <span className="font-mono text-sm text-gray-500 dark:text-gray-400">{ticket.nro}</span>
             <StatusBadge status={ticket.estado} type="ticket" />
-            <StatusBadge status={ticket.prioridad} type="prioridad" />
+            {canEditPrioridad ? (
+              <select
+                value={ticket.prioridad || ''}
+                onChange={e => handlePrioridadChange(e.target.value)}
+                disabled={savingPrioridad}
+                title="Cambiar prioridad"
+                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border-0 cursor-pointer appearance-none focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-[#00a6d6] disabled:opacity-60
+                  ${!ticket.prioridad ? 'text-gray-400 bg-transparent' : ''}
+                  ${ticket.prioridad === 'baja'    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : ''}
+                  ${ticket.prioridad === 'media'   ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' : ''}
+                  ${ticket.prioridad === 'alta'    ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' : ''}
+                  ${ticket.prioridad === 'urgente' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : ''}
+                `}
+              >
+                <option value="">Sin prioridad</option>
+                <option value="baja">Baja</option>
+                <option value="media">Media</option>
+                <option value="alta">Alta</option>
+                <option value="urgente">Urgente</option>
+              </select>
+            ) : (
+              <StatusBadge status={ticket.prioridad} type="prioridad" />
+            )}
           </div>
           {!editMode && (
             <>

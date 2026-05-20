@@ -285,6 +285,7 @@ export default function Tickets() {
                 onChange={setFilterPrioridad}
                 placeholder="Todas"
                 noClear
+                noSort
               />
             </div>
 
