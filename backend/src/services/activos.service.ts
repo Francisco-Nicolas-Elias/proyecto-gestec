@@ -27,7 +27,7 @@ export async function getActivosService(filters?: {
 
   return prisma.activo.findMany({
     where,
-    include: { ubicacion: true },
+    include: { ubicacion: true, componentes: { include: { tipoComponente: true, marca: true } } },
     orderBy: { nroPc: 'asc' },
   });
 }

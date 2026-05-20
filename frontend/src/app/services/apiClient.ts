@@ -32,10 +32,39 @@ function mapComentario(c: any): any {
   return { id: c.id, autor: c.autor?.nombre ?? c.autor ?? '', fecha: c.fecha, texto: c.texto, esInterno: c.esInterno ?? false, adjuntos: c.adjuntos };
 }
 
+const TIPOS_RAM        = ['RAM'];
+const TIPOS_STORAGE    = ['SSD', 'HDD', 'M.2', 'SSHD'];
+const TIPOS_PROCESADOR = ['Procesador', 'CPU'];
+const TIPOS_PLACA_VIDEO = ['Placa de video', 'GPU', 'Placa de Video'];
+
 function mapActivo(a: any): any {
   const ub = a.ubicacion ?? {};
   const s = ub.sector ?? a.sector ?? '';
   const p = ub.piso ?? a.piso ?? '';
+  const comps: any[] = a.componentes ?? [];
+
+  const tipoNombre = (c: any) => c.tipoComponente?.nombre ?? '';
+
+  const ramModulos = comps
+    .filter(c => TIPOS_RAM.includes(tipoNombre(c)))
+    .map(c => ({
+      id: c.id, nroSerie: c.numeroSerie,
+      marca: c.marca?.nombre ?? c.marca ?? '',
+      modelo: c.modelo, capacidad: c.capacidad ?? '',
+    }));
+
+  const almacenamientoModulos = comps
+    .filter(c => TIPOS_STORAGE.includes(tipoNombre(c)))
+    .map(c => ({
+      id: c.id, nroSerie: c.numeroSerie,
+      tipo: tipoNombre(c),
+      marca: c.marca?.nombre ?? c.marca ?? '',
+      modelo: c.modelo, capacidad: c.capacidad ?? '',
+    }));
+
+  const procesador = comps.find(c => TIPOS_PROCESADOR.includes(tipoNombre(c)));
+  const placaVideo  = comps.find(c => TIPOS_PLACA_VIDEO.includes(tipoNombre(c)));
+
   return {
     ...a,
     sector: s, piso: p,
@@ -44,12 +73,26 @@ function mapActivo(a: any): any {
     fechaUltimoMantenimiento: toDateStr(a.fechaUltimoMantenimiento),
     codigo: a.nroPc, tipo: 'PC',
     ubicacion: s ? `${s} - ${p}` : '',
-    marca: a.microMarca ?? '', modelo: a.microModelo ?? '',
     responsable: a.usuarioAsignado ?? '', tags: [],
+    // Procesador: componente del stock > campo directo del activo
+    microModelo:   procesador?.modelo       ?? a.microModelo   ?? '',
+    microMarca:    procesador?.marca?.nombre ?? procesador?.marca ?? a.microMarca ?? '',
+    microNroSerie: procesador?.numeroSerie  ?? a.microNroSerie ?? '',
+    // Placa de video
+    placaVideoModelo:   placaVideo?.modelo        ?? '',
+    placaVideoMarca:    placaVideo?.marca?.nombre  ?? placaVideo?.marca ?? '',
+    placaVideoNroSerie: placaVideo?.numeroSerie    ?? '',
+    // Módulos
+    ramModulos,
+    almacenamientoModulos,
+    ramTotal: a.ramTotal ?? '',
+    almacenamientoTotal: a.almacenamientoTotal ?? '',
+    // Compatibilidad con campos legacy (grilla)
+    marca: procesador?.marca?.nombre ?? a.microMarca ?? '',
+    modelo: procesador?.modelo ?? a.microModelo ?? '',
     historialMantenimiento: (a.mantenimientos ?? []).map((m: any) => ({
       id: m.id, fecha: toDateStr(m.fecha), tipo: m.tipo, descripcion: m.descripcion, tecnico: m.tecnico,
     })),
-    ramModulos: [], almacenamientoModulos: [],
   };
 }
 

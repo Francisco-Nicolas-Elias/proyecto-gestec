@@ -554,7 +554,11 @@ export default function Activos() {
                     <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{a.oficina || '—'}</td>
                     <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{a.microMarca || '—'}</td>
                     <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{a.microModelo || '—'}</td>
-                    <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{a.ramTotal || '—'}</td>
+                    <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                      {(a.ramModulos && a.ramModulos.length > 0)
+                        ? a.ramModulos.map((m: any) => m.modelo).filter(Boolean).join(' / ') || a.ramTotal || '—'
+                        : a.ramTotal || '—'}
+                    </td>
                     <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
                       {(a.almacenamientoModulos && a.almacenamientoModulos.length > 0)
                         ? a.almacenamientoModulos.map(m => m.marca).filter(Boolean).join(' / ') || '—'
