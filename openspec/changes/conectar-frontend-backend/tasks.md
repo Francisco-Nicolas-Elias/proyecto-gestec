@@ -1,6 +1,6 @@
 # Tasks: Conectar frontend al backend
 
-## Estado general: 🟡 En progreso — Fase 4 pendiente
+## Estado general: 🟡 En progreso — Fase 4 completa, Fase 5 pendiente
 
 ---
 
@@ -43,12 +43,12 @@
 
 ## Fase 4 — Integración y verificación
 
-- [ ] **4.1** Login con cada uno de los 3 roles — verificar que el menú filtra correctamente
-- [ ] **4.2** CRUD completo de activos — verificar persistencia con Prisma Studio
-- [ ] **4.3** Crear ticket como docente → cambiar estado como operador → verificar flujo completo
-- [ ] **4.4** Mover tarjetas en el kanban de tareas — verificar estado actualizado en DB
-- [ ] **4.5** Verificar que los logs del sistema se registran en la DB y se ven en Admin → Logs
-- [ ] **4.6** Probar con `VITE_USE_MOCK=true` que el fallback mock sigue funcionando
+- [x] **4.1** Login con cada uno de los 3 roles — verificar que el menú filtra correctamente
+- [x] **4.2** CRUD completo de activos — verificar persistencia con Prisma Studio
+- [x] **4.3** Crear ticket como docente → cambiar estado como operador → verificar flujo completo
+- [x] **4.4** Mover tarjetas en el kanban de tareas — verificar estado actualizado en DB
+- [x] **4.5** Verificar que los logs del sistema se registran en la DB y se ven en Admin → Logs
+- [x] **4.6** Probar con `VITE_USE_MOCK=true` que el fallback mock sigue funcionando
 
 ---
 

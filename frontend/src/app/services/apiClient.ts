@@ -110,13 +110,18 @@ const getUsersIdCache = async () => { if (!_usersIdCache) _usersIdCache = await 
 
 async function activoPayload(a: any): Promise<any> {
   const { sector, piso, usuario, ubicacion: _ub, codigo, tipo, marca: _m, modelo: _mo,
-    responsable, tags, historialMantenimiento, ramModulos, almacenamientoModulos, ...rest } = a;
+    responsable, tags, historialMantenimiento, ramModulos, almacenamientoModulos,
+    placaVideoNroSerie: _pvn, placaVideoMarca: _pvm, placaVideoModelo: _pvmo,
+    ...rest } = a;
   let ubicacionId = rest.ubicacionId;
   if (!ubicacionId && sector) {
     const ubs = await getUbCache();
     ubicacionId = ubs.find((u: any) => u.sector === sector)?.id;
   }
-  return { ...rest, ...(ubicacionId ? { ubicacionId } : {}), ...(usuario !== undefined ? { usuarioAsignado: usuario } : {}) };
+  const payload: any = { ...rest, ...(ubicacionId ? { ubicacionId } : {}), ...(usuario !== undefined ? { usuarioAsignado: usuario } : {}) };
+  if (payload.fechaCambioPC === '') payload.fechaCambioPC = null;
+  if (payload.fechaUltimoMantenimiento === '') payload.fechaUltimoMantenimiento = null;
+  return payload;
 }
 
 async function componentePayload(c: any): Promise<any> {
