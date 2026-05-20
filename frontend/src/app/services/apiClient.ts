@@ -32,6 +32,23 @@ function mapComentario(c: any): any {
   return { id: c.id, autor: c.autor?.nombre ?? c.autor ?? '', fecha: c.fecha, texto: c.texto, esInterno: c.esInterno ?? false, adjuntos: c.adjuntos };
 }
 
+function parseGB(str: string): number {
+  if (!str) return 0;
+  const m = str.match(/(\d+(?:\.\d+)?)\s*(TB|GB|MB)/i);
+  if (!m) return 0;
+  const v = parseFloat(m[1]);
+  const u = m[2].toUpperCase();
+  if (u === 'MB') return v / 1024;
+  if (u === 'TB') return v * 1024;
+  return v;
+}
+
+function sumarCapacidad(modulos: any[]): string {
+  const total = modulos.reduce((s, m) => s + parseGB(m.capacidad), 0);
+  if (total === 0) return '';
+  return `${total % 1 === 0 ? total : total.toFixed(1)} GB`;
+}
+
 const TIPOS_RAM        = ['RAM'];
 const TIPOS_STORAGE    = ['SSD', 'HDD', 'M.2', 'SSHD'];
 const TIPOS_PROCESADOR = ['Procesador', 'CPU'];
@@ -85,8 +102,8 @@ function mapActivo(a: any): any {
     // Módulos
     ramModulos,
     almacenamientoModulos,
-    ramTotal: a.ramTotal ?? '',
-    almacenamientoTotal: a.almacenamientoTotal ?? '',
+    ramTotal: sumarCapacidad(ramModulos) || a.ramTotal || '',
+    almacenamientoTotal: sumarCapacidad(almacenamientoModulos) || a.almacenamientoTotal || '',
     // Compatibilidad con campos legacy (grilla)
     marca: procesador?.marca?.nombre ?? a.microMarca ?? '',
     modelo: procesador?.modelo ?? a.microModelo ?? '',

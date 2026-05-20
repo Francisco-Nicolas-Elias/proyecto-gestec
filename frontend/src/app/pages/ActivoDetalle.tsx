@@ -551,35 +551,45 @@ export default function ActivoDetalle() {
               {/* RAM - Módulos individuales */}
               <Card title="Memoria RAM" icon={Monitor}>
                 <Row label="Capacidad total" value={activo.ramTotal} />
-                {activo.ramModulos && activo.ramModulos.length > 0 && (
-                  <div className="py-2.5 border-b border-gray-100 dark:border-gray-700 last:border-0">
-                    <dt className="text-sm text-gray-500 dark:text-gray-400 mb-2">Módulos instalados</dt>
-                    <dd className="space-y-2">
-                      {activo.ramModulos.map((modulo, idx) => (
-                        <div key={modulo.id} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">Módulo {idx + 1}</span>
-                            <span className="text-xs font-medium text-[#00a6d6] dark:text-[#00c4f0]">{modulo.capacidad || '—'}</span>
-                          </div>
-                          <div className="grid grid-cols-2 gap-2 text-xs">
-                            <div>
-                              <span className="text-gray-500 dark:text-gray-400">Marca:</span>
-                              <span className="ml-1 text-gray-900 dark:text-white font-medium">{modulo.marca || '—'}</span>
+                {activo.ramModulos && activo.ramModulos.length > 0 && (() => {
+                  // Agrupar módulos por modelo para mostrar "2x ValueRAM DDR4"
+                  const grupos: Record<string, { modulos: typeof activo.ramModulos; capacidad: string }> = {};
+                  activo.ramModulos.forEach(m => {
+                    const clave = `${m.marca} ${m.modelo}`.trim() || 'Sin modelo';
+                    if (!grupos[clave]) grupos[clave] = { modulos: [], capacidad: m.capacidad };
+                    grupos[clave].modulos.push(m);
+                  });
+                  return (
+                    <div className="py-2.5 border-b border-gray-100 dark:border-gray-700 last:border-0">
+                      <dt className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                        Módulos instalados ({activo.ramModulos.length})
+                      </dt>
+                      <dd className="space-y-2">
+                        {Object.entries(grupos).map(([clave, { modulos, capacidad }]) => (
+                          <div key={clave} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-semibold text-gray-800 dark:text-white">
+                                {modulos.length > 1 ? `${modulos.length}×` : ''} {clave}
+                              </span>
+                              {capacidad && (
+                                <span className="text-xs font-medium text-[#00a6d6] dark:text-[#00c4f0]">
+                                  {modulos.length > 1 ? `${modulos.length}×${capacidad}` : capacidad}
+                                </span>
+                              )}
                             </div>
-                            <div>
-                              <span className="text-gray-500 dark:text-gray-400">Modelo:</span>
-                              <span className="ml-1 text-gray-900 dark:text-white font-medium">{modulo.modelo || '—'}</span>
+                            <div className="text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
+                              {modulos.map((m, i) => (
+                                <div key={m.id} className="font-mono">
+                                  {modulos.length > 1 ? `#${i + 1} ` : ''}N° Serie: {m.nroSerie || '—'}
+                                </div>
+                              ))}
                             </div>
                           </div>
-                          <div className="text-xs">
-                            <span className="text-gray-500 dark:text-gray-400">N° Serie:</span>
-                            <span className="ml-1 text-gray-900 dark:text-white font-mono">{modulo.nroSerie || '—'}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </dd>
-                  </div>
-                )}
+                        ))}
+                      </dd>
+                    </div>
+                  );
+                })()}
               </Card>
 
               {/* Impresora */}
