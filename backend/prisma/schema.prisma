@@ -283,6 +283,7 @@ model RepuestoIntervencion {
 
 model Ticket {
   id                 String           @id @default(cuid())
+  nro                Int              @default(autoincrement())
   titulo             String?
   creadorId          String
   creador            Usuario          @relation("TicketCreador", fields: [creadorId], references: [id])

@@ -697,6 +697,7 @@ export const addMantenimientoRecord = async (activoId: string, data: Partial<Man
 // ============ TICKETS ============
 export interface Ticket {
   id: string;
+  nro: number;
   titulo?: string;
   creador: string;
   creadorEmail: string;
