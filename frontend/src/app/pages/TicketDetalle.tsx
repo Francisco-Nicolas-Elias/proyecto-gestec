@@ -174,7 +174,7 @@ export default function TicketDetalle() {
       });
       setTicket({ ...actualizado, comentarios: ticket.comentarios });
       setEditMode(false);
-      toast.success('Reporte actualizado correctamente');
+      toast.success('Ticket actualizado correctamente');
     } catch {
       toast.error('Error al guardar los cambios');
     } finally {
@@ -192,10 +192,10 @@ export default function TicketDetalle() {
     setEliminando(true);
     try {
       await deleteTicket(id!);
-      toast.success('Reporte eliminado');
+      toast.success('Ticket eliminado');
       navigate('/tickets');
     } catch {
-      toast.error('Error al eliminar el reporte');
+      toast.error('Error al eliminar el ticket');
       setEliminando(false);
     }
   };
@@ -274,7 +274,7 @@ export default function TicketDetalle() {
             </>
           )}
           {editMode && (
-            <p className="text-sm font-semibold text-[#00a6d6]">Editando reporte</p>
+            <p className="text-sm font-semibold text-[#00a6d6]">Editando ticket</p>
           )}
         </div>
 
@@ -283,14 +283,14 @@ export default function TicketDetalle() {
           <div className="flex items-center gap-1 shrink-0">
             <button
               onClick={handleStartEdit}
-              title="Editar reporte"
+              title="Editar ticket"
               className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-500 dark:text-gray-400"
             >
               <Pencil size={17} />
             </button>
             <button
               onClick={() => setConfirmDelete(true)}
-              title="Eliminar reporte"
+              title="Eliminar ticket"
               className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400"
             >
               <Trash2 size={17} />
@@ -315,9 +315,9 @@ export default function TicketDetalle() {
               <Trash2 size={18} className="text-red-600 dark:text-red-400" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-red-800 dark:text-red-300">¿Eliminar este reporte?</p>
+              <p className="text-sm font-semibold text-red-800 dark:text-red-300">¿Eliminar este ticket?</p>
               <p className="text-sm text-red-600 dark:text-red-400 mt-0.5">
-                Esta acción no se puede deshacer. Se eliminará el reporte <strong>{ticket.nro}</strong> permanentemente.
+                Esta acción no se puede deshacer. Se eliminará el ticket <strong>{ticket.nro}</strong> permanentemente.
               </p>
             </div>
           </div>
@@ -348,7 +348,7 @@ export default function TicketDetalle() {
           {/* ── MODO EDICIÓN ── */}
           {editMode ? (
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-4">
-              <h3 className="font-semibold dark:text-white">Editar Reporte</h3>
+              <h3 className="font-semibold dark:text-white">Editar Ticket</h3>
 
               {/* Ubicación */}
               <div>
@@ -466,7 +466,7 @@ export default function TicketDetalle() {
           ) : (
             /* ── MODO VISTA — Info Card ── */
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-              <h3 className="font-semibold mb-4 dark:text-white">Información del Reporte</h3>
+              <h3 className="font-semibold mb-4 dark:text-white">Información del Ticket</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="flex items-start gap-3">
                   <User className="text-gray-400 mt-0.5 shrink-0" size={18} />
