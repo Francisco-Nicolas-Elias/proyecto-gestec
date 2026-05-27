@@ -29,7 +29,14 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const toDateStr = (d: any): string => (d ? new Date(d).toISOString().split('T')[0] : '');
 
 function mapComentario(c: any): any {
-  return { id: c.id, autor: c.autor?.nombre ?? c.autor ?? '', fecha: c.fecha, texto: c.texto, esInterno: c.esInterno ?? false, adjuntos: c.adjuntos };
+  return {
+    id: c.id,
+    autor: c.autor?.nombre ?? c.autor ?? '',
+    fecha: c.fecha,
+    texto: c.texto,
+    esInterno: c.esInterno ?? false,
+    adjuntos: (c.adjuntos ?? []).map((a: any) => ({ id: a.id, nombre: a.nombre, tipo: a.tipo, url: a.url, tamano: a.tamano })),
+  };
 }
 
 function parseGB(str: string): number {
@@ -1063,7 +1070,7 @@ export const addComentario = async (ticketId: string, texto: string, esInterno: 
     }
     return comentario;
   }
-  return http.post<Comentario>(`/tickets/${ticketId}/comentarios`, { texto, esInterno });
+  return http.post<any>(`/tickets/${ticketId}/comentarios`, { texto, esInterno }).then(mapComentario);
 };
 
 // ============ STOCK ============
@@ -1799,7 +1806,15 @@ export const addComentarioTarea = async (tareaId: string, texto: string, adjunto
     }
     return comentario;
   }
-  return http.post<Comentario>(`/tareas/${tareaId}/comentarios`, { texto, adjuntos });
+  const comentario = await http.post<any>(`/tareas/${tareaId}/comentarios`, { texto }).then(mapComentario);
+  if (adjuntos?.length) {
+    const uploaded = await Promise.all(adjuntos.map(async (adj) => {
+      const blob = await fetch(adj.url).then(r => r.blob());
+      return uploadAdjunto(blob, adj.nombre, { comentarioTareaId: comentario.id });
+    }));
+    comentario.adjuntos = uploaded;
+  }
+  return comentario;
 };
 
 export const updateComentarioTarea = async (tareaId: string, comentarioId: string, nuevoTexto: string): Promise<Comentario> => {
@@ -1812,7 +1827,7 @@ export const updateComentarioTarea = async (tareaId: string, comentarioId: strin
     comentario.texto = nuevoTexto;
     return { ...comentario };
   }
-  return http.put<Comentario>(`/tareas/${tareaId}/comentarios/${comentarioId}`, { texto: nuevoTexto });
+  return http.put<any>(`/tareas/${tareaId}/comentarios/${comentarioId}`, { texto: nuevoTexto }).then(mapComentario);
 };
 
 export const deleteComentarioTarea = async (tareaId: string, comentarioId: string): Promise<void> => {

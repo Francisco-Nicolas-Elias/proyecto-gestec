@@ -9,7 +9,7 @@ import SearchableSelect from './SearchableSelect';
 import {
   addComentarioTarea, updateTarea, deleteTarea,
   getUbicaciones, getUsuarios,
-  updateComentarioTarea, deleteComentarioTarea, getCurrentUser,
+  updateComentarioTarea, deleteComentarioTarea, getCurrentUser, getTareaById,
 } from '../services/apiClient';
 import { toast } from 'sonner@2.0.3';
 
@@ -110,6 +110,25 @@ export default function TareaDetalleModal({
       .then(users => setUsuariosAsignables(users.filter(u => u.rol === 'administrador' || u.rol === 'operaciones')))
       .catch(() => {});
   }, [editMode]);
+
+  // Fetch completo al abrir el modal (la lista del Kanban no incluye comentarios ni adjuntos)
+  useEffect(() => {
+    getTareaById(tarea.id).then(full => {
+      if (!full) return;
+      setDatosTarea(full as Tarea);
+      setComentarios((full as any).comentarios ?? []);
+      setFormData({
+        titulo: (full as any).titulo,
+        descripcion: (full as any).descripcion,
+        prioridad: (full as any).prioridad,
+        estado: (full as any).estado,
+        fechaLimite: (full as any).fechaLimite || '',
+        ubicacion: (full as any).ubicacion || '',
+        asignados: (full as any).asignados || [],
+        adjuntos: (full as any).adjuntos || [],
+      });
+    }).catch(() => {});
+  }, [tarea.id]);
 
   // Scroll al último comentario al agregar uno nuevo
   useEffect(() => {
