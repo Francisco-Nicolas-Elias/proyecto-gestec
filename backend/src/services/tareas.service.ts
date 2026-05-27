@@ -119,7 +119,7 @@ export async function addComentarioTareaService(tareaId: string, texto: string, 
   const [comentario] = await prisma.$transaction([
     prisma.comentarioTarea.create({
       data: { tareaId, texto, autorId },
-      include: { autor: { omit: { password: true } } },
+      include: { autor: { omit: { password: true } }, adjuntos: true },
     }),
     prisma.tareaHistorial.create({
       data: { tareaId, accion: `Comentario agregado`, usuario: usuarioNombre },
@@ -129,7 +129,11 @@ export async function addComentarioTareaService(tareaId: string, texto: string, 
 }
 
 export async function updateComentarioTareaService(comentarioId: string, texto: string) {
-  return prisma.comentarioTarea.update({ where: { id: comentarioId }, data: { texto } });
+  return prisma.comentarioTarea.update({
+    where: { id: comentarioId },
+    data: { texto },
+    include: { autor: { omit: { password: true } }, adjuntos: true },
+  });
 }
 
 export async function deleteComentarioTareaService(comentarioId: string) {
