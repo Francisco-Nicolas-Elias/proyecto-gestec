@@ -107,6 +107,7 @@ export default function Admin() {
   const [logsSearch, setLogsSearch] = useState('');
   const [logsModulo, setLogsModulo] = useState('');
   const [showClearLogsModal, setShowClearLogsModal] = useState(false);
+  const [logDetalle, setLogDetalle] = useState<LogEntry | null>(null);
 
   // ── Proveedores ───────────────────────────────────────────────────────────
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
@@ -877,6 +878,7 @@ export default function Admin() {
                           <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell">Módulo</th>
                           <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acción Realizada</th>
                           <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">Usuario</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell"></th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -918,6 +920,16 @@ export default function Admin() {
                                 <p className="text-gray-900 dark:text-white">{log.usuario}</p>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{log.usuarioRol.replace('_', '/')}</p>
                               </td>
+                              <td className="px-4 py-3 hidden md:table-cell">
+                                {log.detalle && (
+                                  <button
+                                    onClick={() => setLogDetalle(log)}
+                                    className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg bg-[#e6f7fc] dark:bg-[#004d63]/30 text-[#007a9e] dark:text-[#00c8f0] hover:bg-[#00a6d6]/20 transition-colors whitespace-nowrap"
+                                  >
+                                    Ver detalle
+                                  </button>
+                                )}
+                              </td>
                             </tr>
                           );
                         })}
@@ -931,6 +943,66 @@ export default function Admin() {
                     Mostrando {filteredLogs.length} de {logs.length} registros · Orden: más reciente primero
                   </p>
                 )}
+
+                {/* Modal Detalle de Log */}
+                {logDetalle && (() => {
+                  let parsed: { campos?: Record<string, [string, string]> } = {};
+                  try { parsed = JSON.parse(logDetalle.detalle ?? '{}'); } catch { /* noop */ }
+                  const campos = parsed.campos ?? {};
+                  const fecha = new Date(logDetalle.fechaHora);
+                  return (
+                    <Modal isOpen={!!logDetalle} onClose={() => setLogDetalle(null)} title="Detalle del registro" size="sm">
+                      <div className="space-y-4">
+                        {/* Info general */}
+                        <div className="rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-700 p-4 space-y-2">
+                          <div className="flex items-start justify-between gap-3">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white leading-snug">{logDetalle.accion}</p>
+                            <span className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${MODULO_COLORS[logDetalle.modulo] ?? MODULO_COLORS['Sistema']}`}>
+                              {logDetalle.modulo}
+                            </span>
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 flex flex-wrap gap-x-4 gap-y-1 pt-1 border-t border-gray-200 dark:border-gray-600">
+                            <span><span className="font-medium text-gray-700 dark:text-gray-300">Usuario:</span> {logDetalle.usuario}</span>
+                            <span><span className="font-medium text-gray-700 dark:text-gray-300">Rol:</span> {logDetalle.usuarioRol.replace('_', '/')}</span>
+                            <span><span className="font-medium text-gray-700 dark:text-gray-300">Fecha:</span> {fecha.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })} {fecha.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                          </div>
+                        </div>
+
+                        {/* Campos modificados */}
+                        {Object.keys(campos).length > 0 && (
+                          <div>
+                            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Cambios realizados</p>
+                            <div className="space-y-2">
+                              {Object.entries(campos).map(([campo, [antes, despues]]) => (
+                                <div key={campo} className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                  <div className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
+                                    {campo}
+                                  </div>
+                                  <div className="grid grid-cols-2 divide-x divide-gray-200 dark:divide-gray-700">
+                                    <div className="px-3 py-2.5 bg-red-50 dark:bg-red-900/10">
+                                      <p className="text-xs text-red-400 dark:text-red-500 mb-0.5">Antes</p>
+                                      <p className="text-sm font-medium text-red-700 dark:text-red-400">{antes}</p>
+                                    </div>
+                                    <div className="px-3 py-2.5 bg-green-50 dark:bg-green-900/10">
+                                      <p className="text-xs text-green-400 dark:text-green-500 mb-0.5">Después</p>
+                                      <p className="text-sm font-medium text-green-700 dark:text-green-400">{despues}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex justify-end pt-1">
+                          <button onClick={() => setLogDetalle(null)} className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors">
+                            Cerrar
+                          </button>
+                        </div>
+                      </div>
+                    </Modal>
+                  );
+                })()}
               </div>
             );
           })()}

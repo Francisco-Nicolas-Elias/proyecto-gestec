@@ -13,6 +13,7 @@ export type LogModulo =
 export interface LogEntry {
   id: string;
   accion: string;
+  detalle?: string; // JSON: { campos: { "Campo": ["antes", "después"] } }
   modulo: LogModulo;
   usuario: string;
   usuarioRol: string;
@@ -52,7 +53,12 @@ export const getLogs = async (): Promise<LogEntry[]> => {
     const logs = initLogs();
     return [...logs].sort((a, b) => new Date(b.fechaHora).getTime() - new Date(a.fechaHora).getTime());
   }
-  return http.get<LogEntry[]>('/admin/logs');
+  return http.get<any[]>('/admin/logs').then(rows =>
+    rows.map(r => ({
+      ...r,
+      usuario: r.usuarioNombre ?? r.usuario ?? '',
+    }))
+  );
 };
 
 export const clearLogs = async (): Promise<void> => {

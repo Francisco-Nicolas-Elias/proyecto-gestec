@@ -472,6 +472,7 @@ model InfoOperacionesEmail {
 model LogEntry {
   id            String    @id @default(cuid())
   accion        String
+  detalle       String?   // JSON: { campos: { "Campo": ["antes", "después"] } }
   modulo        ModuloLog
   usuarioId     String?
   usuario       Usuario?  @relation(fields: [usuarioId], references: [id])

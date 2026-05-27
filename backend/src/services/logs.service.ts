@@ -7,9 +7,10 @@ export async function addLogService(
   usuarioNombre: string,
   usuarioRol: string,
   usuarioId?: string,
+  detalle?: string,
 ) {
   await prisma.logEntry.create({
-    data: { accion, modulo, usuarioNombre, usuarioRol, usuarioId },
+    data: { accion, modulo, usuarioNombre, usuarioRol, usuarioId, detalle },
   });
 }
 
