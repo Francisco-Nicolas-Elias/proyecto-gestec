@@ -51,9 +51,17 @@ export async function createTicketService(
     data: { ...data, creadorId, estado: EstadoTicket.nuevo },
     include: { creador: { omit: { password: true } } },
   });
-  await addLogService(`Ticket "${ticket.titulo ?? ticket.id}" creado`, 'Tickets', usuarioNombre, 'docente_empleado');
+  const desc = ticket.descripcion.length > 60 ? ticket.descripcion.slice(0, 57) + '…' : ticket.descripcion;
+  await addLogService(`Ticket #${ticket.nro} creado — "${desc}"`, 'Tickets', usuarioNombre, 'docente_empleado');
   return ticket;
 }
+
+const ESTADO_LABELS: Record<string, string> = {
+  nuevo: 'Nuevo', en_progreso: 'En progreso', resuelto: 'Resuelto', cerrado: 'Cerrado',
+};
+const PRIORIDAD_LABELS: Record<string, string> = {
+  baja: 'Baja', media: 'Media', alta: 'Alta', urgente: 'Urgente',
+};
 
 export async function updateTicketService(
   id: string,
@@ -61,12 +69,53 @@ export async function updateTicketService(
   usuarioNombre: string,
   usuarioRol: string,
 ) {
+  // Capturar estado anterior para el diff
+  const anterior = await prisma.ticket.findUnique({
+    where: { id },
+    include: { asignado: { omit: { password: true } } },
+  });
+
   const ticket = await prisma.ticket.update({
     where: { id },
     data,
     include: { creador: { omit: { password: true } }, asignado: { omit: { password: true } } },
   });
-  await addLogService(`Ticket "${ticket.titulo ?? id}" actualizado`, 'Tickets', usuarioNombre, usuarioRol);
+
+  // Calcular diff de campos relevantes
+  const campos: Record<string, [string, string]> = {};
+  if (anterior) {
+    const fmt = (v: any, tipo: string) => {
+      if (v == null || v === '') return 'Sin asignar';
+      if (tipo === 'estado') return ESTADO_LABELS[v] ?? v;
+      if (tipo === 'prioridad') return PRIORIDAD_LABELS[v] ?? v;
+      return String(v);
+    };
+    const checks: { key: keyof typeof anterior; label: string; tipo?: string }[] = [
+      { key: 'estado', label: 'Estado', tipo: 'estado' },
+      { key: 'prioridad', label: 'Prioridad', tipo: 'prioridad' },
+      { key: 'asignadoId', label: 'Asignado', tipo: 'texto' },
+      { key: 'ubicacion', label: 'Ubicación' },
+      { key: 'tipo', label: 'Tipo' },
+    ];
+    for (const { key, label, tipo } of checks) {
+      const antes = anterior[key];
+      const despues = (ticket as any)[key];
+      if (String(antes ?? '') !== String(despues ?? '')) {
+        // Para asignadoId mostramos el nombre del usuario, no el ID
+        if (key === 'asignadoId') {
+          const nombreAntes = anterior.asignado?.nombre ?? 'Sin asignar';
+          const nombreDespues = ticket.asignado?.nombre ?? 'Sin asignar';
+          if (nombreAntes !== nombreDespues) campos[label] = [nombreAntes, nombreDespues];
+        } else {
+          campos[label] = [fmt(antes, tipo ?? 'texto'), fmt(despues, tipo ?? 'texto')];
+        }
+      }
+    }
+  }
+
+  const desc = ticket.descripcion.length > 60 ? ticket.descripcion.slice(0, 57) + '…' : ticket.descripcion;
+  const detalle = Object.keys(campos).length > 0 ? JSON.stringify({ campos }) : undefined;
+  await addLogService(`Ticket #${ticket.nro} actualizado — "${desc}"`, 'Tickets', usuarioNombre, usuarioRol, undefined, detalle);
   return ticket;
 }
 
@@ -74,7 +123,8 @@ export async function deleteTicketService(id: string, usuarioNombre: string) {
   const ticket = await prisma.ticket.findUnique({ where: { id } });
   if (!ticket) throw new AppError(404, 'Ticket no encontrado');
   await prisma.ticket.delete({ where: { id } });
-  await addLogService(`Ticket "${ticket.titulo ?? id}" eliminado`, 'Tickets', usuarioNombre, 'administrador');
+  const desc = ticket.descripcion.length > 60 ? ticket.descripcion.slice(0, 57) + '…' : ticket.descripcion;
+  await addLogService(`Ticket #${ticket.nro} eliminado — "${desc}"`, 'Tickets', usuarioNombre, 'administrador');
 }
 
 export async function addComentarioTicketService(
