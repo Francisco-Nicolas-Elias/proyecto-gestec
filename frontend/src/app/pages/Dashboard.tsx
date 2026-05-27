@@ -309,7 +309,7 @@ export default function Dashboard() {
     activosInactivos:  allActivos.filter(a => a.estado === 'inactiva').length,
     ticketsNuevos:     allTickets.filter(t => t.estado === 'nuevo').length,
     ticketsEnProgreso: allTickets.filter(t => t.estado === 'en_progreso').length,
-    tareasPendientes:  allTareas.filter(t => t.estado === 'pendiente' || t.estado === 'en_curso').length,
+    tareasPendientes:  allTareas.filter(t => t.estado === 'pendiente').length,
     stockBajo:         allStock.filter(s => s.estado === 'bajo' || s.estado === 'critico').length,
   }), [allActivos, allTickets, allTareas, allStock]);
 
@@ -371,7 +371,7 @@ export default function Dashboard() {
           <KpiCard icon={CheckCircle}  label="Tareas Pendientes"    value={stats.tareasPendientes}  color="bg-purple-500" onClick={() => navigate('/tareas')} />
         )}
         {hasPermission('stock') && (
-          <KpiCard icon={Package}      label="Stock Bajo/Crítico"   value={stats.stockBajo}         color="bg-orange-500" onClick={() => navigate('/stock?estado=bajo')} />
+          <KpiCard icon={Package}      label="Stock Bajo/Crítico"   value={stats.stockBajo}         color="bg-orange-500" onClick={() => navigate('/stock')} />
         )}
       </div>
 

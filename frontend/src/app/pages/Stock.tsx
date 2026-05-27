@@ -28,7 +28,11 @@ export default function Stock() {
   const [items, setItems] = useState<any[]>([]);
   const [filteredItems, setFilteredItems] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterEstado, setFilterEstado] = useState(searchParams.get('estado') || '');
+  const [filterEstado, setFilterEstado] = useState(() => {
+    const e = searchParams.get('estado') || '';
+    // Solo acepta valores válidos del selector; cualquier otro valor se ignora
+    return ['ok', 'bajo', 'critico'].includes(e) ? e : '';
+  });
   const [filterCategoria, setFilterCategoria] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [showAlertasModal, setShowAlertasModal] = useState(false);
