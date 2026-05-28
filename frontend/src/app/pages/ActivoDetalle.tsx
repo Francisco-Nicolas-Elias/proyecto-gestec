@@ -531,6 +531,7 @@ export default function ActivoDetalle() {
                 <Card title="Placa de Video" icon={Monitor}>
                   <Row label="Marca" value={activo.placaVideoMarca} />
                   <Row label="Modelo" value={activo.placaVideoModelo} />
+                  <Row label="Memoria" value={(activo as any).placaVideoCapacidad} />
                   <Row label="N° de Serie" value={activo.placaVideoNroSerie} />
                 </Card>
 

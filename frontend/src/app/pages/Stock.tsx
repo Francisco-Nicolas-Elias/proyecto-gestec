@@ -12,7 +12,6 @@ import Table from '../components/Table';
 import StatusBadge from '../components/StatusBadge';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Modal from '../components/Modal';
-import NuevoComponenteModal from '../components/NuevoComponenteModal';
 import EditarComponenteModal from '../components/EditarComponenteModal';
 import HistorialComponenteModal from '../components/HistorialComponenteModal';
 import SearchableSelect from '../components/SearchableSelect';
@@ -41,7 +40,6 @@ export default function Stock() {
   const [componentes, setComponentes] = useState<Componente[]>([]);
   const [filteredComponentes, setFilteredComponentes] = useState<Componente[]>([]);
   const [componenteSearch, setComponenteSearch] = useState('');
-  const [showNuevoComponente, setShowNuevoComponente] = useState(false);
 
   // ── Filtros de columna de componentes ──
   const [compFilterId, setCompFilterId] = useState('');
@@ -575,7 +573,7 @@ export default function Stock() {
         <div className="flex items-center gap-2 flex-wrap">
           {/* Nuevo Componente */}
           <button
-            onClick={() => setShowNuevoComponente(true)}
+            onClick={() => navigate('/stock/nuevo')}
             className="flex items-center gap-2 bg-[#00a6d6] text-white px-4 py-2 rounded-lg hover:bg-[#008bb8] transition-colors"
           >
             <Plus size={18} />
@@ -847,15 +845,6 @@ export default function Stock() {
         </div>
       </Modal>
 
-      {/* Modal Nuevo Componente */}
-      <NuevoComponenteModal
-        isOpen={showNuevoComponente}
-        onClose={() => setShowNuevoComponente(false)}
-        onCreated={nuevo => {
-          setComponentes(prev => [nuevo, ...prev]);
-          reloadStockItems();
-        }}
-      />
 
       {/* Modal Editar Componente */}
       <EditarComponenteModal

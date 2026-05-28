@@ -4,7 +4,7 @@ import {
   ArrowLeft, Save, Monitor, HardDrive, Cpu, Wifi, Settings, Printer, MapPin, User, Plus, Trash2, Lock,
 } from 'lucide-react';
 import {
-  getActivoById, createActivo, updateActivo,
+  getActivoById, createActivo, updateActivo, updateComponente,
   getSectores, getPisoForSector, buscarComponentePorSerie,
   type ModuloRAM, type ModuloAlmacenamiento,
 } from '../services/apiClient';
@@ -45,7 +45,7 @@ const empty = {
   ramTotal: '',
   almacenamientoModulos: [] as ModuloAlmacenamiento[],
   almacenamientoTotal: '',
-  placaVideoNroSerie: '', placaVideoMarca: '', placaVideoModelo: '',
+  placaVideoNroSerie: '', placaVideoMarca: '', placaVideoModelo: '', placaVideoCapacidad: '',
   ip: '', mac: '', idAD: '', pAD: '',
   sistemaOperativo: '',
   impresoraNroSerie: '', impresoraMarca: '', impresoraModelo: '',
@@ -55,8 +55,8 @@ const empty = {
 };
 
 const ESTADO_OPTIONS = [
-  { value: 'activa', label: 'Activa' },
-  { value: 'inactiva', label: 'Inactiva' },
+  { value: 'activa', label: 'Activo' },
+  { value: 'inactiva', label: 'Inactivo' },
 ];
 
 // ── Sub-componentes de layout ──────────────────────────────────────────────
@@ -132,6 +132,7 @@ export default function ActivoForm() {
 
   const hadPersistedDataRef = useRef(hasPersistedData(storageKey));
   const showDraftBanner = !isEdit && hadPersistedDataRef.current;
+  const originalGpuSerialRef = useRef<string>('');
 
   const inp = (field: keyof typeof empty) => (field === 'ramModulos' || field === 'almacenamientoModulos' ? {} : {
     value: form[field] as string,
@@ -146,39 +147,39 @@ export default function ActivoForm() {
         const sects = await getSectores();
         setSectores(sects);
         if (isEdit && id) {
-          if (!hadPersistedDataRef.current) {
-            const activo = await getActivoById(id);
-            if (activo) {
-              setForm({
-                sector: activo.sector,
-                piso: activo.piso,
-                oficina: activo.oficina,
-                nroPc: activo.nroPc,
-                usuario: activo.usuario,
-                microModelo: activo.microModelo,
-                microMarca: activo.microMarca,
-                microNroSerie: activo.microNroSerie,
-                ramModulos: activo.ramModulos || [],
-                ramTotal: activo.ramTotal,
-                almacenamientoModulos: activo.almacenamientoModulos || [],
-                almacenamientoTotal: activo.almacenamientoTotal || '',
-                placaVideoModelo: activo.placaVideoModelo,
-                placaVideoMarca: activo.placaVideoMarca,
-                placaVideoNroSerie: activo.placaVideoNroSerie,
-                ip: activo.ip,
-                mac: activo.mac,
-                idAD: activo.idAD,
-                pAD: activo.pAD,
-                sistemaOperativo: activo.sistemaOperativo,
-                impresoraModelo: activo.impresoraModelo,
-                impresoraMarca: activo.impresoraMarca,
-                impresoraNroSerie: activo.impresoraNroSerie,
-                observaciones: activo.observaciones ?? '',
-                fechaCambioPC: activo.fechaCambioPC,
-                fechaUltimoMantenimiento: activo.fechaUltimoMantenimiento,
-                estado: activo.estado,
-              });
-            }
+          const activo = await getActivoById(id);
+          if (activo) {
+            originalGpuSerialRef.current = activo.placaVideoNroSerie || '';
+            setForm({
+              sector: activo.sector,
+              piso: activo.piso,
+              oficina: activo.oficina,
+              nroPc: activo.nroPc,
+              usuario: activo.usuario,
+              microModelo: activo.microModelo,
+              microMarca: activo.microMarca,
+              microNroSerie: activo.microNroSerie,
+              ramModulos: activo.ramModulos || [],
+              ramTotal: activo.ramTotal,
+              almacenamientoModulos: activo.almacenamientoModulos || [],
+              almacenamientoTotal: activo.almacenamientoTotal || '',
+              placaVideoModelo: activo.placaVideoModelo,
+              placaVideoMarca: activo.placaVideoMarca,
+              placaVideoNroSerie: activo.placaVideoNroSerie,
+              placaVideoCapacidad: (activo as any).placaVideoCapacidad || '',
+              ip: activo.ip,
+              mac: activo.mac,
+              idAD: activo.idAD,
+              pAD: activo.pAD,
+              sistemaOperativo: activo.sistemaOperativo,
+              impresoraModelo: activo.impresoraModelo,
+              impresoraMarca: activo.impresoraMarca,
+              impresoraNroSerie: activo.impresoraNroSerie,
+              observaciones: activo.observaciones ?? '',
+              fechaCambioPC: activo.fechaCambioPC,
+              fechaUltimoMantenimiento: activo.fechaUltimoMantenimiento,
+              estado: activo.estado,
+            });
           }
         }
       } catch {
@@ -196,6 +197,12 @@ export default function ActivoForm() {
     setForm(prev => ({ ...prev, sector: val, piso: pisoBySector }));
   };
 
+  const warnIfEnUso = (comp: any) => {
+    if (comp.activoId && comp.activoId !== id) {
+      toast.warning(`Este componente ya está instalado en ${comp.ubicacion ?? comp.activoId}`);
+    }
+  };
+
   // Autocompletar marca/modelo para micro, placaVideo, impresora
   const handleComponenteSerieChange = async (
     field: 'micro' | 'placaVideo' | 'impresora',
@@ -206,15 +213,18 @@ export default function ActivoForm() {
       [`${field}NroSerie`]: nroSerie,
       [`${field}Marca`]: '',
       [`${field}Modelo`]: '',
+      ...(field === 'placaVideo' ? { placaVideoCapacidad: '' } : {}),
     }));
     if (nroSerie.trim()) {
       try {
         const comp = await buscarComponentePorSerie(nroSerie);
         if (comp) {
+          warnIfEnUso(comp);
           setForm(prev => ({
             ...prev,
             [`${field}Marca`]: comp.marca,
             [`${field}Modelo`]: comp.modelo,
+            ...(field === 'placaVideo' ? { placaVideoCapacidad: comp.capacidad ?? '' } : {}),
           }));
         }
       } catch { /* silencioso */ }
@@ -244,6 +254,7 @@ export default function ActivoForm() {
       try {
         const comp = await buscarComponentePorSerie(value);
         if (comp) {
+          warnIfEnUso(comp);
           newModulos[index] = { ...newModulos[index], marca: comp.marca, modelo: comp.modelo, capacidad: comp.capacidad ?? '' };
           setForm(prev => ({ ...prev, ramModulos: [...newModulos] }));
         }
@@ -293,6 +304,7 @@ export default function ActivoForm() {
       try {
         const comp = await buscarComponentePorSerie(nroSerie);
         if (comp) {
+          warnIfEnUso(comp);
           newModulos[index] = {
             ...newModulos[index],
             tipo: comp.tipoComponente,
@@ -353,21 +365,74 @@ export default function ActivoForm() {
       pADFinal = encriptarPAD(pADInput);
     }
 
+    // Validar que los componentes ingresados no estén en uso en otro equipo
+    const seriesAValidar: { serie: string; etiqueta: string }[] = [
+      ...(form.microNroSerie.trim() ? [{ serie: form.microNroSerie, etiqueta: 'Procesador' }] : []),
+      ...(form.placaVideoNroSerie?.trim() ? [{ serie: form.placaVideoNroSerie, etiqueta: 'Placa de video' }] : []),
+      ...(form.impresoraNroSerie?.trim() ? [{ serie: form.impresoraNroSerie, etiqueta: 'Impresora' }] : []),
+      ...form.ramModulos.filter(m => m.nroSerie?.trim()).map((m, i) => ({ serie: m.nroSerie, etiqueta: `RAM módulo ${i + 1}` })),
+      ...form.almacenamientoModulos.filter(m => m.nroSerie?.trim()).map((m, i) => ({ serie: m.nroSerie, etiqueta: `Almacenamiento módulo ${i + 1}` })),
+    ];
+    if (seriesAValidar.length > 0) {
+      const conflictos: string[] = [];
+      await Promise.all(seriesAValidar.map(async ({ serie, etiqueta }) => {
+        try {
+          const comp = await buscarComponentePorSerie(serie);
+          if (comp && comp.activoId && comp.activoId !== id) {
+            conflictos.push(`${etiqueta} (N° serie: ${serie}) ya está instalado en ${comp.ubicacion ?? comp.activoId}`);
+          }
+        } catch { /* ignorar errores de búsqueda */ }
+      }));
+      if (conflictos.length > 0) {
+        conflictos.forEach(msg => toast.error(msg, { duration: 6000 }));
+        return;
+      }
+    }
+
     const payload = { ...form, pAD: pADFinal };
 
     setSaving(true);
     try {
+      let savedId = id;
       if (isEdit && id) {
         await updateActivo(id, payload);
-        toast.success('Equipo actualizado correctamente');
       } else {
-        await createActivo(payload);
-        toast.success('Equipo creado correctamente');
+        const created = await createActivo(payload);
+        savedId = created.id;
       }
+
+      // Sincronizar placa de video: actualizar activoId del componente
+      const newGpuSerial = form.placaVideoNroSerie?.trim() || '';
+      const oldGpuSerial = originalGpuSerialRef.current;
+      if (newGpuSerial !== oldGpuSerial) {
+        if (oldGpuSerial) {
+          try {
+            const oldComp = await buscarComponentePorSerie(oldGpuSerial);
+            if (oldComp && oldComp.activoId === savedId) {
+              await updateComponente(oldComp.id, { activoId: null } as any);
+            }
+          } catch { /* silencioso */ }
+        }
+        if (newGpuSerial) {
+          try {
+            const newComp = await buscarComponentePorSerie(newGpuSerial);
+            if (newComp) await updateComponente(newComp.id, { activoId: savedId } as any);
+          } catch { /* silencioso */ }
+        }
+      }
+
+      toast.success(isEdit ? 'Equipo actualizado correctamente' : 'Equipo creado correctamente');
       clearFormPersistence();
       navigate('/activos');
-    } catch {
-      toast.error('Error al guardar el equipo');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '';
+      if (msg.includes('único') || msg.includes('unique') || msg.includes('P2002')) {
+        toast.error('Ya existe un equipo con ese N° PC');
+      } else if (msg && msg.length < 120) {
+        toast.error(msg);
+      } else {
+        toast.error('No se pudo guardar el equipo. Revisá los datos e intentá nuevamente.');
+      }
     } finally {
       setSaving(false);
     }
@@ -586,7 +651,7 @@ export default function ActivoForm() {
         {/* ── 6. Placa de Video ── */}
         <Section icon={Monitor} title="Placa de Video">
           <Grid3>
-            <Field label="N° de Serie" hint="Autocompleta marca/modelo">
+            <Field label="N° de Serie" hint="Autocompleta marca/modelo/memoria">
               <input
                 type="text"
                 value={form.placaVideoNroSerie}
@@ -600,6 +665,9 @@ export default function ActivoForm() {
             </Field>
             <Field label="Modelo" hint="Autocompletado">
               <input type="text" value={form.placaVideoModelo} readOnly className={readonlyClass} placeholder="—" />
+            </Field>
+            <Field label="Memoria" hint="Autocompletado">
+              <input type="text" value={(form as any).placaVideoCapacidad} readOnly className={readonlyClass} placeholder="—" />
             </Field>
           </Grid3>
         </Section>

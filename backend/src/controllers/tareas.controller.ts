@@ -27,7 +27,7 @@ export async function updateTareaStatus(req: Request, res: Response, next: NextF
 }
 
 export async function updateTarea(req: Request, res: Response, next: NextFunction) {
-  try { res.json(await svc.updateTareaService(req.params.id, req.body, req.user!.nombre)); } catch (err) { next(err); }
+  try { res.json(await svc.updateTareaService(req.params.id, req.body, req.user!.nombre, req.user!.rol)); } catch (err) { next(err); }
 }
 
 export async function deleteTarea(req: Request, res: Response, next: NextFunction) {

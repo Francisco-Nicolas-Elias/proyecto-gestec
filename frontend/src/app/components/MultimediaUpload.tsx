@@ -37,6 +37,7 @@ export default function MultimediaUpload({
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [lightboxNombre, setLightboxNombre] = useState<string>('');
   const [duraciones, setDuraciones] = useState<Record<string, string>>({});
+  const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
 
   useEffect(() => {
     adjuntos.filter(a => a.tipo === 'audio' && !duraciones[a.id]).forEach(adj => {
@@ -142,11 +143,11 @@ export default function MultimediaUpload({
   };
 
   const handleRemove = (id: string) => {
-    // Stop audio if playing
     const audio = audioMapRef.current.get(id);
     if (audio) { audio.pause(); audioMapRef.current.delete(id); }
     if (playingId === id) setPlayingId(null);
     onChange(adjuntos.filter((a) => a.id !== id));
+    setPendingRemoveId(null);
   };
 
   const handleTogglePlay = (adj: Adjunto) => {
@@ -261,13 +262,33 @@ export default function MultimediaUpload({
 
               {/* Eliminar */}
               {!readOnly && (
-                <button
-                  type="button"
-                  onClick={() => handleRemove(adj.id)}
-                  className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0"
-                >
-                  <X size={14} />
-                </button>
+                pendingRemoveId === adj.id ? (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">¿Eliminar?</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemove(adj.id)}
+                      className="px-2 py-1 text-xs font-medium rounded bg-red-500 text-white hover:bg-red-600 transition-colors"
+                    >
+                      Sí
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPendingRemoveId(null)}
+                      className="px-2 py-1 text-xs font-medium rounded bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
+                    >
+                      No
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setPendingRemoveId(adj.id)}
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0"
+                  >
+                    <X size={14} />
+                  </button>
+                )
               )}
             </div>
           ))}

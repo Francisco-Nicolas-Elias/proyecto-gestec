@@ -5,6 +5,22 @@ import { useAuth } from './AuthContext';
 import { getTickets, sendNotificationEmail } from '../services/apiClient';
 import { toast } from 'sonner@2.0.3';
 
+const DISMISSED_KEY = 'gestec_dismissed_notifications';
+
+const getDismissed = (): Set<string> => {
+  try { return new Set(JSON.parse(localStorage.getItem(DISMISSED_KEY) ?? '[]')); } catch { return new Set(); }
+};
+const saveDismissed = (ids: Set<string>) => {
+  localStorage.setItem(DISMISSED_KEY, JSON.stringify([...ids]));
+};
+const purgeDismissed = (activeIds: string[]) => {
+  const current = getDismissed();
+  const active = new Set(activeIds);
+  const pruned = new Set([...current].filter(id => active.has(id)));
+  saveDismissed(pruned);
+  return pruned;
+};
+
 export default function NotificationBell() {
   const auth = useAuth();
   const navigate = useNavigate();
@@ -12,6 +28,7 @@ export default function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const dismissedIds = useRef<Set<string>>(getDismissed());
 
   // Solo mostrar para administradores y operaciones
   const shouldShowNotifications = auth?.usuario?.rol === 'administrador' || auth?.usuario?.rol === 'operaciones';
@@ -42,8 +59,10 @@ export default function NotificationBell() {
   const loadNotifications = async () => {
     try {
       const tickets = await getTickets();
-      // Filtrar solo tickets nuevos
-      const newTickets = tickets.filter((t: any) => t.estado === 'nuevo');
+      const todosNuevos = tickets.filter((t: any) => t.estado === 'nuevo');
+      // Limpiar dismissed IDs que ya no son tickets 'nuevo' (resueltos, etc.)
+      dismissedIds.current = purgeDismissed(todosNuevos.map((t: any) => t.id));
+      const newTickets = todosNuevos.filter((t: any) => !dismissedIds.current.has(t.id));
       
       // Verificar si hay nuevos tickets desde la última carga
       const previousCount = notifications.length;
@@ -67,11 +86,27 @@ export default function NotificationBell() {
   };
 
   const handleNotificationClick = (ticketId: string) => {
+    dismissedIds.current.add(ticketId);
+    saveDismissed(dismissedIds.current);
+    const updated = notifications.filter((n) => n.id !== ticketId);
+    setNotifications(updated);
+    setUnreadCount(updated.length);
     navigate(`/tickets/${ticketId}`);
     setIsOpen(false);
   };
 
+  const handleMarkAsRead = (e: React.MouseEvent, ticketId: string) => {
+    e.stopPropagation();
+    dismissedIds.current.add(ticketId);
+    saveDismissed(dismissedIds.current);
+    const updated = notifications.filter((n) => n.id !== ticketId);
+    setNotifications(updated);
+    setUnreadCount(updated.length);
+  };
+
   const handleMarkAllAsRead = () => {
+    notifications.forEach((n) => dismissedIds.current.add(n.id));
+    saveDismissed(dismissedIds.current);
     setNotifications([]);
     setUnreadCount(0);
     toast.success('Notificaciones marcadas como leídas');
@@ -122,37 +157,48 @@ export default function NotificationBell() {
             ) : (
               <>
                 {notifications.map((ticket) => (
-                  <button
+                  <div
                     key={ticket.id}
-                    onClick={() => handleNotificationClick(ticket.id)}
-                    className="w-full px-4 py-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left"
+                    className="flex items-start border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                   >
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 w-2 h-2 bg-red-500 rounded-full mt-2"></div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm text-gray-900 dark:text-white truncate">
-                          {ticket.titulo}
-                        </p>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-2">
-                          {ticket.descripcion}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1.5">
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
-                            {ticket.creador}
-                          </span>
-                          <span className="text-xs text-gray-400 dark:text-gray-500">•</span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
-                            {new Date(ticket.fechaCreacion).toLocaleDateString('es-ES', {
-                              day: '2-digit',
-                              month: 'short',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </span>
+                    <button
+                      onClick={() => handleNotificationClick(ticket.id)}
+                      className="flex-1 px-4 py-3 text-left min-w-0"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 w-2 h-2 bg-red-500 rounded-full mt-2"></div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm text-gray-900 dark:text-white truncate">
+                            {ticket.titulo}
+                          </p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-2">
+                            {ticket.descripcion}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {ticket.creador}
+                            </span>
+                            <span className="text-xs text-gray-400 dark:text-gray-500">•</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {new Date(ticket.fechaCreacion).toLocaleDateString('es-ES', {
+                                day: '2-digit',
+                                month: 'short',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </button>
+                    </button>
+                    <button
+                      onClick={(e) => handleMarkAsRead(e, ticket.id)}
+                      title="Marcar como leída"
+                      className="flex-shrink-0 p-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
                 ))}
               </>
             )}

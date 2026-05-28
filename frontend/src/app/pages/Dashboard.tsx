@@ -332,8 +332,8 @@ export default function Dashboard() {
   ].filter(d => d.value > 0), [allTickets]);
 
   const activoPieData = useMemo(() => [
-    { name: 'Activa',   value: allActivos.filter(a => a.estado === 'activa').length,   color: ACTIVO_COLORS.activa },
-    { name: 'Inactiva', value: allActivos.filter(a => a.estado === 'inactiva').length, color: ACTIVO_COLORS.inactiva },
+    { name: 'Activo',   value: allActivos.filter(a => a.estado === 'activa').length,   color: ACTIVO_COLORS.activa },
+    { name: 'Inactivo', value: allActivos.filter(a => a.estado === 'inactiva').length, color: ACTIVO_COLORS.inactiva },
   ].filter(d => d.value > 0), [allActivos]);
 
   const stockCritico = useMemo(() =>

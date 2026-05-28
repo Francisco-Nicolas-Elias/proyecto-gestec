@@ -160,7 +160,7 @@ export default function Activos() {
       const filtrosActivos: string[] = [];
       if (search)       filtrosActivos.push(`Búsqueda: "${search}"`);
       if (filterSector) filtrosActivos.push(`Sector: ${filterSector}`);
-      if (filterEstado) filtrosActivos.push(`Estado: ${filterEstado === 'activa' ? 'Activa' : 'Inactiva'}`);
+      if (filterEstado) filtrosActivos.push(`Estado: ${filterEstado === 'activa' ? 'Activo' : 'Inactivo'}`);
 
       const bodyData = filtered.map(a => ({
         nroPc:     a.nroPc,
@@ -180,6 +180,9 @@ export default function Activos() {
             ? a.almacenamientoModulos.map(m => m.modelo).filter(Boolean).join(' / ') || '—'
             : a.discoModelo || '—',
         almTotal:  a.almacenamientoTotal || '—',
+        gpu:       (a.placaVideoMarca || a.placaVideoModelo)
+          ? `${a.placaVideoMarca} ${a.placaVideoModelo}`.trim()
+          : '------',
         ip:        a.ip   || '—',
         mac:       a.mac  || '—',
         idAD:      a.idAD || '—',
@@ -187,7 +190,7 @@ export default function Activos() {
         so:        a.sistemaOperativo || '—',
         cambioPC:  fmtDate(a.fechaCambioPC),
         ultMant:   fmtDate(a.fechaUltimoMantenimiento),
-        estado:    a.estado === 'activa' ? 'Activa' : 'Inactiva',
+        estado:    a.estado === 'activa' ? 'Activo' : 'Inactivo',
       }));
 
       // ── Helpers ────────────────────────────────────────────────────────────
@@ -281,6 +284,7 @@ export default function Activos() {
           { header: 'Alm. Marca',   dataKey: 'almMarca'   },
           { header: 'Alm. Modelo',  dataKey: 'almModelo'  },
           { header: 'Alm. Total',   dataKey: 'almTotal'   },
+          { header: 'GPU',          dataKey: 'gpu'        },
         ],
         body: bodyData,
         theme: 'grid',
@@ -289,16 +293,17 @@ export default function Activos() {
         alternateRowStyles: { fillColor: [235, 248, 253] },
         columnStyles: {
           nroPc:     { cellWidth: 14, fontStyle: 'bold', halign: 'center', textColor: [0, 100, 140] as [number,number,number] },
-          usuario:   { cellWidth: 26 },
-          sector:    { cellWidth: 24 },
-          piso:      { cellWidth: 13, halign: 'center' },
-          oficina:   { cellWidth: 19 },
-          cpuMarca:  { cellWidth: 18 },
-          cpuModelo: { cellWidth: 27 },
-          ram:       { cellWidth: 13, halign: 'center' },
-          almMarca:  { cellWidth: 18 },
-          almModelo: { cellWidth: 27 },
-          almTotal:  { cellWidth: 15, halign: 'center' },
+          usuario:   { cellWidth: 24 },
+          sector:    { cellWidth: 22 },
+          piso:      { cellWidth: 12, halign: 'center' },
+          oficina:   { cellWidth: 17 },
+          cpuMarca:  { cellWidth: 16 },
+          cpuModelo: { cellWidth: 25 },
+          ram:       { cellWidth: 12, halign: 'center' },
+          almMarca:  { cellWidth: 16 },
+          almModelo: { cellWidth: 25 },
+          almTotal:  { cellWidth: 14, halign: 'center' },
+          gpu:       { cellWidth: 28 },
         },
         didDrawPage: (data: any) => {
           if (data.pageNumber > 1) drawContinuationBanner('Sección 1/2: Identificación y Hardware');
@@ -350,7 +355,7 @@ export default function Activos() {
           if (data.section === 'body' && data.column.dataKey === 'estado') {
             const val = data.cell.raw as string;
             data.cell.styles.fontStyle = 'bold';
-            data.cell.styles.textColor = val === 'Activa'
+            data.cell.styles.textColor = val === 'Activo'
               ? [5, 120, 50] as [number,number,number]
               : [180, 50, 50] as [number,number,number];
           }
@@ -372,31 +377,13 @@ export default function Activos() {
         );
       }
 
-      // ── Guardar con diálogo nativo o fallback ──────────────────────────────
-      const blob = doc.output('blob');
-      if ('showSaveFilePicker' in window) {
-        try {
-          const handle = await (window as any).showSaveFilePicker({
-            suggestedName: filename,
-            types: [{ description: 'Documento PDF', accept: { 'application/pdf': ['.pdf'] } }],
-          });
-          const writable = await handle.createWritable();
-          await writable.write(blob);
-          await writable.close();
-        } catch (err: any) {
-          if (err?.name !== 'AbortError') {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = filename; a.click();
-            URL.revokeObjectURL(url);
-          }
-        }
-      } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = filename; a.click();
-        URL.revokeObjectURL(url);
-      }
+      // ── Guardar PDF ────────────────────────────────────────────────────────
+      const url = URL.createObjectURL(doc.output('blob'));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
 
       toast.success(`PDF exportado: ${filtered.length} equipo${filtered.length !== 1 ? 's' : ''} · ${totalPages} página${totalPages !== 1 ? 's' : ''}`);
     } catch (err) {
@@ -486,7 +473,7 @@ export default function Activos() {
             <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Estado</label>
               <SearchableSelect
-                options={[{ value: 'activa', label: 'Activa' }, { value: 'inactiva', label: 'Inactiva' }]}
+                options={[{ value: 'activa', label: 'Activo' }, { value: 'inactiva', label: 'Inactivo' }]}
                 value={filterEstado}
                 onChange={setFilterEstado}
                 placeholder="Todos"
@@ -513,6 +500,7 @@ export default function Activos() {
                 <Th col="discoMarca"  label="Alm. Marca" />
                 <Th col="discoModelo" label="Alm. Modelo" />
                 <Th col="almacenamientoTotal" label="Alm. Total" />
+                <Th col="placaVideoMarca" label="GPU" />
                 <Th col="ip"        label="IP" />
                 <Th col="mac"       label="MAC" />
                 <Th col="idAD"      label="ID AD" />
@@ -529,7 +517,7 @@ export default function Activos() {
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={19} className="px-4 py-16 text-center">
+                  <td colSpan={20} className="px-4 py-16 text-center">
                     <Monitor size={40} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
                     <p className="text-sm text-gray-500 dark:text-gray-400">No se encontraron equipos</p>
                     {hasActiveFilters && (
@@ -566,6 +554,11 @@ export default function Activos() {
                         : a.discoModelo || '—'}
                     </td>
                     <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{a.almacenamientoTotal || '—'}</td>
+                    <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                      {(a.placaVideoMarca || a.placaVideoModelo)
+                        ? `${a.placaVideoMarca} ${a.placaVideoModelo}`.trim()
+                        : <span className="text-gray-400 font-mono tracking-widest">------</span>}
+                    </td>
                     <td className="px-3 py-2.5 font-mono text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">{a.ip || '—'}</td>
                     <td className="px-3 py-2.5 font-mono text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">{a.mac || '—'}</td>
                     <td className="px-3 py-2.5 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">{a.idAD || '—'}</td>

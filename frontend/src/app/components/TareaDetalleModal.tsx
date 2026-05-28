@@ -267,8 +267,9 @@ export default function TareaDetalleModal({
       setEditMode(false);
       setShowAsignadosDropdown(false);
       toast.success('Tarea actualizada correctamente');
-    } catch {
-      toast.error('Error al guardar los cambios');
+    } catch (err: any) {
+      console.error('[updateTarea]', err);
+      toast.error(err?.message || 'Error al guardar los cambios');
     } finally {
       setGuardando(false);
     }
@@ -420,6 +421,7 @@ export default function TareaDetalleModal({
                       onChange={v => setFormData(p => ({ ...p, prioridad: v as any }))}
                       placeholder="Seleccionar..."
                       noClear
+                      noSort
                     />
                   </div>
                   <div>

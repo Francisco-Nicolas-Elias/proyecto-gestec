@@ -3,6 +3,13 @@ import { prisma } from '../lib/prisma';
 import { AppError } from '../middlewares/error.middleware';
 import { addLogService } from './logs.service';
 
+const ESTADO_LABELS: Record<string, string> = {
+  pendiente: 'Pendiente', en_curso: 'En curso', finalizada: 'Finalizada',
+};
+const PRIORIDAD_LABELS: Record<string, string> = {
+  baja: 'Baja', media: 'Media', alta: 'Alta', urgente: 'Urgente',
+};
+
 export async function getTareasService(filters?: { estado?: string }) {
   const where: Prisma.TareaWhereInput = {};
   if (filters?.estado) where.estado = filters.estado as EstadoTarea;
@@ -37,11 +44,20 @@ export async function getTareaByIdService(id: string) {
 }
 
 export async function createTareaService(
-  data: { titulo: string; descripcion: string; prioridad: any; fechaLimite?: string; ubicacionTexto?: string; activoId?: string; asignadosIds?: string[] },
+  data: { titulo: string; descripcion: string; prioridad: any; fechaLimite?: string; ubicacionTexto?: string; activoId?: string; asignadosIds?: string[]; asignadosNombres?: string[] },
   creadoPorId: string,
   usuarioNombre: string,
 ) {
-  const { asignadosIds = [], ...rest } = data;
+  const { asignadosIds, asignadosNombres, ...rest } = data;
+
+  let resolvedIds: string[] = asignadosIds ?? [];
+  if (!resolvedIds.length && asignadosNombres?.length) {
+    const users = await prisma.usuario.findMany({
+      where: { nombre: { in: asignadosNombres } },
+      select: { id: true },
+    });
+    resolvedIds = users.map((u) => u.id);
+  }
 
   const tarea = await prisma.tarea.create({
     data: {
@@ -52,7 +68,7 @@ export async function createTareaService(
         create: [{ accion: 'Tarea creada', usuario: usuarioNombre }],
       },
       asignados: {
-        create: asignadosIds.map((usuarioId) => ({ usuarioId })),
+        create: resolvedIds.map((usuarioId) => ({ usuarioId })),
       },
     },
     include: { asignados: { include: { usuario: { omit: { password: true } } } } },
@@ -102,9 +118,83 @@ export async function updateTaskStatusService(
   return tarea;
 }
 
-export async function updateTareaService(id: string, data: Prisma.TareaUncheckedUpdateInput, usuarioNombre: string) {
-  const tarea = await prisma.tarea.update({ where: { id }, data });
-  await addLogService(`Tarea "${tarea.titulo}" editada`, 'Tareas', usuarioNombre, 'operaciones');
+export async function updateTareaService(id: string, data: any, usuarioNombre: string, usuarioRol: string) {
+  const { asignadosIds: _ids, asignadosNombres, fechaLimite, ...rest } = data;
+
+  const updateData: Prisma.TareaUncheckedUpdateInput = {
+    ...rest,
+    ...(fechaLimite !== undefined
+      ? { fechaLimite: fechaLimite ? new Date(fechaLimite) : null }
+      : {}),
+  };
+
+  let resolvedIds: string[] | undefined;
+  if (asignadosNombres !== undefined) {
+    if (asignadosNombres.length > 0) {
+      const users = await prisma.usuario.findMany({
+        where: { nombre: { in: asignadosNombres } },
+        select: { id: true },
+      });
+      resolvedIds = users.map((u) => u.id);
+    } else {
+      resolvedIds = [];
+    }
+  }
+
+  const anterior = await prisma.tarea.findUnique({
+    where: { id },
+    include: { asignados: { include: { usuario: { select: { nombre: true } } } } },
+  });
+
+  const tarea = await prisma.$transaction(async (tx) => {
+    const t = await tx.tarea.update({ where: { id }, data: updateData });
+    if (resolvedIds !== undefined) {
+      await tx.tareaAsignado.deleteMany({ where: { tareaId: id } });
+      if (resolvedIds.length > 0) {
+        await tx.tareaAsignado.createMany({
+          data: resolvedIds.map((uid) => ({ tareaId: id, usuarioId: uid })),
+          skipDuplicates: true,
+        });
+      }
+    }
+    return t;
+  });
+
+  const campos: Record<string, [string, string]> = {};
+  if (anterior) {
+    const fmt = (v: any, tipo?: string) => {
+      if (v == null || v === '') return '—';
+      if (tipo === 'estado') return ESTADO_LABELS[v] ?? v;
+      if (tipo === 'prioridad') return PRIORIDAD_LABELS[v] ?? v;
+      if (v instanceof Date) return v.toLocaleDateString('es-AR');
+      return String(v);
+    };
+    const checks: { key: string; label: string; tipo?: string }[] = [
+      { key: 'prioridad', label: 'Prioridad', tipo: 'prioridad' },
+      { key: 'estado', label: 'Estado', tipo: 'estado' },
+      { key: 'titulo', label: 'Título' },
+      { key: 'descripcion', label: 'Descripción' },
+      { key: 'fechaLimite', label: 'Fecha límite' },
+      { key: 'ubicacionTexto', label: 'Ubicación' },
+    ];
+    for (const { key, label, tipo } of checks) {
+      const antes = (anterior as any)[key];
+      const despues = (tarea as any)[key];
+      if (String(antes ?? '') !== String(despues ?? '')) {
+        campos[label] = [fmt(antes, tipo), fmt(despues, tipo)];
+      }
+    }
+    if (asignadosNombres !== undefined) {
+      const nombresAntes = anterior.asignados.map((a) => a.usuario.nombre).sort().join(', ') || '—';
+      const nombresDespues = (asignadosNombres as string[]).slice().sort().join(', ') || '—';
+      if (nombresAntes !== nombresDespues) {
+        campos['Asignados'] = [nombresAntes, nombresDespues];
+      }
+    }
+  }
+
+  const detalle = Object.keys(campos).length > 0 ? JSON.stringify({ campos }) : undefined;
+  await addLogService(`Tarea "${tarea.titulo}" editada`, 'Tareas', usuarioNombre, usuarioRol, undefined, detalle);
   return tarea;
 }
 

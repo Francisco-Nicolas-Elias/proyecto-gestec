@@ -103,9 +103,10 @@ function mapActivo(a: any): any {
     microMarca:    procesador?.marca?.nombre ?? procesador?.marca ?? a.microMarca ?? '',
     microNroSerie: procesador?.numeroSerie  ?? a.microNroSerie ?? '',
     // Placa de video
-    placaVideoModelo:   placaVideo?.modelo        ?? '',
-    placaVideoMarca:    placaVideo?.marca?.nombre  ?? placaVideo?.marca ?? '',
-    placaVideoNroSerie: placaVideo?.numeroSerie    ?? '',
+    placaVideoModelo:    placaVideo?.modelo        ?? '',
+    placaVideoMarca:     placaVideo?.marca?.nombre  ?? placaVideo?.marca ?? '',
+    placaVideoNroSerie:  placaVideo?.numeroSerie    ?? '',
+    placaVideoCapacidad: placaVideo?.capacidad      ?? '',
     // Módulos
     ramModulos,
     almacenamientoModulos,
@@ -176,6 +177,7 @@ function mapStockItem(s: any): any {
 function mapTarea(t: any): any {
   return {
     ...t,
+    ubicacion: t.ubicacionTexto ?? t.ubicacion,
     creadoPor: t.creadoPor?.nombre ?? t.creadoPor ?? '',
     finalizadoPor: t.finalizadoPor?.nombre ?? t.finalizadoPor,
     asignados: (t.asignados ?? []).map((a: any) => a.usuario?.nombre ?? a),
@@ -202,7 +204,7 @@ const getUsersIdCache = async () => { if (!_usersIdCache) _usersIdCache = await 
 async function activoPayload(a: any): Promise<any> {
   const { sector, piso, usuario, ubicacion: _ub, codigo, tipo, marca: _m, modelo: _mo,
     responsable, tags, historialMantenimiento, ramModulos, almacenamientoModulos,
-    placaVideoNroSerie: _pvn, placaVideoMarca: _pvm, placaVideoModelo: _pvmo,
+    placaVideoNroSerie: _pvn, placaVideoMarca: _pvm, placaVideoModelo: _pvmo, placaVideoCapacidad: _pvca,
     ...rest } = a;
   let ubicacionId = rest.ubicacionId;
   if (!ubicacionId && sector) {
@@ -225,13 +227,12 @@ async function componentePayload(c: any): Promise<any> {
 }
 
 async function tareaPayload(t: any): Promise<any> {
-  const { creadoPor, finalizadoPor, asignados, comentarios, historial, activoCodigo, adjuntos, ...rest } = t;
-  let asignadosIds: string[] | undefined;
-  if (asignados?.length) {
-    const users = await getUsersIdCache();
-    asignadosIds = asignados.map((n: string) => users.find((u: any) => u.nombre === n)?.id).filter(Boolean);
-  }
-  return { ...rest, ...(asignadosIds !== undefined ? { asignadosIds } : {}) };
+  const { creadoPor, finalizadoPor, asignados, comentarios, historial, activoCodigo, adjuntos, ubicacion, ubicacionTexto: _ubt, ...rest } = t;
+  return {
+    ...rest,
+    ...(ubicacion !== undefined ? { ubicacionTexto: ubicacion || null } : {}),
+    ...(asignados !== undefined ? { asignadosNombres: asignados } : {}),
+  };
 }
 
 // ============ EVENT BUS PARA ACTIVOS ============
@@ -338,6 +339,7 @@ export interface Activo {
   placaVideoModelo: string;
   placaVideoMarca: string;
   placaVideoNroSerie: string;
+  placaVideoCapacidad: string;
   // Red
   ip: string;
   mac: string;
@@ -1038,7 +1040,9 @@ export const updateTicket = async (id: string, data: Partial<Ticket>): Promise<T
     MOCK_TICKETS[index] = { ...MOCK_TICKETS[index], ...data, fechaActualizacion: new Date().toISOString() };
     return MOCK_TICKETS[index];
   }
-  return http.put<any>(`/tickets/${id}`, data).then(mapTicket);
+  // 'activo' es nroPc (string en el frontend) pero relación en Prisma — no enviar
+  const { activo: _activo, creador: _creador, creadorEmail: _ce, comentarios: _com, adjuntos: _adj, ...payload } = data as any;
+  return http.put<any>(`/tickets/${id}`, payload).then(mapTicket);
 };
 
 export const deleteTicket = async (id: string): Promise<void> => {

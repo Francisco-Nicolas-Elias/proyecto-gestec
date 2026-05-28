@@ -5,8 +5,8 @@ interface StatusBadgeProps {
 
 const statusConfig: Record<string, Record<string, { label: string; className: string }>> = {
   activo: {
-    activa: { label: 'Activa', className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
-    inactiva: { label: 'Inactiva', className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
+    activa: { label: 'Activo', className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
+    inactiva: { label: 'Inactivo', className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
     // legacy
     operativo: { label: 'Operativo', className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
     en_reparacion: { label: 'En Reparación', className: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' },

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, MapPin, Pencil, Trash2, Shield, Check, Cpu, Truck, Star, Plus, X, ScrollText, Search, Download, AlertTriangle, RefreshCw, Phone } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import {
   getUsuarios, createUsuario, updateUsuario,
   getUbicacionesStruct, createUbicacionEntry, updateUbicacionEntry, deleteUbicacionEntry,
@@ -783,21 +785,86 @@ export default function Admin() {
             const today = new Date().toDateString();
             const logsHoy = logs.filter(l => new Date(l.fechaHora).toDateString() === today).length;
 
-            const exportCSV = () => {
-              const headers = ['Fecha y Hora', 'Módulo', 'Acción', 'Usuario', 'Rol'];
-              const rows = filteredLogs.map(l => [
-                new Date(l.fechaHora).toLocaleString('es-AR'),
-                l.modulo,
-                `"${l.accion.replace(/"/g, '""')}"`,
-                l.usuario,
-                l.usuarioRol,
-              ]);
-              const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
-              const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-              const url = URL.createObjectURL(blob);
+            const exportPDF = () => {
+              const doc = new jsPDF({ orientation: 'landscape' });
+              const pageW = doc.internal.pageSize.getWidth();
+              const pageH = doc.internal.pageSize.getHeight();
+              const cyan: [number, number, number] = [0, 166, 214];
+              const cyanDark: [number, number, number] = [0, 100, 130];
+              const fechaExport = new Date().toLocaleString('es-ES', {
+                day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit',
+              });
+
+              // Banda de cabecera
+              doc.setFillColor(...cyan);
+              doc.rect(0, 0, pageW, 30, 'F');
+              doc.setFillColor(...cyanDark);
+              doc.rect(0, 26, pageW, 4, 'F');
+              doc.setTextColor(255, 255, 255);
+              doc.setFontSize(15);
+              doc.text('GESTEC — Colegio Universitario IES', 14, 12);
+              doc.setFontSize(9);
+              doc.text('Historial de Acciones del Sistema — Logs de Auditoría', 14, 21);
+              doc.text(`Exportado: ${fechaExport}`, pageW - 14, 21, { align: 'right' });
+
+              doc.setTextColor(80, 80, 80);
+              doc.setFontSize(8.5);
+              doc.text(`Total de registros exportados: ${filteredLogs.length}`, 14, 38);
+
+              autoTable(doc, {
+                startY: 44,
+                columns: [
+                  { header: 'Fecha y Hora', dataKey: 'fecha' },
+                  { header: 'Módulo',      dataKey: 'modulo' },
+                  { header: 'Acción',      dataKey: 'accion' },
+                  { header: 'Usuario',      dataKey: 'usuario' },
+                  { header: 'Rol',          dataKey: 'rol' },
+                ],
+                body: filteredLogs.map(l => ({
+                  fecha:   new Date(l.fechaHora).toLocaleString('es-AR'),
+                  modulo:  l.modulo,
+                  accion:  l.accion,
+                  usuario: l.usuario,
+                  rol:     l.usuarioRol,
+                })),
+                theme: 'grid',
+                headStyles: {
+                  fillColor: cyan,
+                  textColor: [255, 255, 255],
+                  fontStyle: 'bold',
+                  fontSize: 7.5,
+                  cellPadding: { top: 3, bottom: 3, left: 2, right: 2 },
+                },
+                bodyStyles: { fontSize: 7, textColor: [40, 40, 40], cellPadding: 2.5 },
+                alternateRowStyles: { fillColor: [237, 248, 254] },
+                columnStyles: {
+                  fecha:   { cellWidth: 38 },
+                  modulo:  { cellWidth: 28, fontStyle: 'bold', textColor: [0, 100, 140] as [number, number, number] },
+                  accion:  { cellWidth: 'auto' },
+                  usuario: { cellWidth: 38 },
+                  rol:     { cellWidth: 30 },
+                },
+                didDrawPage: (data: any) => {
+                  const pageCount = doc.getNumberOfPages();
+                  doc.setFontSize(7);
+                  doc.setTextColor(160, 160, 160);
+                  doc.text(
+                    `GESTEC – Colegio Universitario IES  |  Pág. ${data.pageNumber} de ${pageCount}`,
+                    pageW / 2, pageH - 7, { align: 'center' },
+                  );
+                },
+              });
+
+              const now = new Date();
+              const pad = (n: number) => String(n).padStart(2, '0');
+              const filename = `logs_gestec_${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}.pdf`;
+              const url = URL.createObjectURL(doc.output('blob'));
               const a = document.createElement('a');
-              a.href = url; a.download = `logs_gestec_${new Date().toISOString().slice(0, 10)}.csv`;
-              a.click(); URL.revokeObjectURL(url);
+              a.href = url;
+              a.download = filename;
+              a.click();
+              URL.revokeObjectURL(url);
             };
 
             return (
@@ -814,11 +881,11 @@ export default function Admin() {
                       <RefreshCw size={14} /> Actualizar
                     </button>
                     <button
-                      onClick={exportCSV}
-                      title="Exportar CSV"
+                      onClick={exportPDF}
+                      title="Exportar PDF"
                       className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm text-gray-600 dark:text-gray-300"
                     >
-                      <Download size={14} /> Exportar CSV
+                      <Download size={14} /> Exportar PDF
                     </button>
                     <button
                       onClick={() => setShowClearLogsModal(true)}
