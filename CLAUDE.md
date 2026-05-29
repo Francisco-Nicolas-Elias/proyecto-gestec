@@ -53,9 +53,9 @@ Rutas públicas: `/login`, `/recuperar-password`. Todo lo demás requiere autent
 
 | Archivo | Propósito |
 |---------|-----------|
-| `apiClient.ts` | Acceso a datos — **actualmente mock** con arrays en memoria. Migrar función por función a fetch real sin cambiar las firmas exportadas. |
-| `http.ts` | *(a crear)* Cliente fetch centralizado con JWT automático e intercepción de 401 |
-| `logsService.ts` | Log de auditoría — actualmente localStorage, migrar a `GET/DELETE /api/admin/logs` |
+| `apiClient.ts` | Acceso a datos — conectado al backend real vía `http.ts`. Contiene mappers (backend → frontend), write helpers, interfaces TypeScript y todas las funciones exportadas. |
+| `http.ts` | Cliente fetch centralizado con JWT automático e intercepción de 401. |
+| `logsService.ts` | Log de auditoría — usa `GET/DELETE /api/admin/logs`. |
 | `useFormPersistence.ts` | Hook que persiste borradores de formulario en sessionStorage. Devuelve `[state, setState, clearPersistence]`. |
 
 ### Auth & permisos

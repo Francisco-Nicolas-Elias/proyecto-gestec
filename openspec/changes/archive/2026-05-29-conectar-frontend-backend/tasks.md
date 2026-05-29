@@ -1,6 +1,6 @@
 # Tasks: Conectar frontend al backend
 
-## Estado general: 🟡 En progreso — Fase 4 completa, Fase 5 pendiente
+## Estado general: ✅ Completo
 
 ---
 
@@ -54,7 +54,7 @@
 
 ## Fase 5 — Cleanup y archivo
 
-- [ ] **5.1** Eliminar arrays mock de `apiClient.ts` (solo conservar las interfaces TypeScript)
-- [ ] **5.2** Actualizar `CLAUDE.md` con los comandos de arranque del backend
+- [x] **5.1** Eliminar arrays mock de `apiClient.ts` (solo conservar las interfaces TypeScript)
+- [x] **5.2** Actualizar `CLAUDE.md` con los comandos de arranque del backend
 - [ ] **5.3** Ejecutar `/sdd-verify` para confirmar que todo lo implementado coincide con la propuesta
 - [ ] **5.4** Ejecutar `/sdd-archive` para mover este change a `archive/`
