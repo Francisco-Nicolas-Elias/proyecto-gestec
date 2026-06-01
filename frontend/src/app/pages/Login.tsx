@@ -135,7 +135,13 @@ export default function Login() {
             </button>
           </form>
 
-          <div className="mt-4 text-center">
+          <div className="mt-4 flex flex-col items-center gap-2">
+            <button
+              onClick={() => navigate('/registro')}
+              className="text-sm text-[#00a6d6] dark:text-[#00b8e6] hover:text-[#008bb8] dark:hover:text-[#00a6d6]"
+            >
+              Crear usuario
+            </button>
             <button
               onClick={() => navigate('/recuperar-password')}
               className="text-sm text-[#00a6d6] dark:text-[#00b8e6] hover:text-[#008bb8] dark:hover:text-[#00a6d6]"

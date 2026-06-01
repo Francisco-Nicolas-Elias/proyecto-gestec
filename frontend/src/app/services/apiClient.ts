@@ -243,6 +243,12 @@ export interface Usuario {
   area?: string;
 }
 
+export const registrarse = async (nombre: string, email: string, password: string): Promise<{ message: string }> =>
+  http.post<{ message: string }>('/auth/registro', { nombre, email, password });
+
+export const verificarEmail = async (token: string): Promise<{ message: string }> =>
+  http.get<{ message: string }>(`/auth/verificar/${token}`);
+
 export const login = async (email: string, password: string): Promise<Usuario> => {
   const data = await http.post<{ token: string; usuario: Usuario }>('/auth/login', { email, password });
   localStorage.setItem('gestec_token', data.token);

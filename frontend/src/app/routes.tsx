@@ -1,6 +1,8 @@
 import { createBrowserRouter, Navigate, Outlet } from "react-router";
 import Login from "./pages/Login";
 import RecuperarPassword from "./pages/RecuperarPassword";
+import Registro from "./pages/Registro";
+import VerificarEmail from "./pages/VerificarEmail";
 import Dashboard from "./pages/Dashboard";
 import Activos from "./pages/Activos";
 import ActivoDetalle from "./pages/ActivoDetalle";
@@ -55,6 +57,14 @@ export const router = createBrowserRouter([
       {
         path: "recuperar-password",
         Component: RecuperarPassword,
+      },
+      {
+        path: "registro",
+        Component: Registro,
+      },
+      {
+        path: "verificar-email",
+        Component: VerificarEmail,
       },
       {
         path: "/",
