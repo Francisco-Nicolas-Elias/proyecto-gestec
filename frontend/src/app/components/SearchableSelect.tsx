@@ -114,17 +114,22 @@ export default function SearchableSelect({
     setQuery('');
   };
 
-  const handleOpen = () => {
+  const handleToggle = () => {
     if (disabled) return;
-    calcPosition();
-    setOpen(true);
-    setTimeout(() => inputRef.current?.focus(), 30);
+    if (open) {
+      setOpen(false);
+      setQuery('');
+    } else {
+      calcPosition();
+      setOpen(true);
+      setTimeout(() => inputRef.current?.focus(), 30);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      handleOpen();
+      handleToggle();
     }
     if (e.key === 'Escape') {
       setOpen(false);
@@ -200,7 +205,7 @@ export default function SearchableSelect({
         aria-expanded={open}
         aria-haspopup="listbox"
         tabIndex={disabled ? -1 : 0}
-        onClick={handleOpen}
+        onClick={handleToggle}
         onKeyDown={handleKeyDown}
         className={`
           w-full flex items-center gap-2 px-3 py-2 border rounded-lg cursor-pointer transition-colors select-none
