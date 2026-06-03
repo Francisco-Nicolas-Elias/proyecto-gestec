@@ -12,7 +12,10 @@ const loginSchema = z.object({
 const registroSchema = z.object({
   nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
   email: z.string().email('Email inválido').endsWith('@ies21.edu.ar', 'Solo se permiten emails @ies21.edu.ar'),
-  password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres'),
+  password: z.string()
+    .min(8, 'La contraseña debe tener al menos 8 caracteres')
+    .refine((v) => /[A-Z]/.test(v), 'La contraseña debe contener al menos una mayúscula')
+    .refine((v) => /[^A-Za-z0-9]/.test(v), 'La contraseña debe contener al menos un carácter especial'),
 });
 
 const router = Router();

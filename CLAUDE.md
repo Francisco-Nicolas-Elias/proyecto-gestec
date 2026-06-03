@@ -139,6 +139,11 @@ JWT_EXPIRES_IN="8h"
 PORT=3000
 NODE_ENV=development
 FRONTEND_URL="http://localhost:5173"
+SMTP_HOST=sandbox.smtp.mailtrap.io   # Mailtrap en dev; SMTP institucional en prod
+SMTP_PORT=2525
+SMTP_USER=...
+SMTP_PASS=...
+SMTP_FROM=noreply@ies21.edu.ar
 ```
 
 ---
@@ -146,6 +151,8 @@ FRONTEND_URL="http://localhost:5173"
 ## Base de datos (Prisma + Supabase PostgreSQL)
 
 Schema: `backend/prisma/schema.prisma`
+
+> **Nota sobre migraciones**: la BD tiene columnas (`detalle` en logs, `nro` en tickets) agregadas via `db push` sin registro en el historial de migraciones. Usar `pnpm db:push` para aplicar cambios de schema en desarrollo en lugar de `pnpm db:migrate`, para evitar errores de drift.
 
 ### Modelo de datos
 

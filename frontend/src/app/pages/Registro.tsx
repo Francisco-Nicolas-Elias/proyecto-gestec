@@ -31,6 +31,16 @@ export default function Registro() {
     }
   };
 
+  const [passwordError, setPasswordError] = useState('');
+
+  const validatePassword = (val: string) => {
+    if (!val) { setPasswordError(''); return; }
+    if (val.length < 8) { setPasswordError('Mínimo 8 caracteres'); return; }
+    if (!/[A-Z]/.test(val)) { setPasswordError('Debe contener al menos una mayúscula'); return; }
+    if (!/[^A-Za-z0-9]/.test(val)) { setPasswordError('Debe contener al menos un carácter especial'); return; }
+    setPasswordError('');
+  };
+
   const validateConfirm = (val: string) => {
     if (val && val !== password) {
       setConfirmError('Las contraseñas no coinciden');
@@ -43,6 +53,10 @@ export default function Registro() {
     e.preventDefault();
     if (!email.endsWith(DOMINIO)) {
       setEmailError(`Solo se permiten emails ${DOMINIO}`);
+      return;
+    }
+    if (password.length < 8 || !/[A-Z]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+      validatePassword(password);
       return;
     }
     if (password !== confirmPassword) {
@@ -160,10 +174,11 @@ export default function Registro() {
                       id="password"
                       type={showPassword ? 'text' : 'password'}
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={(e) => { setPassword(e.target.value); validatePassword(e.target.value); }}
+                      onBlur={(e) => validatePassword(e.target.value)}
                       required
                       minLength={8}
-                      className="w-full pl-10 pr-12 py-2.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                      className={`w-full pl-10 pr-12 py-2.5 border rounded-lg focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${passwordError ? 'border-red-400 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
                       placeholder="Mínimo 8 caracteres"
                     />
                     <button
@@ -174,6 +189,7 @@ export default function Registro() {
                       {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                     </button>
                   </div>
+                  {passwordError && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{passwordError}</p>}
                 </div>
 
                 <div>
@@ -205,7 +221,7 @@ export default function Registro() {
 
                 <button
                   type="submit"
-                  disabled={loading || !!emailError || !!confirmError}
+                  disabled={loading || !!emailError || !!passwordError || !!confirmError}
                   className="w-full bg-[#00a6d6] text-white py-2.5 rounded-lg font-medium hover:bg-[#008bb8] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {loading ? 'Creando cuenta...' : 'Crear cuenta'}

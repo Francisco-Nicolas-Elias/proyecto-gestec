@@ -1,38 +1,40 @@
 import { Router } from 'express';
 import { authenticate } from '../middlewares/auth.middleware';
-import { isAdmin } from '../middlewares/roles.middleware';
+import { isAdmin, isAnyUser } from '../middlewares/roles.middleware';
 import * as ctrl from '../controllers/admin.controller';
 
 const router = Router();
 
-router.use(authenticate, isAdmin);
+router.use(authenticate);
 
-router.get('/usuarios', ctrl.getUsuarios);
-router.post('/usuarios', ctrl.createUsuario);
-router.put('/usuarios/:id', ctrl.updateUsuario);
-router.delete('/usuarios/:id', ctrl.deleteUsuario);
+// Usuarios y logs — solo admin
+router.get('/usuarios', isAdmin, ctrl.getUsuarios);
+router.post('/usuarios', isAdmin, ctrl.createUsuario);
+router.put('/usuarios/:id', isAdmin, ctrl.updateUsuario);
+router.delete('/usuarios/:id', isAdmin, ctrl.deleteUsuario);
 
-router.get('/ubicaciones', ctrl.getUbicaciones);
-router.post('/ubicaciones', ctrl.createUbicacion);
-router.put('/ubicaciones/:id', ctrl.updateUbicacion);
-router.delete('/ubicaciones/:id', ctrl.deleteUbicacion);
+// Catálogo: lectura abierta a todos los autenticados, escritura solo admin
+router.get('/ubicaciones', isAnyUser, ctrl.getUbicaciones);
+router.post('/ubicaciones', isAdmin, ctrl.createUbicacion);
+router.put('/ubicaciones/:id', isAdmin, ctrl.updateUbicacion);
+router.delete('/ubicaciones/:id', isAdmin, ctrl.deleteUbicacion);
 
-router.get('/tipos-componente', ctrl.getTiposComponente);
-router.post('/tipos-componente', ctrl.createTipoComponente);
-router.put('/tipos-componente/:id', ctrl.updateTipoComponente);
-router.delete('/tipos-componente/:id', ctrl.deleteTipoComponente);
+router.get('/tipos-componente', isAnyUser, ctrl.getTiposComponente);
+router.post('/tipos-componente', isAdmin, ctrl.createTipoComponente);
+router.put('/tipos-componente/:id', isAdmin, ctrl.updateTipoComponente);
+router.delete('/tipos-componente/:id', isAdmin, ctrl.deleteTipoComponente);
 
-router.get('/marcas', ctrl.getMarcas);
-router.post('/marcas', ctrl.createMarca);
-router.put('/marcas/:id', ctrl.updateMarca);
-router.delete('/marcas/:id', ctrl.deleteMarca);
+router.get('/marcas', isAnyUser, ctrl.getMarcas);
+router.post('/marcas', isAdmin, ctrl.createMarca);
+router.put('/marcas/:id', isAdmin, ctrl.updateMarca);
+router.delete('/marcas/:id', isAdmin, ctrl.deleteMarca);
 
-router.get('/proveedores', ctrl.getProveedores);
-router.post('/proveedores', ctrl.createProveedor);
-router.put('/proveedores/:id', ctrl.updateProveedor);
-router.delete('/proveedores/:id', ctrl.deleteProveedor);
+router.get('/proveedores', isAnyUser, ctrl.getProveedores);
+router.post('/proveedores', isAdmin, ctrl.createProveedor);
+router.put('/proveedores/:id', isAdmin, ctrl.updateProveedor);
+router.delete('/proveedores/:id', isAdmin, ctrl.deleteProveedor);
 
-router.get('/logs', ctrl.getLogs);
-router.delete('/logs', ctrl.clearLogs);
+router.get('/logs', isAdmin, ctrl.getLogs);
+router.delete('/logs', isAdmin, ctrl.clearLogs);
 
 export default router;

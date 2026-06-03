@@ -1,6 +1,6 @@
 # Tasks: Registro de usuarios con verificación de email institucional
 
-## Estado general: 🔄 En progreso
+## Estado general: ✅ Verificado
 
 ---
 
@@ -34,16 +34,16 @@
 
 ## Fase 4 — Integración y verificación manual
 
-- [ ] **4.1** Probar `POST /api/auth/registro` con email `@ies21.edu.ar` válido → verificar que se crea `RegistroPendiente` en Prisma Studio y el email aparece en Mailtrap con el enlace correcto
-- [ ] **4.2** Probar `POST /api/auth/registro` con `@gmail.com` → debe retornar 400 con mensaje de dominio
-- [ ] **4.3** Probar `POST /api/auth/registro` con email ya existente → debe retornar 409
-- [ ] **4.4** Probar `GET /api/auth/verificar/:token` con token válido → verificar que se crea `Usuario` con rol `docente_empleado` en DB y se elimina el `RegistroPendiente`
-- [ ] **4.5** Probar `GET /api/auth/verificar/:token` con token expirado (editar `expiresAt` a fecha pasada en DB) → debe retornar 410
-- [ ] **4.6** Flujo completo en el browser: `/registro` → email en Mailtrap → clic en enlace → `/verificar-email` → éxito → `/login` → login con la cuenta nueva
-- [ ] **4.7** Verificar que el admin puede cambiar el rol del nuevo usuario desde Admin → Usuarios
+- [x] **4.1** Probar `POST /api/auth/registro` con email `@ies21.edu.ar` válido → verificar que se crea `RegistroPendiente` en Prisma Studio y el email aparece en Mailtrap con el enlace correcto
+- [x] **4.2** Probar `POST /api/auth/registro` con `@gmail.com` → debe retornar 400 con mensaje de dominio
+- [x] **4.3** Probar `POST /api/auth/registro` con email ya existente → debe retornar 409
+- [x] **4.4** Probar `GET /api/auth/verificar/:token` con token válido → verificar que se crea `Usuario` con rol `docente_empleado` en DB y se elimina el `RegistroPendiente`
+- [x] **4.5** Probar `GET /api/auth/verificar/:token` con token expirado (editar `expiresAt` a fecha pasada en DB) → debe retornar 410
+- [x] **4.6** Flujo completo en el browser: `/registro` → email en Mailtrap → clic en enlace → `/verificar-email` → éxito → `/login` → login con la cuenta nueva
+- [x] **4.7** Verificar que el admin puede cambiar el rol del nuevo usuario desde Admin → Usuarios
 
 ---
 
 ## Fase 5 — Cleanup
 
-- [ ] **5.1** Actualizar `CLAUDE.md` — documentar las nuevas variables de entorno SMTP y el uso de `prisma db push`
+- [x] **5.1** Actualizar `CLAUDE.md` — documentar las nuevas variables de entorno SMTP y el uso de `prisma db push`
