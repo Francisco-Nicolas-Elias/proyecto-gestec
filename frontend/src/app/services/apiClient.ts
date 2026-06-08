@@ -588,6 +588,11 @@ export interface Proveedor {
   telefono?: string;
 }
 
+export interface Area {
+  id: string;
+  nombre: string;
+}
+
 export interface Componente {
   id: string;
   idManual: string;
@@ -692,6 +697,23 @@ export const deleteProveedor = async (id: string): Promise<void> => {
   return http.del(`/admin/proveedores/${id}`);
 };
 
+// — Áreas —
+export const getAreas = async (): Promise<Area[]> => {
+  return http.get<Area[]>('/admin/areas');
+};
+
+export const createArea = async (nombre: string): Promise<Area> => {
+  return http.post<Area>('/admin/areas', { nombre });
+};
+
+export const updateArea = async (id: string, nombre: string): Promise<Area> => {
+  return http.put<Area>(`/admin/areas/${id}`, { nombre });
+};
+
+export const deleteArea = async (id: string): Promise<void> => {
+  return http.del(`/admin/areas/${id}`);
+};
+
 // ============ TAREAS ============
 export interface Tarea {
   id: string;
@@ -724,7 +746,16 @@ export const getTareaById = async (id: string): Promise<Tarea | null> => {
 };
 
 export const createTarea = async (tarea: Partial<Tarea>): Promise<Tarea> => {
-  return tareaPayload(tarea).then(p => http.post<any>('/tareas', p)).then(mapTarea);
+  const localAdjuntos = tarea.adjuntos;
+  const payload = await tareaPayload(tarea);
+  const created = await http.post<any>('/tareas', payload).then(mapTarea);
+  if (localAdjuntos?.length) {
+    await Promise.all((localAdjuntos as Adjunto[]).map(async (adj) => {
+      const blob = await fetch(adj.url).then(r => r.blob());
+      await uploadAdjunto(blob, adj.nombre, { tareaId: created.id });
+    }));
+  }
+  return getTareaById(created.id).then(t => t ?? created);
 };
 
 export const updateTaskStatus = async (id: string, estado: Tarea['estado'], asignados?: string[]): Promise<Tarea> => {
@@ -864,4 +895,25 @@ export interface NotificationEmailData {
 
 export const sendNotificationEmail = async (_data: NotificationEmailData): Promise<void> => {
   // Sin implementación de backend
+};
+
+export interface Notificacion {
+  id: string;
+  tipo: string;
+  mensaje: string;
+  tareaId?: string | null;
+  leida: boolean;
+  fecha: string;
+}
+
+export const getNotificaciones = async (): Promise<Notificacion[]> => {
+  return http.get<Notificacion[]>('/notificaciones');
+};
+
+export const marcarNotificacionLeida = async (id: string): Promise<void> => {
+  return http.patch<void>(`/notificaciones/${id}/leida`, {});
+};
+
+export const marcarTodasNotificacionesLeidas = async (): Promise<void> => {
+  return http.patch<void>('/notificaciones/leidas', {});
 };

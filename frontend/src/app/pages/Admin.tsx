@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Users, MapPin, Pencil, Trash2, Shield, Check, Cpu, Truck, Star, Plus, X, ScrollText, Search, Download, AlertTriangle, RefreshCw, Phone } from 'lucide-react';
+import { Users, MapPin, Pencil, Trash2, Shield, Check, Cpu, Truck, Star, Plus, X, ScrollText, Search, Download, AlertTriangle, RefreshCw, Phone, Building2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import {
   getUsuarios, createUsuario, updateUsuario,
   getUbicacionesStruct, createUbicacionEntry, updateUbicacionEntry, deleteUbicacionEntry,
-  getTiposComponente, getMarcas, getProveedores,
+  getTiposComponente, getMarcas, getProveedores, getAreas,
   createTipoComponente, updateTipoComponente, deleteTipoComponente,
   createMarca, updateMarca, deleteMarca,
   createProveedor, updateProveedor, deleteProveedor,
-  type TipoComponente, type Marca, type Proveedor, type UbicacionEntry,
+  createArea, updateArea, deleteArea,
+  type TipoComponente, type Marca, type Proveedor, type Area, type UbicacionEntry,
 } from '../services/apiClient';
 import { useAuth } from '../components/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -51,7 +52,7 @@ const PERMISOS_DISPONIBLES = [
   { key: 'admin', label: 'Administración' },
 ];
 
-type AdminTab = 'usuarios' | 'ubicaciones' | 'roles' | 'componentes' | 'marcas' | 'proveedores' | 'logs';
+type AdminTab = 'usuarios' | 'ubicaciones' | 'roles' | 'componentes' | 'marcas' | 'proveedores' | 'areas' | 'logs';
 
 export default function Admin() {
   const { hasPermission, usuario } = useAuth();
@@ -119,23 +120,38 @@ export default function Admin() {
   const [showDeleteProveedorModal, setShowDeleteProveedorModal] = useState(false);
   const [proveedorToDelete, setProveedorToDelete] = useState<Proveedor | null>(null);
 
+  // ── Áreas ─────────────────────────────────────────────────────────────────
+  const [areas, setAreas] = useState<Area[]>([]);
+  const [showAreaModal, setShowAreaModal] = useState(false);
+  const [editingArea, setEditingArea] = useState<Area | null>(null);
+  const [areaForm, setAreaForm, clearAreaFormPersistence] = useFormPersistence('gestec:admin:area:new', '');
+  const [showDeleteAreaModal, setShowDeleteAreaModal] = useState(false);
+  const [areaToDelete, setAreaToDelete] = useState<Area | null>(null);
+
   // ── Load ──────────────────────────────────────────────────────────────────
   useEffect(() => { loadData(); }, []);
 
+  // Refrescar logs al entrar a la pestaña, para reflejar acciones recientes de la sesión
+  useEffect(() => {
+    if (activeTab === 'logs') getLogs().then(setLogs);
+  }, [activeTab]);
+
   const loadData = async () => {
     try {
-      const [usuariosData, ubicacionesData, tiposComponenteData, marcasData, proveedoresData] = await Promise.all([
+      const [usuariosData, ubicacionesData, tiposComponenteData, marcasData, proveedoresData, areasData] = await Promise.all([
         getUsuarios(),
         getUbicacionesStruct(),
         getTiposComponente(),
         getMarcas(),
         getProveedores(),
+        getAreas(),
       ]);
       setUsuarios(usuariosData);
       setUbicaciones(ubicacionesData);
       setTiposComponente([...tiposComponenteData].sort((a, b) => a.nombre.localeCompare(b.nombre)));
       setMarcas([...marcasData].sort((a, b) => a.nombre.localeCompare(b.nombre)));
       setProveedores([...proveedoresData].sort((a, b) => a.nombre.localeCompare(b.nombre)));
+      setAreas([...areasData].sort((a, b) => a.nombre.localeCompare(b.nombre)));
       setLogs(await getLogs());
     } catch (error) {
       console.error('Error loading data:', error);
@@ -439,6 +455,7 @@ export default function Admin() {
   const tabs = [
     { id: 'usuarios', label: 'Usuarios', icon: Users },
     { id: 'ubicaciones', label: 'Ubicaciones', icon: MapPin },
+    { id: 'areas', label: 'Áreas', icon: Building2 },
     { id: 'roles', label: 'Roles', icon: Shield },
     { id: 'componentes', label: 'Componentes', icon: Cpu },
     { id: 'marcas', label: 'Marcas', icon: Truck },
@@ -551,6 +568,48 @@ export default function Admin() {
                 <p className="text-sm text-[#007a9e] dark:text-[#00c8f0]">
                   Las ubicaciones definen los sectores disponibles para asignar equipos en el módulo Equipos. El piso se completa automáticamente al seleccionar un sector.
                 </p>
+              </div>
+            </div>
+          )}
+
+          {/* ── Áreas Tab ── */}
+          {activeTab === 'areas' && (
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="font-semibold dark:text-white">Áreas</h3>
+                <button
+                  onClick={() => { setEditingArea(null); /* NO resetear areaForm */ setShowAreaModal(true); }}
+                  className="flex items-center gap-2 bg-[#00a6d6] hover:bg-[#0095c0] text-white px-4 py-2 rounded-lg transition-colors text-sm"
+                >
+                  <Plus size={16} /> Nueva Área
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {areas.map(area => (
+                  <div key={area.id} className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-[#e6f7fc] dark:bg-[#004d63]/30 flex items-center justify-center flex-shrink-0">
+                        <Building2 size={18} className="text-[#00a6d6]" />
+                      </div>
+                      <p className="font-medium text-gray-900 dark:text-white">{area.nombre}</p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => { setEditingArea(area); setAreaForm(area.nombre); setShowAreaModal(true); }}
+                        className="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                      >
+                        <Pencil size={15} />
+                      </button>
+                      <button
+                        onClick={() => { setAreaToDelete(area); setShowDeleteAreaModal(true); }}
+                        className="p-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -1130,11 +1189,18 @@ export default function Admin() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Área</label>
-            <input
-              type="text" value={formData.area}
-              onChange={e => setFormData(p => ({ ...p, area: e.target.value }))}
-              className={ic} placeholder="IT, Matemáticas, Administración..."
+            <SearchableSelect
+              options={areas.map(a => a.nombre)}
+              value={formData.area}
+              onChange={v => setFormData(p => ({ ...p, area: v }))}
+              placeholder={areas.length ? 'Seleccionar área...' : 'No hay áreas cargadas'}
+              disabled={areas.length === 0}
             />
+            {areas.length === 0 && (
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                No hay áreas registradas. Cargalas desde la pestaña "Áreas".
+              </p>
+            )}
           </div>
           <div className="bg-[#e6f7fc] dark:bg-[#004d63]/20 border border-[#b3e7f7] dark:border-[#004d63]/40 rounded-lg p-3">
             <p className="text-xs text-[#007a9e] dark:text-[#00c8f0]">
@@ -1604,6 +1670,87 @@ export default function Admin() {
         </div>
       </Modal>
 
+      {/* Modal Área */}
+      <Modal
+        isOpen={showAreaModal}
+        onClose={() => {
+          // X: NO limpiar draft
+          setShowAreaModal(false);
+          setEditingArea(null);
+        }}
+        title={editingArea ? 'Editar Área' : 'Nueva Área'}
+        size="md"
+      >
+        <form onSubmit={async e => {
+          e.preventDefault(); setSaving(true);
+          try {
+            if (editingArea) {
+              await updateArea(editingArea.id, areaForm);
+              setAreas(prev => prev.map(a => a.id === editingArea.id ? { ...a, nombre: areaForm } : a).sort((a, b) => a.nombre.localeCompare(b.nombre)));
+              toast.success('Área actualizada');
+              addLog(`Área "${areaForm}" actualizada`, 'Administración', usuario?.nombre ?? 'Sistema', usuario?.rol ?? '');
+            } else {
+              const created = await createArea(areaForm);
+              setAreas(prev => [...prev, created].sort((a, b) => a.nombre.localeCompare(b.nombre)));
+              toast.success('Área creada');
+              addLog(`Área "${areaForm}" creada`, 'Administración', usuario?.nombre ?? 'Sistema', usuario?.rol ?? '');
+            }
+            setShowAreaModal(false);
+            clearAreaFormPersistence(); // ← Limpiar draft al guardar
+            setEditingArea(null);
+          } catch { toast.error('Error al guardar'); }
+          finally { setSaving(false); }
+        }} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Nombre del Área <span className="text-red-500">*</span>
+            </label>
+            <input type="text" required value={areaForm} onChange={e => setAreaForm(e.target.value)}
+              className={ic} placeholder="Ej: IT, Matemáticas, Administración..." />
+          </div>
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <button
+              type="button"
+              onClick={() => {
+                if (!editingArea) clearAreaFormPersistence(); // ← Cancelar limpia el draft
+                setShowAreaModal(false);
+                setEditingArea(null);
+              }}
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors dark:text-white text-sm">Cancelar</button>
+            <button type="submit" disabled={saving}
+              className="bg-[#00a6d6] hover:bg-[#0095c0] text-white px-6 py-2 rounded-lg disabled:opacity-50 transition-colors text-sm">
+              {saving ? (editingArea ? 'Actualizando...' : 'Creando...') : (editingArea ? 'Actualizar' : 'Crear')}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal Eliminar Área */}
+      <Modal isOpen={showDeleteAreaModal} onClose={() => setShowDeleteAreaModal(false)} title="Eliminar Área" size="md">
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            ¿Estás seguro de que querés eliminar el área <strong className="text-gray-900 dark:text-white">{areaToDelete?.nombre}</strong>?
+          </p>
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <button onClick={() => setShowDeleteAreaModal(false)}
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors dark:text-white text-sm">Cancelar</button>
+            <button onClick={async () => {
+              if (!areaToDelete) return; setSaving(true);
+              try {
+                await deleteArea(areaToDelete.id);
+                setAreas(prev => prev.filter(a => a.id !== areaToDelete.id));
+                toast.success('Área eliminada');
+                addLog(`Área "${areaToDelete.nombre}" eliminada`, 'Administración', usuario?.nombre ?? 'Sistema', usuario?.rol ?? '');
+                setShowDeleteAreaModal(false); setAreaToDelete(null);
+              } catch { toast.error('Error al eliminar'); }
+              finally { setSaving(false); }
+            }} disabled={saving}
+              className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg disabled:opacity-50 transition-colors text-sm">
+              {saving ? 'Eliminando...' : 'Eliminar'}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Modal Limpiar Logs */}
       <Modal isOpen={showClearLogsModal} onClose={() => setShowClearLogsModal(false)} title="Limpiar Historial de Logs" size="md">

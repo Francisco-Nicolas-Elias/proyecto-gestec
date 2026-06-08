@@ -34,6 +34,11 @@ router.post('/proveedores', isAdmin, ctrl.createProveedor);
 router.put('/proveedores/:id', isAdmin, ctrl.updateProveedor);
 router.delete('/proveedores/:id', isAdmin, ctrl.deleteProveedor);
 
+router.get('/areas', isAnyUser, ctrl.getAreas);
+router.post('/areas', isAdmin, ctrl.createArea);
+router.put('/areas/:id', isAdmin, ctrl.updateArea);
+router.delete('/areas/:id', isAdmin, ctrl.deleteArea);
+
 router.get('/logs', isAdmin, ctrl.getLogs);
 router.delete('/logs', isAdmin, ctrl.clearLogs);
 

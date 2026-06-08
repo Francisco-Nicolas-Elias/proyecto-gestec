@@ -8,6 +8,7 @@ import stockRoutes from './stock.routes';
 import adminRoutes from './admin.routes';
 import infoRoutes from './info.routes';
 import adjuntosRoutes from './adjuntos.routes';
+import notificacionesRoutes from './notificaciones.routes';
 
 export const router = Router();
 
@@ -20,3 +21,4 @@ router.use('/stock', stockRoutes);
 router.use('/admin', adminRoutes);
 router.use('/info', infoRoutes);
 router.use('/adjuntos', adjuntosRoutes);
+router.use('/notificaciones', notificacionesRoutes);

@@ -37,7 +37,7 @@ export default function NuevaTareaForm() {
   const hasDraftOnMount = hasPersistedData('gestec:tarea:new');
 
   const activosFiltrados = formData.ubicacion
-    ? activos.filter(a => a.ubicacion === formData.ubicacion)
+    ? activos.filter(a => a.sector === formData.ubicacion)
     : [];
 
   useEffect(() => {

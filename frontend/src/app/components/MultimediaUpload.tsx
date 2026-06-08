@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Image, Video, Mic, Play, Pause, X, Upload, Loader2, FileAudio, ZoomIn } from 'lucide-react';
+import { Image, Video, Mic, Play, Pause, X, Upload, Loader2, FileAudio, ZoomIn, ZoomOut } from 'lucide-react';
 
 export interface Adjunto {
   id: string;
@@ -36,6 +36,51 @@ export default function MultimediaUpload({
   const [uploading, setUploading] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [lightboxNombre, setLightboxNombre] = useState<string>('');
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+  const dragStartRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
+
+  useEffect(() => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  }, [lightboxUrl]);
+
+  const handleZoomIn = () => setZoom((z) => Math.min(4, z + 0.5));
+  const handleZoomOut = () => setZoom((z) => {
+    const next = Math.max(1, z - 0.5);
+    if (next === 1) setPan({ x: 0, y: 0 });
+    return next;
+  });
+  const handleResetZoom = () => { setZoom(1); setPan({ x: 0, y: 0 }); };
+
+  const handleWheelZoom = (e: React.WheelEvent) => {
+    e.preventDefault();
+    setZoom((z) => {
+      const next = Math.min(4, Math.max(1, z - e.deltaY * 0.0015));
+      if (next === 1) setPan({ x: 0, y: 0 });
+      return next;
+    });
+  };
+
+  const handleImageMouseDown = (e: React.MouseEvent) => {
+    if (zoom <= 1) return;
+    e.preventDefault();
+    setDragging(true);
+    dragStartRef.current = { x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y };
+  };
+  const handleImageMouseMove = (e: React.MouseEvent) => {
+    if (!dragging) return;
+    setPan({
+      x: dragStartRef.current.panX + (e.clientX - dragStartRef.current.x),
+      y: dragStartRef.current.panY + (e.clientY - dragStartRef.current.y),
+    });
+  };
+  const handleImageMouseUp = () => setDragging(false);
+  const handleImageDoubleClick = () => {
+    if (zoom > 1) handleResetZoom();
+    else setZoom(2);
+  };
   const [duraciones, setDuraciones] = useState<Record<string, string>>({});
   const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
 
@@ -196,11 +241,52 @@ export default function MultimediaUpload({
             >
               <X size={20} />
             </button>
-            <img
-              src={lightboxUrl}
-              alt={lightboxNombre}
-              className="max-w-full max-h-[82vh] object-contain rounded-lg shadow-2xl"
-            />
+
+            {/* Controles de zoom */}
+            <div className="absolute -top-3 left-0 z-10 flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={handleZoomOut}
+                disabled={zoom <= 1}
+                className="p-1.5 rounded-full bg-white/15 hover:bg-white/30 text-white transition-colors shadow-lg disabled:opacity-30 disabled:cursor-not-allowed"
+                aria-label="Alejar"
+              >
+                <ZoomOut size={18} />
+              </button>
+              <span className="px-2 py-1 text-xs text-white/80 bg-white/10 rounded-full min-w-[3rem] text-center">
+                {Math.round(zoom * 100)}%
+              </span>
+              <button
+                type="button"
+                onClick={handleZoomIn}
+                disabled={zoom >= 4}
+                className="p-1.5 rounded-full bg-white/15 hover:bg-white/30 text-white transition-colors shadow-lg disabled:opacity-30 disabled:cursor-not-allowed"
+                aria-label="Acercar"
+              >
+                <ZoomIn size={18} />
+              </button>
+            </div>
+
+            <div
+              className="w-full h-[82vh] flex items-center justify-center overflow-hidden"
+              onWheel={handleWheelZoom}
+            >
+              <img
+                src={lightboxUrl}
+                alt={lightboxNombre}
+                draggable={false}
+                onMouseDown={handleImageMouseDown}
+                onMouseMove={handleImageMouseMove}
+                onMouseUp={handleImageMouseUp}
+                onMouseLeave={handleImageMouseUp}
+                onDoubleClick={handleImageDoubleClick}
+                style={{
+                  transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                  cursor: zoom > 1 ? (dragging ? 'grabbing' : 'grab') : 'zoom-in',
+                }}
+                className="max-w-full max-h-full object-contain rounded-lg shadow-2xl select-none transition-transform duration-100 ease-out"
+              />
+            </div>
             {lightboxNombre && (
               <p className="text-white/70 text-sm truncate max-w-xs">{lightboxNombre}</p>
             )}

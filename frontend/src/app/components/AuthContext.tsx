@@ -32,8 +32,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .get<Usuario>('/auth/me')
       .then((user) => setUsuario(user))
       .catch(() => {
-        localStorage.removeItem('gestec_token');
-        localStorage.removeItem('usuario');
+        // No limpiar si mientras tanto se completó un login nuevo (token reemplazado):
+        // de lo contrario se borraría la sesión recién creada por una verificación vieja.
+        if (localStorage.getItem('gestec_token') === token) {
+          localStorage.removeItem('gestec_token');
+          localStorage.removeItem('usuario');
+        }
       })
       .finally(() => setLoading(false));
   }, []);

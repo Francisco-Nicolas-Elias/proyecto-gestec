@@ -148,3 +148,28 @@ export async function deleteProveedorService(id: string, adminNombre: string) {
   await prisma.proveedor.delete({ where: { id } });
   await addLogService(`Proveedor "${p.nombre}" eliminado`, 'Administracion', adminNombre, 'administrador');
 }
+
+// ── Áreas ──────────────────────────────────────────────────────────────────────
+
+export async function getAreasService() {
+  return prisma.area.findMany({ orderBy: { nombre: 'asc' } });
+}
+
+export async function createAreaService(nombre: string, adminNombre: string) {
+  const a = await prisma.area.create({ data: { nombre } });
+  await addLogService(`Área "${a.nombre}" creada`, 'Administracion', adminNombre, 'administrador');
+  return a;
+}
+
+export async function updateAreaService(id: string, nombre: string, adminNombre: string) {
+  const a = await prisma.area.update({ where: { id }, data: { nombre } });
+  await addLogService(`Área "${a.nombre}" editada`, 'Administracion', adminNombre, 'administrador');
+  return a;
+}
+
+export async function deleteAreaService(id: string, adminNombre: string) {
+  const a = await prisma.area.findUnique({ where: { id } });
+  if (!a) throw new AppError(404, 'Área no encontrada');
+  await prisma.area.delete({ where: { id } });
+  await addLogService(`Área "${a.nombre}" eliminada`, 'Administracion', adminNombre, 'administrador');
+}

@@ -2,6 +2,7 @@ import { EstadoTarea, Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../middlewares/error.middleware';
 import { addLogService } from './logs.service';
+import { notificarTareaAsignadaService } from './notificaciones.service';
 
 const ESTADO_LABELS: Record<string, string> = {
   pendiente: 'Pendiente', en_curso: 'En curso', finalizada: 'Finalizada',
@@ -75,6 +76,15 @@ export async function createTareaService(
   });
 
   await addLogService(`Tarea "${tarea.titulo}" creada`, 'Tareas', usuarioNombre, 'operaciones');
+
+  if (tarea.asignados.length > 0) {
+    await notificarTareaAsignadaService(
+      tarea.asignados.map((a) => ({ id: a.usuario.id, nombre: a.usuario.nombre, email: a.usuario.email })),
+      { id: tarea.id, titulo: tarea.titulo },
+      usuarioNombre,
+    );
+  }
+
   return tarea;
 }
 
@@ -85,7 +95,7 @@ export async function updateTaskStatusService(
   usuarioNombre: string,
   asignadosIds?: string[],
 ) {
-  const prev = await prisma.tarea.findUnique({ where: { id } });
+  const prev = await prisma.tarea.findUnique({ where: { id }, include: { asignados: true } });
   if (!prev) throw new AppError(404, 'Tarea no encontrada');
 
   const now = new Date();
@@ -114,6 +124,18 @@ export async function updateTaskStatusService(
     }
     return t;
   });
+
+  if (asignadosIds) {
+    const idsAntes = new Set(prev.asignados.map((a) => a.usuarioId));
+    const nuevosIds = asignadosIds.filter((uid) => !idsAntes.has(uid));
+    if (nuevosIds.length > 0) {
+      const nuevosUsuarios = await prisma.usuario.findMany({
+        where: { id: { in: nuevosIds } },
+        select: { id: true, nombre: true, email: true },
+      });
+      await notificarTareaAsignadaService(nuevosUsuarios, { id: tarea.id, titulo: tarea.titulo }, usuarioNombre);
+    }
+  }
 
   return tarea;
 }
@@ -159,6 +181,18 @@ export async function updateTareaService(id: string, data: any, usuarioNombre: s
     }
     return t;
   });
+
+  if (resolvedIds !== undefined && anterior) {
+    const idsAntes = new Set(anterior.asignados.map((a) => a.usuarioId));
+    const nuevosIds = resolvedIds.filter((uid) => !idsAntes.has(uid));
+    if (nuevosIds.length > 0) {
+      const nuevosUsuarios = await prisma.usuario.findMany({
+        where: { id: { in: nuevosIds } },
+        select: { id: true, nombre: true, email: true },
+      });
+      await notificarTareaAsignadaService(nuevosUsuarios, { id: tarea.id, titulo: tarea.titulo }, usuarioNombre);
+    }
+  }
 
   const campos: Record<string, [string, string]> = {};
   if (anterior) {

@@ -1,8 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
-import { Bell, X } from 'lucide-react';
+import { Bell, X, ClipboardList, History, CheckCheck } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { useAuth } from './AuthContext';
-import { getTickets, sendNotificationEmail } from '../services/apiClient';
+import Modal from './Modal';
+import {
+  getTickets,
+  sendNotificationEmail,
+  getNotificaciones,
+  marcarNotificacionLeida,
+  marcarTodasNotificacionesLeidas,
+  type Notificacion,
+} from '../services/apiClient';
 import { toast } from 'sonner@2.0.3';
 
 const DISMISSED_KEY = 'gestec_dismissed_notifications';
@@ -25,8 +33,12 @@ export default function NotificationBell() {
   const auth = useAuth();
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [tareaNotifs, setTareaNotifs] = useState<Notificacion[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [showAllModal, setShowAllModal] = useState(false);
+  const [allNotifs, setAllNotifs] = useState<Notificacion[]>([]);
+  const [loadingAllNotifs, setLoadingAllNotifs] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const dismissedIds = useRef<Set<string>>(getDismissed());
 
@@ -58,16 +70,17 @@ export default function NotificationBell() {
 
   const loadNotifications = async () => {
     try {
-      const tickets = await getTickets();
+      const [tickets, notifs] = await Promise.all([getTickets(), getNotificaciones()]);
+
       const todosNuevos = tickets.filter((t: any) => t.estado === 'nuevo');
       // Limpiar dismissed IDs que ya no son tickets 'nuevo' (resueltos, etc.)
       dismissedIds.current = purgeDismissed(todosNuevos.map((t: any) => t.id));
       const newTickets = todosNuevos.filter((t: any) => !dismissedIds.current.has(t.id));
-      
+
       // Verificar si hay nuevos tickets desde la última carga
       const previousCount = notifications.length;
       const currentCount = newTickets.length;
-      
+
       if (currentCount > previousCount && previousCount > 0) {
         // Hay nuevos reportes, enviar email
         const newReports = newTickets.slice(0, currentCount - previousCount);
@@ -77,9 +90,10 @@ export default function NotificationBell() {
           usuarioNombre: auth?.usuario?.nombre || '',
         });
       }
-      
+
       setNotifications(newTickets);
-      setUnreadCount(newTickets.length);
+      setTareaNotifs(notifs.filter((n) => !n.leida));
+      setUnreadCount(newTickets.length + notifs.filter((n) => !n.leida).length);
     } catch (error) {
       console.error('Error loading notifications:', error);
     }
@@ -90,7 +104,7 @@ export default function NotificationBell() {
     saveDismissed(dismissedIds.current);
     const updated = notifications.filter((n) => n.id !== ticketId);
     setNotifications(updated);
-    setUnreadCount(updated.length);
+    setUnreadCount(updated.length + tareaNotifs.length);
     navigate(`/tickets/${ticketId}`);
     setIsOpen(false);
   };
@@ -101,15 +115,67 @@ export default function NotificationBell() {
     saveDismissed(dismissedIds.current);
     const updated = notifications.filter((n) => n.id !== ticketId);
     setNotifications(updated);
-    setUnreadCount(updated.length);
+    setUnreadCount(updated.length + tareaNotifs.length);
   };
 
-  const handleMarkAllAsRead = () => {
+  const handleTareaNotifClick = async (notif: Notificacion) => {
+    const updated = tareaNotifs.filter((n) => n.id !== notif.id);
+    setTareaNotifs(updated);
+    setUnreadCount(notifications.length + updated.length);
+    setIsOpen(false);
+    navigate('/tareas');
+    try { await marcarNotificacionLeida(notif.id); } catch (error) { console.error('Error marcando notificación como leída:', error); }
+  };
+
+  const handleMarkTareaNotifAsRead = async (e: React.MouseEvent, notif: Notificacion) => {
+    e.stopPropagation();
+    const updated = tareaNotifs.filter((n) => n.id !== notif.id);
+    setTareaNotifs(updated);
+    setUnreadCount(notifications.length + updated.length);
+    try { await marcarNotificacionLeida(notif.id); } catch (error) { console.error('Error marcando notificación como leída:', error); }
+  };
+
+  const handleMarkAllAsRead = async () => {
     notifications.forEach((n) => dismissedIds.current.add(n.id));
     saveDismissed(dismissedIds.current);
     setNotifications([]);
+    const teniaTareaNotifs = tareaNotifs.length > 0;
+    setTareaNotifs([]);
     setUnreadCount(0);
+    if (teniaTareaNotifs) {
+      try { await marcarTodasNotificacionesLeidas(); } catch (error) { console.error('Error marcando notificaciones como leídas:', error); }
+    }
     toast.success('Notificaciones marcadas como leídas');
+  };
+
+  const formatFecha = (fecha: string) =>
+    new Date(fecha).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+  const handleOpenAllNotifs = async () => {
+    setIsOpen(false);
+    setShowAllModal(true);
+    setLoadingAllNotifs(true);
+    try {
+      setAllNotifs(await getNotificaciones());
+    } catch (error) {
+      console.error('Error cargando historial de notificaciones:', error);
+    } finally {
+      setLoadingAllNotifs(false);
+    }
+  };
+
+  const handleAllNotifClick = async (notif: Notificacion) => {
+    if (!notif.leida) {
+      setAllNotifs((prev) => prev.map((n) => (n.id === notif.id ? { ...n, leida: true } : n)));
+      setTareaNotifs((prev) => {
+        const updated = prev.filter((n) => n.id !== notif.id);
+        setUnreadCount(notifications.length + updated.length);
+        return updated;
+      });
+      try { await marcarNotificacionLeida(notif.id); } catch (error) { console.error('Error marcando notificación como leída:', error); }
+    }
+    setShowAllModal(false);
+    if (notif.tareaId) navigate('/tareas');
   };
 
   if (!shouldShowNotifications) {
@@ -137,7 +203,7 @@ export default function NotificationBell() {
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-[#00a6d6] text-white">
             <div>
               <h3 className="font-semibold">Notificaciones</h3>
-              <p className="text-xs opacity-90">Tickets nuevos</p>
+              <p className="text-xs opacity-90">Tickets nuevos y tareas asignadas</p>
             </div>
             <button
               onClick={() => setIsOpen(false)}
@@ -147,12 +213,23 @@ export default function NotificationBell() {
             </button>
           </div>
 
+          {/* Acceso al historial completo */}
+          <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700 flex justify-end">
+            <button
+              onClick={handleOpenAllNotifs}
+              className="text-xs text-[#00a6d6] dark:text-[#00b8e6] hover:text-[#008bb8] dark:hover:text-[#00a6d6] font-medium flex items-center gap-1"
+            >
+              <History size={13} />
+              Ver todas las notificaciones
+            </button>
+          </div>
+
           {/* Notifications List */}
           <div className="max-h-96 overflow-y-auto">
-            {notifications.length === 0 ? (
+            {notifications.length === 0 && tareaNotifs.length === 0 ? (
               <div className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
                 <Bell size={40} className="mx-auto mb-2 opacity-50" />
-                <p className="text-sm">No hay tickets nuevos</p>
+                <p className="text-sm">No hay notificaciones nuevas</p>
               </div>
             ) : (
               <>
@@ -200,12 +277,44 @@ export default function NotificationBell() {
                     </button>
                   </div>
                 ))}
+
+                {tareaNotifs.map((notif) => (
+                  <div
+                    key={notif.id}
+                    className="flex items-start border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                  >
+                    <button
+                      onClick={() => handleTareaNotifClick(notif)}
+                      className="flex-1 px-4 py-3 text-left min-w-0"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 w-2 h-2 bg-[#00a6d6] rounded-full mt-2"></div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 text-gray-900 dark:text-white">
+                            <ClipboardList size={14} className="flex-shrink-0 text-[#00a6d6]" />
+                            <p className="font-medium text-sm truncate">{notif.mensaje}</p>
+                          </div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            {formatFecha(notif.fecha)}
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={(e) => handleMarkTareaNotifAsRead(e, notif)}
+                      title="Marcar como leída"
+                      className="flex-shrink-0 p-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
               </>
             )}
           </div>
 
           {/* Footer */}
-          {notifications.length > 0 && (
+          {(notifications.length > 0 || tareaNotifs.length > 0) && (
             <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex items-center justify-between">
               <button
                 onClick={handleMarkAllAsRead}
@@ -215,17 +324,58 @@ export default function NotificationBell() {
               </button>
               <button
                 onClick={() => {
-                  navigate('/tickets?estado=nuevo');
+                  navigate(notifications.length > 0 ? '/tickets?estado=nuevo' : '/tareas');
                   setIsOpen(false);
                 }}
                 className="text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white font-medium"
               >
-                Ver todos los tickets →
+                {notifications.length > 0 ? 'Ver todos los tickets →' : 'Ver tareas asignadas →'}
               </button>
             </div>
           )}
         </div>
       )}
+
+      <Modal isOpen={showAllModal} onClose={() => setShowAllModal(false)} title="Historial de notificaciones" size="md">
+        {loadingAllNotifs ? (
+          <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">Cargando...</p>
+        ) : allNotifs.length === 0 ? (
+          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+            <Bell size={40} className="mx-auto mb-2 opacity-50" />
+            <p className="text-sm">No tenés notificaciones</p>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            {allNotifs.map((notif) => (
+              <button
+                key={notif.id}
+                onClick={() => handleAllNotifClick(notif)}
+                className={`w-full flex items-start gap-3 px-3 py-3 text-left rounded-lg border transition-colors ${
+                  notif.leida
+                    ? 'border-transparent hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                    : 'border-[#00a6d6]/20 bg-[#00a6d6]/5 hover:bg-[#00a6d6]/10 dark:bg-[#00a6d6]/10 dark:hover:bg-[#00a6d6]/20'
+                }`}
+              >
+                <div className="flex-shrink-0 mt-0.5">
+                  {notif.leida ? (
+                    <CheckCheck size={16} className="text-gray-400" />
+                  ) : (
+                    <div className="w-2 h-2 bg-[#00a6d6] rounded-full mt-1"></div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm ${notif.leida ? 'text-gray-600 dark:text-gray-400' : 'font-medium text-gray-900 dark:text-white'}`}>
+                    {notif.mensaje}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    {formatFecha(notif.fecha)} · {notif.leida ? 'Leída' : 'No leída'}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

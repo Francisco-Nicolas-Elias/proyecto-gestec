@@ -87,6 +87,23 @@ export async function deleteProveedor(req: Request, res: Response, next: NextFun
   } catch (err) { next(err); }
 }
 
+// Áreas
+export async function getAreas(req: Request, res: Response, next: NextFunction) {
+  try { res.json(await svc.getAreasService()); } catch (err) { next(err); }
+}
+export async function createArea(req: Request, res: Response, next: NextFunction) {
+  try { res.status(201).json(await svc.createAreaService(req.body.nombre, req.user!.nombre)); } catch (err) { next(err); }
+}
+export async function updateArea(req: Request, res: Response, next: NextFunction) {
+  try { res.json(await svc.updateAreaService(req.params.id, req.body.nombre, req.user!.nombre)); } catch (err) { next(err); }
+}
+export async function deleteArea(req: Request, res: Response, next: NextFunction) {
+  try {
+    await svc.deleteAreaService(req.params.id, req.user!.nombre);
+    res.status(204).send();
+  } catch (err) { next(err); }
+}
+
 // Logs
 export async function getLogs(req: Request, res: Response, next: NextFunction) {
   try { res.json(await getLogsService()); } catch (err) { next(err); }

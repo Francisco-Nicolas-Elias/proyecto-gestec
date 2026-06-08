@@ -112,6 +112,13 @@ model Proveedor {
   @@map("proveedores")
 }
 
+model Area {
+  id     String @id @default(cuid())
+  nombre String @unique
+
+  @@map("areas")
+}
+
 model Ubicacion {
   id      String   @id @default(cuid())
   sector  String   @unique
@@ -142,6 +149,7 @@ model Usuario {
   comentariosTarea  ComentarioTarea[]
   stockMovimientos  StockMovimiento[]
   logs              LogEntry[]
+  notificaciones    Notificacion[]
 
   @@map("usuarios")
 }
@@ -353,10 +361,11 @@ model Tarea {
   fechaInicio       DateTime?
   fechaFinalizacion DateTime?
 
-  asignados   TareaAsignado[]
-  historial   TareaHistorial[]
-  comentarios ComentarioTarea[]
-  adjuntos    Adjunto[]         @relation("AdjuntosTarea")
+  asignados      TareaAsignado[]
+  historial      TareaHistorial[]
+  comentarios    ComentarioTarea[]
+  adjuntos       Adjunto[]         @relation("AdjuntosTarea")
+  notificaciones Notificacion[]
 
   @@map("tareas")
 }
@@ -493,4 +502,18 @@ model LogEntry {
   fechaHora     DateTime  @default(now())
 
   @@map("logs")
+}
+
+model Notificacion {
+  id        String   @id @default(cuid())
+  usuarioId String
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  tipo      String
+  mensaje   String
+  tareaId   String?
+  tarea     Tarea?   @relation(fields: [tareaId], references: [id], onDelete: Cascade)
+  leida     Boolean  @default(false)
+  fecha     DateTime @default(now())
+
+  @@map("notificaciones")
 }

@@ -11,9 +11,14 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   });
 
   if (res.status === 401) {
-    localStorage.removeItem('gestec_token');
-    localStorage.removeItem('usuario');
-    window.location.href = '/login';
+    // Sólo cerrar sesión si el token que falló sigue siendo el activo: una verificación
+    // de sesión vieja puede resolver con 401 después de que un login nuevo ya escribió
+    // un token fresco, y no debe pisarlo ni recargar la página a mitad de ese login.
+    if (localStorage.getItem('gestec_token') === token) {
+      localStorage.removeItem('gestec_token');
+      localStorage.removeItem('usuario');
+      window.location.href = '/login';
+    }
     throw new Error('Sesión expirada');
   }
 
@@ -32,9 +37,11 @@ export async function uploadFile<T>(path: string, formData: FormData): Promise<T
   if (token) headers['Authorization'] = `Bearer ${token}`;
   const res = await fetch(`${BASE_URL}${path}`, { method: 'POST', headers, body: formData });
   if (res.status === 401) {
-    localStorage.removeItem('gestec_token');
-    localStorage.removeItem('usuario');
-    window.location.href = '/login';
+    if (localStorage.getItem('gestec_token') === token) {
+      localStorage.removeItem('gestec_token');
+      localStorage.removeItem('usuario');
+      window.location.href = '/login';
+    }
     throw new Error('Sesión expirada');
   }
   if (!res.ok) {
