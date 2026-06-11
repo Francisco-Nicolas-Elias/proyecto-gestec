@@ -12,7 +12,8 @@
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
-    "db:reset": "prisma migrate reset"
+    "db:reset": "prisma migrate reset",
+    "import-excel": "tsx src/scripts/import-excel.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",
@@ -24,6 +25,7 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.1.1",
     "nodemailer": "^8.0.10",
+    "xlsx": "^0.18.5",
     "zod": "^3.23.8"
   },
   "devDependencies": {
