@@ -68,6 +68,9 @@ export default function Admin() {
   const [userToDelete, setUserToDelete] = useState<any | null>(null);
   // Formularios con persistencia de draft en sessionStorage
   const [formData, setFormData, clearFormDataPersistence] = useFormPersistence('gestec:admin:usuario:new', INIT_USUARIO);
+  const [usuariosSearch, setUsuariosSearch] = useState('');
+  const [usuariosRolFiltro, setUsuariosRolFiltro] = useState('');
+  const [usuariosAreaFiltro, setUsuariosAreaFiltro] = useState('');
 
   // ── Ubicaciones ───────────────────────────────────────────────────────────
   const [ubicaciones, setUbicaciones] = useState<UbicacionEntry[]>([]);
@@ -76,6 +79,8 @@ export default function Admin() {
   const [showDeleteUbicacionModal, setShowDeleteUbicacionModal] = useState(false);
   const [ubicacionToDelete, setUbicacionToDelete] = useState<UbicacionEntry | null>(null);
   const [ubicacionForm, setUbicacionForm, clearUbicacionFormPersistence] = useFormPersistence('gestec:admin:ubicacion:new', INIT_UBICACION);
+  const [ubicacionesSearch, setUbicacionesSearch] = useState('');
+  const [ubicacionesPisoFiltro, setUbicacionesPisoFiltro] = useState('');
 
   // ── Roles ─────────────────────────────────────────────────────────────────
   const [roles, setRoles] = useState([
@@ -96,6 +101,7 @@ export default function Admin() {
   const [tipoCompForm, setTipoCompForm, clearTipoCompFormPersistence] = useFormPersistence('gestec:admin:tipocomp:new', '');
   const [showDeleteTipoCompModal, setShowDeleteTipoCompModal] = useState(false);
   const [tipoCompToDelete, setTipoCompToDelete] = useState<TipoComponente | null>(null);
+  const [tiposCompSearch, setTiposCompSearch] = useState('');
 
   // ── Marcas ────────────────────────────────────────────────────────────────
   const [marcas, setMarcas] = useState<Marca[]>([]);
@@ -104,6 +110,7 @@ export default function Admin() {
   const [marcaForm, setMarcaForm, clearMarcaFormPersistence] = useFormPersistence('gestec:admin:marca:new', '');
   const [showDeleteMarcaModal, setShowDeleteMarcaModal] = useState(false);
   const [marcaToDelete, setMarcaToDelete] = useState<Marca | null>(null);
+  const [marcasSearch, setMarcasSearch] = useState('');
 
   // ── Logs ──────────────────────────────────────────────────────────────────
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -119,6 +126,7 @@ export default function Admin() {
   const [proveedorForm, setProveedorForm, clearProveedorFormPersistence] = useFormPersistence('gestec:admin:proveedor:new', INIT_PROVEEDOR);
   const [showDeleteProveedorModal, setShowDeleteProveedorModal] = useState(false);
   const [proveedorToDelete, setProveedorToDelete] = useState<Proveedor | null>(null);
+  const [proveedoresSearch, setProveedoresSearch] = useState('');
 
   // ── Áreas ─────────────────────────────────────────────────────────────────
   const [areas, setAreas] = useState<Area[]>([]);
@@ -127,6 +135,7 @@ export default function Admin() {
   const [areaForm, setAreaForm, clearAreaFormPersistence] = useFormPersistence('gestec:admin:area:new', '');
   const [showDeleteAreaModal, setShowDeleteAreaModal] = useState(false);
   const [areaToDelete, setAreaToDelete] = useState<Area | null>(null);
+  const [areasSearch, setAreasSearch] = useState('');
 
   // ── Load ──────────────────────────────────────────────────────────────────
   useEffect(() => { loadData(); }, []);
@@ -498,23 +507,87 @@ export default function Admin() {
         <div className="p-6">
 
           {/* ── Usuarios Tab ── */}
-          {activeTab === 'usuarios' && (
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="font-semibold dark:text-white">Usuarios del Sistema</h3>
-                <button
-                  onClick={openNuevoUsuario}
-                  className="flex items-center gap-2 bg-[#00a6d6] hover:bg-[#0095c0] text-white px-4 py-2 rounded-lg transition-colors text-sm"
-                >
-                  <Plus size={16} /> Nuevo Usuario
-                </button>
+          {activeTab === 'usuarios' && (() => {
+            const filteredUsuarios = usuarios.filter(u => {
+              const term = usuariosSearch.toLowerCase();
+              const matchSearch = !term || u.nombre.toLowerCase().includes(term) || u.email.toLowerCase().includes(term);
+              const matchRol = !usuariosRolFiltro || u.rol === usuariosRolFiltro;
+              const matchArea = !usuariosAreaFiltro || (u.area ?? '') === usuariosAreaFiltro;
+              return matchSearch && matchRol && matchArea;
+            });
+            const filtrosActivos = !!(usuariosSearch || usuariosRolFiltro || usuariosAreaFiltro);
+            return (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="font-semibold dark:text-white">Usuarios del Sistema</h3>
+                  <button
+                    onClick={openNuevoUsuario}
+                    className="flex items-center gap-2 bg-[#00a6d6] hover:bg-[#0095c0] text-white px-4 py-2 rounded-lg transition-colors text-sm"
+                  >
+                    <Plus size={16} /> Nuevo Usuario
+                  </button>
+                </div>
+
+                {/* Filters */}
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="relative flex-1">
+                    <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Buscar por nombre o email..."
+                      value={usuariosSearch}
+                      onChange={e => setUsuariosSearch(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg text-sm focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent"
+                    />
+                  </div>
+                  <div className="sm:w-48">
+                    <SearchableSelect
+                      options={[
+                        { value: '', label: 'Todos los roles' },
+                        { value: 'administrador', label: 'Administrador' },
+                        { value: 'operaciones', label: 'Operaciones' },
+                        { value: 'docente_empleado', label: 'Docente/Empleado' },
+                      ]}
+                      value={usuariosRolFiltro}
+                      onChange={setUsuariosRolFiltro}
+                      placeholder="Filtrar por rol..."
+                      noSort
+                    />
+                  </div>
+                  <div className="sm:w-48">
+                    <SearchableSelect
+                      options={[{ value: '', label: 'Todas las áreas' }, ...areas.map(a => ({ value: a.nombre, label: a.nombre }))]}
+                      value={usuariosAreaFiltro}
+                      onChange={setUsuariosAreaFiltro}
+                      placeholder="Filtrar por área..."
+                      noSort
+                    />
+                  </div>
+                </div>
+
+                <Table
+                  columns={usuariosColumns}
+                  data={filteredUsuarios}
+                  emptyMessage={usuarios.length === 0 ? 'No hay usuarios registrados' : 'No hay usuarios que coincidan con los filtros'}
+                />
+                {filtrosActivos && (
+                  <p className="text-xs text-gray-400 dark:text-gray-500 text-right">
+                    Mostrando {filteredUsuarios.length} de {usuarios.length} usuarios
+                  </p>
+                )}
               </div>
-              <Table columns={usuariosColumns} data={usuarios} emptyMessage="No hay usuarios registrados" />
-            </div>
-          )}
+            );
+          })()}
 
           {/* ── Ubicaciones Tab ── */}
-          {activeTab === 'ubicaciones' && (
+          {activeTab === 'ubicaciones' && (() => {
+            const filteredUbicaciones = ubicaciones.filter(u => {
+              const term = ubicacionesSearch.toLowerCase();
+              const matchSearch = !term || u.sector.toLowerCase().includes(term);
+              const matchPiso = !ubicacionesPisoFiltro || u.piso === ubicacionesPisoFiltro;
+              return matchSearch && matchPiso;
+            });
+            return (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <h3 className="font-semibold dark:text-white">Ubicaciones ({ubicaciones.length})</h3>
@@ -526,8 +599,31 @@ export default function Admin() {
                 </button>
               </div>
 
+              {/* Filters */}
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="relative flex-1">
+                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Buscar por sector..."
+                    value={ubicacionesSearch}
+                    onChange={e => setUbicacionesSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg text-sm focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent"
+                  />
+                </div>
+                <div className="sm:w-48">
+                  <SearchableSelect
+                    options={[{ value: '', label: 'Todos los pisos' }, ...PISO_OPTIONS]}
+                    value={ubicacionesPisoFiltro}
+                    onChange={setUbicacionesPisoFiltro}
+                    placeholder="Filtrar por piso..."
+                    noSort
+                  />
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {ubicaciones.map(u => (
+                {filteredUbicaciones.map(u => (
                   <div
                     key={u.id}
                     className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
@@ -557,9 +653,9 @@ export default function Admin() {
                     </div>
                   </div>
                 ))}
-                {ubicaciones.length === 0 && (
+                {filteredUbicaciones.length === 0 && (
                   <p className="col-span-2 text-sm text-gray-500 dark:text-gray-400 text-center py-8">
-                    No hay ubicaciones registradas
+                    {ubicaciones.length === 0 ? 'No hay ubicaciones registradas' : 'No hay ubicaciones que coincidan con los filtros'}
                   </p>
                 )}
               </div>
@@ -570,13 +666,17 @@ export default function Admin() {
                 </p>
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {/* ── Áreas Tab ── */}
-          {activeTab === 'areas' && (
+          {activeTab === 'areas' && (() => {
+            const term = areasSearch.toLowerCase();
+            const filteredAreas = areas.filter(a => !term || a.nombre.toLowerCase().includes(term));
+            return (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h3 className="font-semibold dark:text-white">Áreas</h3>
+                <h3 className="font-semibold dark:text-white">Áreas ({areas.length})</h3>
                 <button
                   onClick={() => { setEditingArea(null); /* NO resetear areaForm */ setShowAreaModal(true); }}
                   className="flex items-center gap-2 bg-[#00a6d6] hover:bg-[#0095c0] text-white px-4 py-2 rounded-lg transition-colors text-sm"
@@ -585,8 +685,20 @@ export default function Admin() {
                 </button>
               </div>
 
+              {/* Filter */}
+              <div className="relative">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar área..."
+                  value={areasSearch}
+                  onChange={e => setAreasSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg text-sm focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent"
+                />
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {areas.map(area => (
+                {filteredAreas.map(area => (
                   <div key={area.id} className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-lg bg-[#e6f7fc] dark:bg-[#004d63]/30 flex items-center justify-center flex-shrink-0">
@@ -610,9 +722,15 @@ export default function Admin() {
                     </div>
                   </div>
                 ))}
+                {filteredAreas.length === 0 && (
+                  <p className="col-span-2 text-sm text-gray-500 dark:text-gray-400 text-center py-8">
+                    {areas.length === 0 ? 'No hay áreas registradas' : 'No hay áreas que coincidan con la búsqueda'}
+                  </p>
+                )}
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {/* ── Roles Tab ── */}
           {activeTab === 'roles' && (
@@ -685,10 +803,13 @@ export default function Admin() {
           )}
 
           {/* ── Componentes Tab ── */}
-          {activeTab === 'componentes' && (
+          {activeTab === 'componentes' && (() => {
+            const term = tiposCompSearch.toLowerCase();
+            const filteredTipos = tiposComponente.filter(t => !term || t.nombre.toLowerCase().includes(term));
+            return (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h3 className="font-semibold dark:text-white">Tipos de Componente</h3>
+                <h3 className="font-semibold dark:text-white">Tipos de Componente ({tiposComponente.length})</h3>
                 <button
                   onClick={() => { setEditingTipoComp(null); /* NO resetear tipoCompForm */ setShowTipoCompModal(true); }}
                   className="flex items-center gap-2 bg-[#00a6d6] hover:bg-[#0095c0] text-white px-4 py-2 rounded-lg transition-colors text-sm"
@@ -697,8 +818,20 @@ export default function Admin() {
                 </button>
               </div>
 
+              {/* Filter */}
+              <div className="relative">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar tipo de componente..."
+                  value={tiposCompSearch}
+                  onChange={e => setTiposCompSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg text-sm focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent"
+                />
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {tiposComponente.map(tipo => (
+                {filteredTipos.map(tipo => (
                   <div key={tipo.id} className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-lg bg-[#e6f7fc] dark:bg-[#004d63]/30 flex items-center justify-center flex-shrink-0">
@@ -722,15 +855,24 @@ export default function Admin() {
                     </div>
                   </div>
                 ))}
+                {filteredTipos.length === 0 && (
+                  <p className="col-span-2 text-sm text-gray-500 dark:text-gray-400 text-center py-8">
+                    {tiposComponente.length === 0 ? 'No hay tipos de componente registrados' : 'No hay tipos que coincidan con la búsqueda'}
+                  </p>
+                )}
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {/* ── Marcas Tab ── */}
-          {activeTab === 'marcas' && (
+          {activeTab === 'marcas' && (() => {
+            const term = marcasSearch.toLowerCase();
+            const filteredMarcas = marcas.filter(m => !term || m.nombre.toLowerCase().includes(term));
+            return (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h3 className="font-semibold dark:text-white">Marcas</h3>
+                <h3 className="font-semibold dark:text-white">Marcas ({marcas.length})</h3>
                 <button
                   onClick={() => { setEditingMarca(null); /* NO resetear marcaForm */ setShowMarcaModal(true); }}
                   className="flex items-center gap-2 bg-[#00a6d6] hover:bg-[#0095c0] text-white px-4 py-2 rounded-lg transition-colors text-sm"
@@ -739,8 +881,20 @@ export default function Admin() {
                 </button>
               </div>
 
+              {/* Filter */}
+              <div className="relative">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar marca..."
+                  value={marcasSearch}
+                  onChange={e => setMarcasSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg text-sm focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent"
+                />
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {marcas.map(marca => (
+                {filteredMarcas.map(marca => (
                   <div key={marca.id} className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-lg bg-[#e6f7fc] dark:bg-[#004d63]/30 flex items-center justify-center flex-shrink-0">
@@ -764,15 +918,29 @@ export default function Admin() {
                     </div>
                   </div>
                 ))}
+                {filteredMarcas.length === 0 && (
+                  <p className="col-span-2 text-sm text-gray-500 dark:text-gray-400 text-center py-8">
+                    {marcas.length === 0 ? 'No hay marcas registradas' : 'No hay marcas que coincidan con la búsqueda'}
+                  </p>
+                )}
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {/* ── Proveedores Tab ── */}
-          {activeTab === 'proveedores' && (
+          {activeTab === 'proveedores' && (() => {
+            const term = proveedoresSearch.toLowerCase();
+            const filteredProveedores = proveedores.filter(p =>
+              !term
+              || p.nombre.toLowerCase().includes(term)
+              || (p.contacto ?? '').toLowerCase().includes(term)
+              || (p.telefono ?? '').toLowerCase().includes(term)
+            );
+            return (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h3 className="font-semibold dark:text-white">Proveedores</h3>
+                <h3 className="font-semibold dark:text-white">Proveedores ({proveedores.length})</h3>
                 <button
                   onClick={() => { setEditingProveedor(null); /* NO resetear proveedorForm */ setShowProveedorModal(true); }}
                   className="flex items-center gap-2 bg-[#00a6d6] hover:bg-[#0095c0] text-white px-4 py-2 rounded-lg transition-colors text-sm"
@@ -781,8 +949,20 @@ export default function Admin() {
                 </button>
               </div>
 
+              {/* Filter */}
+              <div className="relative">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar por nombre, contacto o teléfono..."
+                  value={proveedoresSearch}
+                  onChange={e => setProveedoresSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg text-sm focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent"
+                />
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {proveedores.map(proveedor => (
+                {filteredProveedores.map(proveedor => (
                   <div key={proveedor.id} className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-lg bg-[#e6f7fc] dark:bg-[#004d63]/30 flex items-center justify-center flex-shrink-0">
@@ -817,9 +997,15 @@ export default function Admin() {
                     </div>
                   </div>
                 ))}
+                {filteredProveedores.length === 0 && (
+                  <p className="col-span-2 text-sm text-gray-500 dark:text-gray-400 text-center py-8">
+                    {proveedores.length === 0 ? 'No hay proveedores registrados' : 'No hay proveedores que coincidan con la búsqueda'}
+                  </p>
+                )}
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {/* ── Logs Tab ── */}
           {activeTab === 'logs' && (() => {
