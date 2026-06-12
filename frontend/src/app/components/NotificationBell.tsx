@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Bell, X, ClipboardList, History, CheckCheck } from 'lucide-react';
+import { Bell, X, ClipboardList, History, CheckCheck, MapPin } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { useAuth } from './AuthContext';
 import Modal from './Modal';
@@ -29,6 +29,9 @@ const purgeDismissed = (activeIds: string[]) => {
   return pruned;
 };
 
+// Item del historial "Ver todas": una Notificacion del backend o un ticket nuevo
+type AllNotifItem = Notificacion & { ticketId?: string };
+
 export default function NotificationBell() {
   const auth = useAuth();
   const navigate = useNavigate();
@@ -37,7 +40,7 @@ export default function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showAllModal, setShowAllModal] = useState(false);
-  const [allNotifs, setAllNotifs] = useState<Notificacion[]>([]);
+  const [allNotifs, setAllNotifs] = useState<AllNotifItem[]>([]);
   const [loadingAllNotifs, setLoadingAllNotifs] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const dismissedIds = useRef<Set<string>>(getDismissed());
@@ -156,7 +159,22 @@ export default function NotificationBell() {
     setShowAllModal(true);
     setLoadingAllNotifs(true);
     try {
-      setAllNotifs(await getNotificaciones());
+      const [allTickets, notifs] = await Promise.all([getTickets(), getNotificaciones()]);
+      const ticketNotifs: AllNotifItem[] = allTickets.map((t: any) => {
+        const lugar = t.activo ? `PC ${t.activo} · ${t.ubicacion}` : t.ubicacion;
+        return {
+          id: `ticket-${t.id}`,
+          tipo: 'ticket_nuevo',
+          mensaje: `${t.creador} reportó un ticket de ${t.tipo} en ${lugar}`,
+          leida: t.estado !== 'nuevo' || dismissedIds.current.has(t.id),
+          fecha: t.fechaCreacion,
+          ticketId: t.id,
+        };
+      });
+      const merged = [...ticketNotifs, ...notifs].sort(
+        (a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime(),
+      );
+      setAllNotifs(merged);
     } catch (error) {
       console.error('Error cargando historial de notificaciones:', error);
     } finally {
@@ -164,7 +182,19 @@ export default function NotificationBell() {
     }
   };
 
-  const handleAllNotifClick = async (notif: Notificacion) => {
+  const handleAllNotifClick = async (notif: AllNotifItem) => {
+    if (notif.ticketId) {
+      dismissedIds.current.add(notif.ticketId);
+      saveDismissed(dismissedIds.current);
+      setNotifications((prev) => {
+        const updated = prev.filter((n) => n.id !== notif.ticketId);
+        setUnreadCount(updated.length + tareaNotifs.length);
+        return updated;
+      });
+      setShowAllModal(false);
+      navigate(`/tickets/${notif.ticketId}`);
+      return;
+    }
     if (!notif.leida) {
       setAllNotifs((prev) => prev.map((n) => (n.id === notif.id ? { ...n, leida: true } : n)));
       setTareaNotifs((prev) => {
@@ -246,10 +276,16 @@ export default function NotificationBell() {
                         <div className="flex-shrink-0 w-2 h-2 bg-red-500 rounded-full mt-2"></div>
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-sm text-gray-900 dark:text-white truncate">
-                            {ticket.titulo}
+                            {ticket.titulo || ticket.tipo || `Ticket #${ticket.nro}`}
                           </p>
                           <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-2">
                             {ticket.descripcion}
+                          </p>
+                          <p className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            <MapPin size={11} className="flex-shrink-0" />
+                            <span className="truncate">
+                              {ticket.activo ? `PC ${ticket.activo} · ${ticket.ubicacion}` : ticket.ubicacion}
+                            </span>
                           </p>
                           <div className="flex items-center gap-2 mt-1.5">
                             <span className="text-xs text-gray-500 dark:text-gray-400">
