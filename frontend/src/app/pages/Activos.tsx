@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
   Plus, Search, Eye, Pencil, Trash2, Filter, X, Monitor,
@@ -25,6 +25,10 @@ const fmtDate = (d: string) => {
   return `${day}/${m}/${y}`;
 };
 
+// Colapsa espacios repetidos para que la búsqueda no falle por datos del Excel
+// con espacios dobles (ej. "Laboratorio  2.5")
+const normalize = (s: string) => s.toLowerCase().trim().replace(/\s+/g, ' ');
+
 export default function Activos() {
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
@@ -46,8 +50,61 @@ export default function Activos() {
 
   const canEdit = hasPermission('activos');
 
+  // ── Barra de scroll horizontal fija al pie de la pantalla ─────────────────
+  const gridScrollRef = useRef<HTMLDivElement>(null);
+  const bottomScrollRef = useRef<HTMLDivElement>(null);
+  const bottomSpacerRef = useRef<HTMLDivElement>(null);
+  const syncingRef = useRef<'grid' | 'bottom' | null>(null);
+  const [showBottomScroll, setShowBottomScroll] = useState(false);
+
+  useEffect(() => {
+    const grid = gridScrollRef.current;
+    const bar = bottomScrollRef.current;
+    const spacer = bottomSpacerRef.current;
+    if (!grid || !bar || !spacer) return;
+    // Actualiza estilos vía refs (no estado) para no re-renderizar la grilla en cada medición
+    const measure = () => {
+      setShowBottomScroll(grid.scrollWidth > grid.clientWidth + 1);
+      const rect = grid.getBoundingClientRect();
+      bar.style.left = `${rect.left}px`;
+      bar.style.width = `${rect.width}px`;
+      spacer.style.width = `${grid.scrollWidth}px`;
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(grid);
+    window.addEventListener('resize', measure);
+    return () => { observer.disconnect(); window.removeEventListener('resize', measure); };
+  }, [filtered]);
+
+  const handleGridScroll = () => {
+    if (syncingRef.current === 'bottom') { syncingRef.current = null; return; }
+    if (gridScrollRef.current && bottomScrollRef.current) {
+      syncingRef.current = 'grid';
+      bottomScrollRef.current.scrollLeft = gridScrollRef.current.scrollLeft;
+    }
+  };
+
+  const handleBottomScroll = () => {
+    if (syncingRef.current === 'grid') { syncingRef.current = null; return; }
+    if (gridScrollRef.current && bottomScrollRef.current) {
+      syncingRef.current = 'bottom';
+      gridScrollRef.current.scrollLeft = bottomScrollRef.current.scrollLeft;
+    }
+  };
+
   useEffect(() => { loadData(); }, []);
   useEffect(() => { applyFilters(); }, [activos, search, filterSector, filterEstado, sortKey, sortDir]);
+
+  // El input de búsqueda es no-controlado: así escribir no dispara el
+  // re-render (pesado) de la grilla en cada tecla, solo al hacer una pausa
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => setSearch(value), 250);
+  };
 
   const loadData = async () => {
     try {
@@ -61,15 +118,15 @@ export default function Activos() {
   const applyFilters = () => {
     let list = [...activos];
     if (search) {
-      const q = search.toLowerCase();
+      const q = normalize(search);
       list = list.filter(a =>
-        a.nroPc.toLowerCase().includes(q) ||
-        a.usuario.toLowerCase().includes(q) ||
-        a.sector.toLowerCase().includes(q) ||
-        a.ip.toLowerCase().includes(q) ||
-        a.mac.toLowerCase().includes(q) ||
-        a.idAD.toLowerCase().includes(q) ||
-        a.sistemaOperativo.toLowerCase().includes(q)
+        normalize(a.nroPc).includes(q) ||
+        normalize(a.usuario).includes(q) ||
+        normalize(a.sector).includes(q) ||
+        normalize(a.ip).includes(q) ||
+        normalize(a.mac).includes(q) ||
+        normalize(a.idAD).includes(q) ||
+        normalize(a.sistemaOperativo).includes(q)
       );
     }
     if (filterSector) list = list.filter(a => a.sector === filterSector);
@@ -118,7 +175,13 @@ export default function Activos() {
     </th>
   );
 
-  const clearFilters = () => { setSearch(''); setFilterSector(''); setFilterEstado(''); };
+  const clearFilters = () => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    if (searchInputRef.current) searchInputRef.current.value = '';
+    setSearch('');
+    setFilterSector('');
+    setFilterEstado('');
+  };
   const hasActiveFilters = search || filterSector || filterEstado;
 
   // ── Exportar grilla a PDF ─────────────────────────────────────────────────
@@ -435,10 +498,11 @@ export default function Activos() {
           <div className="flex-1 relative">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
+              ref={searchInputRef}
               type="text"
               placeholder="Buscar por N° PC, usuario, sector, IP, MAC, ID AD, S.O..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
+              defaultValue={search}
+              onChange={handleSearchChange}
               className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent placeholder:text-gray-400"
             />
           </div>
@@ -485,8 +549,8 @@ export default function Activos() {
 
       {/* Grid Table */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[1750px]">
+        <div ref={gridScrollRef} onScroll={handleGridScroll} className="overflow-x-auto">
+          <table className="w-full min-w-[1900px]">
             <thead className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
               <tr>
                 <Th col="nroPc"     label="N° PC"         className="pl-4 sticky left-0 bg-gray-50 dark:bg-gray-700 z-10" />
@@ -496,6 +560,7 @@ export default function Activos() {
                 <Th col="oficina"   label="Oficina" />
                 <Th col="microMarca" label="CPU Marca" />
                 <Th col="microModelo" label="CPU Modelo" />
+                <Th col="placaMadreMarca" label="Placa Madre" />
                 <Th col="ramTotal"  label="RAM Total" />
                 <Th col="discoMarca"  label="Alm. Marca" />
                 <Th col="discoModelo" label="Alm. Modelo" />
@@ -517,7 +582,7 @@ export default function Activos() {
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={20} className="px-4 py-16 text-center">
+                  <td colSpan={21} className="px-4 py-16 text-center">
                     <Monitor size={40} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
                     <p className="text-sm text-gray-500 dark:text-gray-400">No se encontraron equipos</p>
                     {hasActiveFilters && (
@@ -542,6 +607,11 @@ export default function Activos() {
                     <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{a.oficina || '—'}</td>
                     <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{a.microMarca || '—'}</td>
                     <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{a.microModelo || '—'}</td>
+                    <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                      {(a.placaMadreMarca || a.placaMadreModelo)
+                        ? `${a.placaMadreMarca} ${a.placaMadreModelo}`.trim()
+                        : <span className="text-gray-400 font-mono tracking-widest">------</span>}
+                    </td>
                     <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{a.ramTotal || '—'}</td>
                     <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
                       {(a.almacenamientoModulos && a.almacenamientoModulos.length > 0)
@@ -629,6 +699,15 @@ export default function Activos() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Barra de scroll horizontal fija al pie de la pantalla */}
+      <div
+        ref={bottomScrollRef}
+        onScroll={handleBottomScroll}
+        className={`fixed bottom-0 z-30 h-4 overflow-x-auto overflow-y-hidden bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 ${showBottomScroll ? '' : 'hidden'}`}
+      >
+        <div ref={bottomSpacerRef} style={{ height: 1 }} />
       </div>
 
       {/* Modal Eliminar */}

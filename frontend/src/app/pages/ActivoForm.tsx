@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import {
-  ArrowLeft, Save, Monitor, HardDrive, Cpu, Wifi, Settings, Printer, MapPin, User, Plus, Trash2, Lock,
+  ArrowLeft, Save, Monitor, HardDrive, Cpu, Wifi, Settings, Printer, MapPin, User, Plus, Trash2, Lock, CircuitBoard,
 } from 'lucide-react';
 import {
   getActivoById, createActivo, updateActivo, updateComponente,
@@ -41,6 +41,7 @@ const TIPO_BADGE: Record<string, string> = {
 const empty = {
   sector: '', piso: '', oficina: '', nroPc: '', usuario: '',
   microNroSerie: '', microMarca: '', microModelo: '',
+  placaMadreNroSerie: '', placaMadreMarca: '', placaMadreModelo: '',
   ramModulos: [] as ModuloRAM[],
   ramTotal: '',
   almacenamientoModulos: [] as ModuloAlmacenamiento[],
@@ -133,6 +134,7 @@ export default function ActivoForm() {
   const hadPersistedDataRef = useRef(hasPersistedData(storageKey));
   const showDraftBanner = !isEdit && hadPersistedDataRef.current;
   const originalGpuSerialRef = useRef<string>('');
+  const originalMotherboardSerialRef = useRef<string>('');
 
   const inp = (field: keyof typeof empty) => (field === 'ramModulos' || field === 'almacenamientoModulos' ? {} : {
     value: form[field] as string,
@@ -150,6 +152,7 @@ export default function ActivoForm() {
           const activo = await getActivoById(id);
           if (activo) {
             originalGpuSerialRef.current = activo.placaVideoNroSerie || '';
+            originalMotherboardSerialRef.current = activo.placaMadreNroSerie || '';
             setForm({
               sector: activo.sector,
               piso: activo.piso,
@@ -159,6 +162,9 @@ export default function ActivoForm() {
               microModelo: activo.microModelo,
               microMarca: activo.microMarca,
               microNroSerie: activo.microNroSerie,
+              placaMadreModelo: activo.placaMadreModelo,
+              placaMadreMarca: activo.placaMadreMarca,
+              placaMadreNroSerie: activo.placaMadreNroSerie,
               ramModulos: activo.ramModulos || [],
               ramTotal: activo.ramTotal,
               almacenamientoModulos: activo.almacenamientoModulos || [],
@@ -203,9 +209,9 @@ export default function ActivoForm() {
     }
   };
 
-  // Autocompletar marca/modelo para micro, placaVideo, impresora
+  // Autocompletar marca/modelo para micro, placaMadre, placaVideo, impresora
   const handleComponenteSerieChange = async (
-    field: 'micro' | 'placaVideo' | 'impresora',
+    field: 'micro' | 'placaMadre' | 'placaVideo' | 'impresora',
     nroSerie: string
   ) => {
     setForm(prev => ({
@@ -368,6 +374,7 @@ export default function ActivoForm() {
     // Validar que los componentes ingresados no estén en uso en otro equipo
     const seriesAValidar: { serie: string; etiqueta: string }[] = [
       ...(form.microNroSerie.trim() ? [{ serie: form.microNroSerie, etiqueta: 'Procesador' }] : []),
+      ...(form.placaMadreNroSerie?.trim() ? [{ serie: form.placaMadreNroSerie, etiqueta: 'Placa Madre' }] : []),
       ...(form.placaVideoNroSerie?.trim() ? [{ serie: form.placaVideoNroSerie, etiqueta: 'Placa de video' }] : []),
       ...(form.impresoraNroSerie?.trim() ? [{ serie: form.impresoraNroSerie, etiqueta: 'Impresora' }] : []),
       ...form.ramModulos.filter(m => m.nroSerie?.trim()).map((m, i) => ({ serie: m.nroSerie, etiqueta: `RAM módulo ${i + 1}` })),
@@ -416,6 +423,26 @@ export default function ActivoForm() {
         if (newGpuSerial) {
           try {
             const newComp = await buscarComponentePorSerie(newGpuSerial);
+            if (newComp) await updateComponente(newComp.id, { activoId: savedId } as any);
+          } catch { /* silencioso */ }
+        }
+      }
+
+      // Sincronizar placa madre: actualizar activoId del componente
+      const newMbSerial = form.placaMadreNroSerie?.trim() || '';
+      const oldMbSerial = originalMotherboardSerialRef.current;
+      if (newMbSerial !== oldMbSerial) {
+        if (oldMbSerial) {
+          try {
+            const oldComp = await buscarComponentePorSerie(oldMbSerial);
+            if (oldComp && oldComp.activoId === savedId) {
+              await updateComponente(oldComp.id, { activoId: null } as any);
+            }
+          } catch { /* silencioso */ }
+        }
+        if (newMbSerial) {
+          try {
+            const newComp = await buscarComponentePorSerie(newMbSerial);
             if (newComp) await updateComponente(newComp.id, { activoId: savedId } as any);
           } catch { /* silencioso */ }
         }
@@ -530,6 +557,27 @@ export default function ActivoForm() {
             </Field>
             <Field label="Modelo" hint="Autocompletado">
               <input type="text" value={form.microModelo} readOnly className={readonlyClass} placeholder="—" />
+            </Field>
+          </Grid3>
+        </Section>
+
+        {/* ── 3.5. Placa Madre ── */}
+        <Section icon={CircuitBoard} title="Placa Madre">
+          <Grid3>
+            <Field label="N° de Serie" hint="Autocompleta marca/modelo">
+              <input
+                type="text"
+                value={form.placaMadreNroSerie}
+                onChange={e => handleComponenteSerieChange('placaMadre', e.target.value)}
+                placeholder="Ej: SN-MB-001"
+                className={`${inputClass} font-mono`}
+              />
+            </Field>
+            <Field label="Marca" hint="Autocompletado">
+              <input type="text" value={form.placaMadreMarca} readOnly className={readonlyClass} placeholder="—" />
+            </Field>
+            <Field label="Modelo" hint="Autocompletado">
+              <input type="text" value={form.placaMadreModelo} readOnly className={readonlyClass} placeholder="—" />
             </Field>
           </Grid3>
         </Section>

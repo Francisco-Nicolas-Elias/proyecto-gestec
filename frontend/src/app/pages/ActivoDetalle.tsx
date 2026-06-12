@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import {
   ArrowLeft, Pencil, Wrench, Trash2, Monitor, HardDrive, Cpu, Wifi,
-  MapPin, User, Calendar, Settings, Printer, X, Plus, Check, FileText, FileDown, Lock,
+  MapPin, User, Calendar, Settings, Printer, X, Plus, Check, FileText, FileDown, Lock, CircuitBoard,
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -488,6 +488,13 @@ export default function ActivoDetalle() {
                   <Row label="Marca" value={activo.microMarca} />
                   <Row label="Modelo" value={activo.microModelo} />
                   <Row label="N° de Serie" value={activo.microNroSerie} />
+                </Card>
+
+                {/* Placa Madre */}
+                <Card title="Placa Madre" icon={CircuitBoard}>
+                  <Row label="Marca" value={activo.placaMadreMarca} />
+                  <Row label="Modelo" value={activo.placaMadreModelo} />
+                  <Row label="N° de Serie" value={activo.placaMadreNroSerie} />
                 </Card>
 
                 {/* Almacenamiento */}

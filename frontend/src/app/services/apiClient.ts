@@ -56,6 +56,7 @@ const TIPOS_RAM         = ['RAM'];
 const TIPOS_STORAGE     = ['SSD', 'HDD', 'M.2', 'SSHD'];
 const TIPOS_PROCESADOR  = ['Procesador', 'CPU'];
 const TIPOS_PLACA_VIDEO = ['Placa de video', 'GPU', 'Placa de Video'];
+const TIPOS_PLACA_MADRE = ['Placa Madre', 'Placa madre', 'Motherboard'];
 
 function mapActivo(a: any): any {
   const ub = a.ubicacion ?? {};
@@ -84,6 +85,7 @@ function mapActivo(a: any): any {
 
   const procesador = comps.find(c => TIPOS_PROCESADOR.includes(tipoNombre(c)));
   const placaVideo  = comps.find(c => TIPOS_PLACA_VIDEO.includes(tipoNombre(c)));
+  const placaMadre  = comps.find(c => TIPOS_PLACA_MADRE.includes(tipoNombre(c)));
 
   return {
     ...a,
@@ -101,6 +103,9 @@ function mapActivo(a: any): any {
     placaVideoMarca:     placaVideo?.marca?.nombre  ?? placaVideo?.marca ?? '',
     placaVideoNroSerie:  placaVideo?.numeroSerie    ?? '',
     placaVideoCapacidad: placaVideo?.capacidad      ?? '',
+    placaMadreModelo:    placaMadre?.modelo        ?? '',
+    placaMadreMarca:     placaMadre?.marca?.nombre  ?? placaMadre?.marca ?? '',
+    placaMadreNroSerie:  placaMadre?.numeroSerie    ?? '',
     ramModulos,
     almacenamientoModulos,
     ramTotal: sumarCapacidad(ramModulos) || a.ramTotal || '',
@@ -197,6 +202,7 @@ async function activoPayload(a: any): Promise<any> {
   const { sector, piso, usuario, ubicacion: _ub, codigo, tipo, marca: _m, modelo: _mo,
     responsable, tags, historialMantenimiento, ramModulos, almacenamientoModulos,
     placaVideoNroSerie: _pvn, placaVideoMarca: _pvm, placaVideoModelo: _pvmo, placaVideoCapacidad: _pvca,
+    placaMadreNroSerie: _pmn, placaMadreMarca: _pmm, placaMadreModelo: _pmmo,
     ...rest } = a;
   let ubicacionId = rest.ubicacionId;
   if (!ubicacionId && sector) {
@@ -204,8 +210,11 @@ async function activoPayload(a: any): Promise<any> {
     ubicacionId = ubs.find((u: any) => u.sector === sector)?.id;
   }
   const payload: any = { ...rest, ...(ubicacionId ? { ubicacionId } : {}), ...(usuario !== undefined ? { usuarioAsignado: usuario } : {}) };
+  // Los inputs <type="date"> mandan "YYYY-MM-DD" — Prisma espera DateTime ISO completo
   if (payload.fechaCambioPC === '') payload.fechaCambioPC = null;
+  else if (payload.fechaCambioPC) payload.fechaCambioPC = new Date(payload.fechaCambioPC).toISOString();
   if (payload.fechaUltimoMantenimiento === '') payload.fechaUltimoMantenimiento = null;
+  else if (payload.fechaUltimoMantenimiento) payload.fechaUltimoMantenimiento = new Date(payload.fechaUltimoMantenimiento).toISOString();
   return payload;
 }
 
@@ -314,6 +323,9 @@ export interface Activo {
   placaVideoMarca: string;
   placaVideoNroSerie: string;
   placaVideoCapacidad: string;
+  placaMadreModelo: string;
+  placaMadreMarca: string;
+  placaMadreNroSerie: string;
   ip: string;
   mac: string;
   idAD: string;
