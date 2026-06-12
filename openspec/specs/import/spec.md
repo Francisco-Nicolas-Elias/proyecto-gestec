@@ -42,11 +42,12 @@ El script MUST leer el archivo `.xlsx` usando la librería `xlsx` y procesar cad
 
 El script SHOULD tolerar celdas vacías en campos opcionales sin fallar.
 
-#### Scenario: Archivo válido con múltiples hojas
+#### Scenario: Archivo válido con las hojas esperadas
 
-- GIVEN un archivo Excel con hojas para Activos, Componentes y Stock
+- GIVEN un archivo Excel con las hojas "1- Pc por area" y "2- Inventario"
 - WHEN el script parsea el archivo
-- THEN MUST leer cada hoja por nombre y mapear sus filas a los modelos correspondientes
+- THEN MUST leer cada hoja por nombre y mapear sus filas a los modelos `Activo` y `Componente` respectivamente
+- AND si alguna de las dos hojas no existe, MUST imprimir las hojas disponibles del archivo y terminar con código de salida 1
 
 #### Scenario: Celda opcional vacía
 
@@ -56,11 +57,11 @@ El script SHOULD tolerar celdas vacías en campos opcionales sin fallar.
 
 ---
 
-### Requirement: Upsert de catálogo (Ubicaciones, TipoComponente, Marca, Proveedor)
+### Requirement: Resolución de catálogo (Ubicaciones, TipoComponente, Marca, Proveedor)
 
 El script MUST crear automáticamente los registros de catálogo referenciados en los datos si aún no existen.
 
-El script MUST usar `upsert` por campo único (`sector` para Ubicacion, `nombre` para TipoComponente y Marca) para garantizar idempotencia.
+El script MUST resolver cada referencia de catálogo (`sector` para Ubicacion, `nombre` para TipoComponente/Marca/Proveedor) mediante una búsqueda case-insensitive (`findFirst` con `mode: 'insensitive'`); si no existe, MUST crear el registro con el nombre normalizado en Title Case. El resultado MUST cachearse en memoria para no repetir la búsqueda ante valores repetidos.
 
 #### Scenario: Ubicación nueva encontrada en los datos
 
@@ -71,15 +72,15 @@ El script MUST usar `upsert` por campo único (`sector` para Ubicacion, `nombre`
 
 #### Scenario: Marca nueva encontrada en los datos
 
-- GIVEN que una fila de Componente referencia la marca "Asus" que no existe en la BD
+- GIVEN que una fila de Componente referencia la marca "asus" (en minúsculas) que no existe en la BD
 - WHEN el script procesa esa fila
-- THEN MUST crear la Marca "Asus" via upsert antes de crear el Componente
+- THEN MUST buscar la Marca de forma case-insensitive, no encontrarla, y crearla como "Asus" (Title Case) antes de crear el Componente
 
-#### Scenario: Catálogo ya existente
+#### Scenario: Catálogo ya existente (con variación de mayúsculas)
 
 - GIVEN que la Marca "Samsung" ya existe en la BD
-- WHEN el script procesa una fila que referencia "Samsung"
-- THEN MUST reutilizar el registro existente sin crear uno duplicado
+- WHEN el script procesa una fila que referencia "SAMSUNG" o "samsung"
+- THEN MUST reutilizar el registro existente (vía `findFirst` insensitive) sin crear uno duplicado
 
 ---
 
@@ -105,12 +106,19 @@ Si el `nroPc` ya existe en la BD, el script SHOULD omitir la actualización (ign
 - THEN MUST NO modificar el registro existente
 - AND MUST contabilizar la fila como "ya existente" en el reporte
 
-#### Scenario: Activo con ubicación no mapeada
+#### Scenario: Activo sin columna SECTOR (ubicación en blanco)
 
-- GIVEN una fila de Activo cuya columna de ubicación está en blanco o tiene un valor no interpretable
+- GIVEN una fila de Activo cuya columna `SECTOR` está vacía
 - WHEN el script procesa esa fila
-- THEN MUST omitir esa fila
-- AND MUST agregar una entrada al reporte de errores indicando el `nroPc` y motivo
+- THEN MUST asignar la Ubicacion `"Sin sector"` (creándola si aún no existe) y crear el Activo igualmente
+- AND MUST NO omitir la fila ni agregarla al reporte de errores
+
+#### Scenario: Activo sin número de PC asignado
+
+- GIVEN una fila de Activo cuya columna `Nº DE PC` está vacía
+- WHEN el script procesa esa fila
+- THEN MUST generar un identificador sintético `SIN-ASIG-XXX` (correlativo) para usar como `nroPc`
+- AND MUST crear el Activo con ese `nroPc` sintético
 
 ---
 
@@ -118,69 +126,46 @@ Si el `nroPc` ya existe en la BD, el script SHOULD omitir la actualización (ign
 
 El script MUST importar cada fila de la hoja de Componentes como un registro `Componente` en la BD.
 
-Los campos `numeroSerie` e `idManual` son únicos — el script MUST usar `upsert` por `numeroSerie`.
+El campo `idManual` es el identificador único usado para el upsert — el script MUST generarlo de forma sintética y correlativa (`IMP-0001`, `IMP-0002`, ...) según la posición de la fila en la hoja, y MUST usar `upsert` por `idManual`.
+
+El campo `numeroSerie` también es único en el modelo, pero el Excel real contiene valores vacíos, placeholders (`s/n`, `s/s`) y duplicados. El script MUST deduplicar `numeroSerie` en memoria y MUST usar `SN-${idManual}` como valor sintético cuando el original esté vacío, sea un placeholder o ya haya sido usado por otra fila.
 
 Cada `Componente` creado MUST generar automáticamente un `HistorialMovimientoComponente` con `accion: creado` en la misma transacción Prisma.
 
 #### Scenario: Componente nuevo instalado en un activo
 
-- GIVEN una fila de Componente con `numeroSerie` nuevo y `nroPc` que existe en la BD
+- GIVEN una fila de Componente cuya columna `Ubicación` tiene un valor con formato "PC" + número (ej. "PC0042") que corresponde a un Activo importado en la fase anterior
 - WHEN el script importa esa fila
-- THEN MUST crear el `Componente` con `activoId` apuntando al Activo correspondiente
+- THEN MUST crear el `Componente` con `activoId` apuntando a ese Activo
 - AND MUST crear un `HistorialMovimientoComponente` con `accion: creado` en la misma `$transaction`
 - AND el historial MUST registrar el `activoCodigo` del activo asignado
 
 #### Scenario: Componente en depósito (sin activo asignado)
 
-- GIVEN una fila de Componente con `numeroSerie` nuevo y sin `nroPc` asociado (campo vacío)
+- GIVEN una fila de Componente cuya columna `Ubicación` está vacía o no tiene formato "PC" + número
 - WHEN el script importa esa fila
 - THEN MUST crear el `Componente` con `activoId: null`
 - AND el `HistorialMovimientoComponente` MUST registrar `ubicacionDestino: "Depósito IT"`
 
-#### Scenario: Componente con número de serie ya existente (idempotencia)
+#### Scenario: Componente con idManual ya existente (idempotencia)
 
-- GIVEN una fila cuyo `numeroSerie` ya existe en la BD
+- GIVEN una segunda ejecución del script sobre el mismo Excel, donde el `idManual` calculado para una fila (`IMP-XXXX`) ya existe en la BD
 - WHEN el script ejecuta el upsert
 - THEN MUST NO crear un nuevo componente ni un nuevo registro de historial
 - AND MUST contabilizar la fila como "ya existente" en el reporte
 
+#### Scenario: Numero de serie vacío, placeholder o duplicado
+
+- GIVEN una fila de Componente cuyo `Numero de Serie` está vacío, es "s/n"/"s/s", o ya fue usado por otra fila de la misma corrida
+- WHEN el script procesa esa fila
+- THEN MUST asignar `numeroSerie: "SN-${idManual}"` como valor sintético único
+
 #### Scenario: Componente referencia un activo que no existe en la BD
 
-- GIVEN una fila de Componente cuyo `nroPc` no corresponde a ningún Activo importado
+- GIVEN una fila de Componente cuya columna `Ubicación` tiene formato "PC" + número (ej. "PC0099") pero ese número no corresponde a ningún Activo importado
 - WHEN el script procesa esa fila
 - THEN MUST importar el Componente con `activoId: null` (como si estuviera en depósito)
-- AND MUST agregar una advertencia al reporte indicando que el activo no fue encontrado
-
----
-
-### Requirement: Importación de Stock consumible
-
-El script MUST importar cada fila de la hoja de Stock como un registro `StockItem` en la BD.
-
-El campo `nombre` es el identificador de upsert.
-
-Si el `StockItem` es nuevo, el script MUST crear un `StockMovimiento` de tipo `entrada` con la cantidad inicial en la misma transacción Prisma, y actualizar `cantidad` en el `StockItem`.
-
-#### Scenario: StockItem nuevo con cantidad inicial
-
-- GIVEN una fila de Stock con nombre "Cable HDMI" y cantidad 15 que no existe en la BD
-- WHEN el script importa esa fila
-- THEN MUST crear el `StockItem` con `cantidad: 15`
-- AND MUST crear un `StockMovimiento` de tipo `entrada` con `cantidad: 15` y `motivo: "Importación inicial desde Excel"` en la misma `$transaction`
-
-#### Scenario: StockItem ya existente (idempotencia)
-
-- GIVEN un `StockItem` con nombre "Tóner HP" que ya existe en la BD
-- WHEN el script ejecuta el upsert
-- THEN MUST NO crear un nuevo StockMovimiento ni modificar la cantidad existente
-- AND MUST contabilizar la fila como "ya existente" en el reporte
-
-#### Scenario: StockItem con cantidad cero o negativa
-
-- GIVEN una fila de Stock con cantidad 0
-- WHEN el script procesa esa fila
-- THEN MUST crear el `StockItem` con `cantidad: 0`
-- AND MUST NO crear un `StockMovimiento` (no hay movimiento real)
+- AND MUST agregar una advertencia al reporte indicando que la ubicación no coincide con ningún activo
 
 ---
 
@@ -203,9 +188,9 @@ El script MUST NOT abortar la importación completa ante un error en una fila.
 ### Requirement: Reporte final en consola
 
 Al finalizar, el script MUST imprimir en consola un resumen con:
-- Cantidad de registros creados por sección (Catálogo, Activos, Componentes, Stock)
-- Cantidad de registros ya existentes (omitidos) por sección
-- Cantidad de errores por sección con detalle por fila
+- Cantidad de registros creados y ya existentes para cada entidad de catálogo (Ubicaciones, Tipos de componente, Marcas, Proveedores)
+- Cantidad de registros creados, ya existentes y errores/advertencias para Activos y Componentes
+- Detalle por fila de cada error/advertencia (hasta 50 por sección)
 
 #### Scenario: Importación exitosa sin errores
 
@@ -213,11 +198,17 @@ Al finalizar, el script MUST imprimir en consola un resumen con:
 - WHEN el script termina
 - THEN MUST imprimir en consola algo como:
   ```
-  ✓ Catálogo:    5 creados,  3 ya existentes
-  ✓ Activos:    42 creados,  0 ya existentes,  0 errores
-  ✓ Componentes: 87 creados,  0 ya existentes,  0 errores
-  ✓ Stock:       12 creados,  0 ya existentes,  0 errores
-  ✅ Importación completada
+  📊 REPORTE DE IMPORTACIÓN
+  Catálogo:
+    Ubicaciones:      2 creadas,  0 ya existentes
+    Tipos componente: 5 creados,  3 ya existentes
+    Marcas:           4 creadas,  2 ya existentes
+    Proveedores:      1 creados,  0 ya existentes
+
+  Activos:      42 creados,  0 ya existentes,  0 errores
+  Componentes:  87 creados,  0 ya existentes,  0 advertencias/errores
+
+  ✅ Importación completada sin errores
   ```
 
 #### Scenario: Importación con errores parciales

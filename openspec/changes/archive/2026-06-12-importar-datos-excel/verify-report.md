@@ -108,3 +108,18 @@
 **PASS WITH WARNINGS**
 
 La importación se ejecutó exitosamente contra los datos reales (376 Activos + 2601 Componentes, idempotencia confirmada en una segunda corrida, gap de fidelidad de datos detectado y corregido proactivamente con `enrich-ubicacion.ts`), pero el spec/design quedaron desalineados respecto a varias decisiones tomadas durante el apply (clave `idManual` vs `numeroSerie`, catálogo vía `findFirst`+`create` vs `upsert`, fallback `'Sin sector'`, ausencia de hoja de Stock) — se recomienda actualizar `proposal.md`, `design.md` y `specs/import/spec.md` para reflejar la implementación real antes de `/sdd-archive`.
+
+## Resolución (2026-06-12)
+
+Se reconciliaron `proposal.md`, `design.md` y `specs/import/spec.md` con la implementación real, cerrando todos los issues abiertos:
+
+- **CRITICAL #1 (Stock no implementado)** → Resuelto. Se removió el requirement "Importación de Stock consumible" y sus 3 escenarios de `specs/import/spec.md`, se agregó una nota en "Out of Scope" de `proposal.md` y la decisión "Stock consumible fuera de alcance" en `design.md`. El criterio de éxito de StockItems en `proposal.md` se marcó como **No aplica**.
+- **WARNING #1 (catálogo `findFirst`+`create`)** → Resuelto. El requirement "Resolución de catálogo" en `specs/import/spec.md` ahora describe el patrón real (`findFirst` insensitive + `create` con `titleCase`), y se agregó la decisión correspondiente en `design.md`.
+- **WARNING #2 (clave `idManual` vs `numeroSerie`)** → Resuelto. El requirement "Importación de Componentes" y sus escenarios en `specs/import/spec.md` ahora usan `idManual` como clave de upsert y documentan la deduplicación de `numeroSerie` (`SN-${idManual}`). Se agregó la decisión correspondiente en `design.md`.
+- **WARNING #3 (fallback `'Sin sector'`)** → Resuelto. El escenario "Activo con ubicación no mapeada" se reemplazó por "Activo sin columna SECTOR" describiendo el fallback real, más la decisión en `design.md`.
+- **WARNING #4 (`design.md` desactualizado)** → Resuelto. Se actualizaron Data Flow, SHEETS/COLUMN_MAP, lógica de upsert, File Changes (se agregaron `enrich-ubicacion.ts` y `.gitignore`) y se reemplazó "Open Questions" por "Decisiones resueltas durante el apply".
+- **WARNING #5 (`proposal.md` Success Criteria desactualizado)** → Resuelto. Se marcaron como cumplidos los criterios verificados (script sin errores, idempotencia, reporte consola) y el criterio de StockItems como No aplica.
+- **SUGGESTION #1 (`enrich-ubicacion.ts` no documentado)** → Resuelto. Se agregó al "File Changes" de `design.md` y a "Affected Areas" de `proposal.md`.
+- **SUGGESTION #2 (smoke tests de guards)** → No bloqueante, queda como mejora futura opcional.
+
+No quedan issues CRITICAL ni WARNING abiertos. El change está listo para `/sdd-archive`.
