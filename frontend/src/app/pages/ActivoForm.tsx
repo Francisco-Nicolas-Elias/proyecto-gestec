@@ -10,6 +10,7 @@ import {
 } from '../services/apiClient';
 import LoadingSpinner from '../components/LoadingSpinner';
 import SearchableSelect from '../components/SearchableSelect';
+import ClearableInput from '../components/ClearableInput';
 import { toast } from 'sonner@2.0.3';
 import { useFormPersistence, hasPersistedData } from '../services/useFormPersistence';
 import DraftBanner from '../components/DraftBanner';
@@ -135,13 +136,6 @@ export default function ActivoForm() {
   const showDraftBanner = !isEdit && hadPersistedDataRef.current;
   const originalGpuSerialRef = useRef<string>('');
   const originalMotherboardSerialRef = useRef<string>('');
-
-  const inp = (field: keyof typeof empty) => (field === 'ramModulos' || field === 'almacenamientoModulos' ? {} : {
-    value: form[field] as string,
-    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-      setForm(prev => ({ ...prev, [field]: e.target.value })),
-    className: inputClass,
-  });
 
   useEffect(() => {
     const load = async () => {
@@ -496,7 +490,7 @@ export default function ActivoForm() {
         <Section icon={User} title="Identificación">
           <Grid2>
             <Field label="N° PC" required hint="Formato: PC000 – PC999">
-              <input
+              <ClearableInput
                 type="text"
                 value={form.nroPc}
                 maxLength={5}
@@ -509,7 +503,12 @@ export default function ActivoForm() {
               />
             </Field>
             <Field label="Usuario">
-              <input {...inp('usuario')} placeholder="Ej: Prof. Ana Martínez" />
+              <ClearableInput
+                value={form.usuario}
+                onChange={e => setForm(prev => ({ ...prev, usuario: e.target.value }))}
+                className={inputClass}
+                placeholder="Ej: Prof. Ana Martínez"
+              />
             </Field>
           </Grid2>
         </Section>
@@ -535,7 +534,12 @@ export default function ActivoForm() {
               />
             </Field>
             <Field label="Oficina / Aula">
-              <input {...inp('oficina')} placeholder="Ej: Aula 12, Of. Dirección" />
+              <ClearableInput
+                value={form.oficina}
+                onChange={e => setForm(prev => ({ ...prev, oficina: e.target.value }))}
+                className={inputClass}
+                placeholder="Ej: Aula 12, Of. Dirección"
+              />
             </Field>
           </Grid3>
         </Section>
@@ -544,7 +548,7 @@ export default function ActivoForm() {
         <Section icon={Cpu} title="Procesador">
           <Grid3>
             <Field label="N° de Serie" hint="Autocompleta marca/modelo">
-              <input
+              <ClearableInput
                 type="text"
                 value={form.microNroSerie}
                 onChange={e => handleComponenteSerieChange('micro', e.target.value)}
@@ -565,7 +569,7 @@ export default function ActivoForm() {
         <Section icon={CircuitBoard} title="Placa Madre">
           <Grid3>
             <Field label="N° de Serie" hint="Autocompleta marca/modelo">
-              <input
+              <ClearableInput
                 type="text"
                 value={form.placaMadreNroSerie}
                 onChange={e => handleComponenteSerieChange('placaMadre', e.target.value)}
@@ -600,7 +604,7 @@ export default function ActivoForm() {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   <Field label="N° de Serie" hint="Autocompleta">
-                    <input
+                    <ClearableInput
                       type="text"
                       value={modulo.nroSerie}
                       onChange={e => handleRAMChange(index, 'nroSerie', e.target.value)}
@@ -662,7 +666,7 @@ export default function ActivoForm() {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   <Field label="N° de Serie" hint="Autocompleta">
-                    <input
+                    <ClearableInput
                       type="text"
                       value={modulo.nroSerie}
                       onChange={e => handleAlmacenamientoSerieChange(index, e.target.value)}
@@ -700,7 +704,7 @@ export default function ActivoForm() {
         <Section icon={Monitor} title="Placa de Video">
           <Grid3>
             <Field label="N° de Serie" hint="Autocompleta marca/modelo/memoria">
-              <input
+              <ClearableInput
                 type="text"
                 value={form.placaVideoNroSerie}
                 onChange={e => handleComponenteSerieChange('placaVideo', e.target.value)}
@@ -724,17 +728,32 @@ export default function ActivoForm() {
         <Section icon={Wifi} title="Red">
           <Grid2>
             <Field label="Dirección IP">
-              <input {...inp('ip')} placeholder="Ej: 192.168.1.100" className={`${inputClass} font-mono`} />
+              <ClearableInput
+                value={form.ip}
+                onChange={e => setForm(prev => ({ ...prev, ip: e.target.value }))}
+                className={`${inputClass} font-mono`}
+                placeholder="Ej: 192.168.1.100"
+              />
             </Field>
             <Field label="Dirección MAC">
-              <input {...inp('mac')} placeholder="Ej: AA:BB:CC:DD:EE:FF" className={`${inputClass} font-mono`} />
+              <ClearableInput
+                value={form.mac}
+                onChange={e => setForm(prev => ({ ...prev, mac: e.target.value }))}
+                className={`${inputClass} font-mono`}
+                placeholder="Ej: AA:BB:CC:DD:EE:FF"
+              />
             </Field>
             <Field label="ID AD" hint="ID de Active Directory">
-              <input {...inp('idAD')} placeholder="Ej: jdoe" className={`${inputClass} font-mono`} />
+              <ClearableInput
+                value={form.idAD}
+                onChange={e => setForm(prev => ({ ...prev, idAD: e.target.value }))}
+                className={`${inputClass} font-mono`}
+                placeholder="Ej: jdoe"
+              />
             </Field>
             <Field label="P AD" hint="4 letras (a–j) + 4 dígitos (0–9) · Ej: caja1210">
               <div className="space-y-1.5">
-                <input
+                <ClearableInput
                   type="text"
                   value={pADInput}
                   onChange={e => {
@@ -783,7 +802,12 @@ export default function ActivoForm() {
         <Section icon={Settings} title="Sistema Operativo">
           <div className="max-w-sm">
             <Field label="Sistema Operativo">
-              <input {...inp('sistemaOperativo')} placeholder="Ej: Windows 10 LTSC, Ubuntu 22.04" />
+              <ClearableInput
+                value={form.sistemaOperativo}
+                onChange={e => setForm(prev => ({ ...prev, sistemaOperativo: e.target.value }))}
+                className={inputClass}
+                placeholder="Ej: Windows 10 LTSC, Ubuntu 22.04"
+              />
             </Field>
           </div>
         </Section>
@@ -792,7 +816,7 @@ export default function ActivoForm() {
         <Section icon={Printer} title="Impresora">
           <Grid3>
             <Field label="N° de Serie" hint="Autocompleta marca/modelo">
-              <input
+              <ClearableInput
                 type="text"
                 value={form.impresoraNroSerie}
                 onChange={e => handleComponenteSerieChange('impresora', e.target.value)}

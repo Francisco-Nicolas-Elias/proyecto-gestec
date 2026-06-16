@@ -29,6 +29,8 @@ const fmtDate = (d: string) => {
 // con espacios dobles (ej. "Laboratorio  2.5")
 const normalize = (s: string) => s.toLowerCase().trim().replace(/\s+/g, ' ');
 
+const PAGE_SIZE = 30;
+
 export default function Activos() {
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
@@ -45,6 +47,7 @@ export default function Activos() {
   const [toDelete, setToDelete] = useState<Activo | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [exportingPDF, setExportingPDF] = useState(false);
+  const [page, setPage] = useState(1);
   // Modal historial mantenimiento desde la grilla
   const [historialActivo, setHistorialActivo] = useState<Activo | null>(null);
 
@@ -116,18 +119,16 @@ export default function Activos() {
   };
 
   const applyFilters = () => {
+    setPage(1);
     let list = [...activos];
     if (search) {
-      const q = normalize(search);
-      list = list.filter(a =>
-        normalize(a.nroPc).includes(q) ||
-        normalize(a.usuario).includes(q) ||
-        normalize(a.sector).includes(q) ||
-        normalize(a.ip).includes(q) ||
-        normalize(a.mac).includes(q) ||
-        normalize(a.idAD).includes(q) ||
-        normalize(a.sistemaOperativo).includes(q)
-      );
+      const words = normalize(search).split(' ').filter(Boolean);
+      list = list.filter(a => {
+        const text = [
+          a.nroPc, a.usuario, a.sector, a.ip, a.mac, a.idAD, a.sistemaOperativo,
+        ].map(normalize).join(' ');
+        return words.every(w => text.includes(w));
+      });
     }
     if (filterSector) list = list.filter(a => a.sector === filterSector);
     if (filterEstado) list = list.filter(a => a.estado === filterEstado);
@@ -181,6 +182,7 @@ export default function Activos() {
     setSearch('');
     setFilterSector('');
     setFilterEstado('');
+    setPage(1);
   };
   const hasActiveFilters = search || filterSector || filterEstado;
 
@@ -457,6 +459,9 @@ export default function Activos() {
     }
   };
 
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginatedRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
   if (loading) return <div className="p-6"><LoadingSpinner /></div>;
 
   return (
@@ -503,8 +508,20 @@ export default function Activos() {
               placeholder="Buscar por N° PC, usuario, sector, IP, MAC, ID AD, S.O..."
               defaultValue={search}
               onChange={handleSearchChange}
-              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent placeholder:text-gray-400"
+              className="w-full pl-9 pr-8 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent placeholder:text-gray-400"
             />
+            {search && (
+              <button
+                onClick={() => {
+                  if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+                  if (searchInputRef.current) searchInputRef.current.value = '';
+                  setSearch('');
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
           <button
             onClick={() => setShowFilters(v => !v)}
@@ -516,7 +533,7 @@ export default function Activos() {
             <span className="hidden sm:inline">Filtros</span>
             {hasActiveFilters && <span className="w-2 h-2 bg-[#00a6d6] rounded-full" />}
           </button>
-          {hasActiveFilters && (
+          {(filterSector || filterEstado) && (
             <button onClick={clearFilters} className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors" title="Limpiar filtros">
               <X size={16} />
             </button>
@@ -593,7 +610,7 @@ export default function Activos() {
                   </td>
                 </tr>
               ) : (
-                filtered.map(a => (
+                paginatedRows.map(a => (
                   <tr key={a.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors group">
                     {/* N° PC - sticky */}
                     <td className="px-4 py-2.5 sticky left-0 z-10 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700 transition-colors">
@@ -699,6 +716,53 @@ export default function Activos() {
             </tbody>
           </table>
         </div>
+        {/* Paginación */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} de {filtered.length} equipos
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage(p => p - 1)}
+                disabled={page === 1}
+                className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                ‹ Anterior
+              </button>
+              <div className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
+                <span>Pág.</span>
+                <input
+                  key={page}
+                  type="number"
+                  min={1}
+                  max={totalPages}
+                  defaultValue={page}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      const v = parseInt((e.target as HTMLInputElement).value);
+                      if (!isNaN(v) && v >= 1 && v <= totalPages) setPage(v);
+                    }
+                  }}
+                  onBlur={e => {
+                    const v = parseInt(e.target.value);
+                    if (!isNaN(v) && v >= 1 && v <= totalPages) setPage(v);
+                    else e.target.value = String(page);
+                  }}
+                  className="w-12 text-center px-1 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
+                <span>de {totalPages}</span>
+              </div>
+              <button
+                onClick={() => setPage(p => p + 1)}
+                disabled={page === totalPages}
+                className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Siguiente ›
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Barra de scroll horizontal fija al pie de la pantalla */}

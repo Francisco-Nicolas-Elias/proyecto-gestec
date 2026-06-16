@@ -236,6 +236,19 @@ async function tareaPayload(t: any): Promise<any> {
   };
 }
 
+// ============ TTL CACHE PARA LISTAS ============
+// Evita refetches redundantes al navegar entre páginas. TTL: 60 s.
+// Se invalida en cada mutación (create/update/delete) de la colección.
+const _cache = new Map<string, { data: unknown; ts: number }>();
+const CACHE_TTL = 60_000;
+
+function cacheGet<T>(key: string): T | null {
+  const e = _cache.get(key);
+  return (e && Date.now() - e.ts < CACHE_TTL) ? (e.data as T) : null;
+}
+function cacheSet(key: string, data: unknown): void { _cache.set(key, { data, ts: Date.now() }); }
+function cacheInvalidate(...keys: string[]): void { keys.forEach(k => _cache.delete(k)); }
+
 // ============ EVENT BUS PARA ACTIVOS ============
 type ActivosListener = () => void;
 const activosListeners = new Set<ActivosListener>();
@@ -387,12 +400,18 @@ export interface Intervencion {
 }
 
 export const getActivos = async (filters?: any): Promise<Activo[]> => {
+  if (!filters) {
+    const hit = cacheGet<Activo[]>('activos');
+    if (hit) return hit;
+  }
   const params = new URLSearchParams();
   if (filters?.sector) params.set('sector', filters.sector);
   if (filters?.estado) params.set('estado', filters.estado);
   if (filters?.search) params.set('search', filters.search);
   const qs = params.toString();
-  return http.get<any[]>(`/activos${qs ? `?${qs}` : ''}`).then(arr => arr.map(mapActivo));
+  const result = await http.get<any[]>(`/activos${qs ? `?${qs}` : ''}`).then(arr => arr.map(mapActivo));
+  if (!filters) cacheSet('activos', result);
+  return result;
 };
 
 export const getActivoById = async (id: string): Promise<Activo | null> => {
@@ -402,6 +421,7 @@ export const getActivoById = async (id: string): Promise<Activo | null> => {
 export const createActivo = async (activo: Partial<Activo>): Promise<Activo> => {
   const payload = await activoPayload(activo);
   const result = await http.post<any>('/activos', payload).then(mapActivo);
+  cacheInvalidate('activos');
   emitActivosChange();
   return result;
 };
@@ -409,12 +429,14 @@ export const createActivo = async (activo: Partial<Activo>): Promise<Activo> => 
 export const updateActivo = async (id: string, data: Partial<Activo>): Promise<Activo> => {
   const payload = await activoPayload(data);
   const result = await http.put<any>(`/activos/${id}`, payload).then(mapActivo);
+  cacheInvalidate('activos');
   emitActivosChange();
   return result;
 };
 
 export const deleteActivo = async (id: string): Promise<void> => {
   await http.del(`/activos/${id}`);
+  cacheInvalidate('activos');
   emitActivosChange();
 };
 
@@ -470,12 +492,18 @@ export interface Adjunto {
 }
 
 export const getTickets = async (filters?: any): Promise<Ticket[]> => {
+  if (!filters) {
+    const hit = cacheGet<Ticket[]>('tickets');
+    if (hit) return hit;
+  }
   const params = new URLSearchParams();
   if (filters?.estado) params.set('estado', filters.estado);
   if (filters?.prioridad) params.set('prioridad', filters.prioridad);
   if (filters?.asignado) params.set('asignado', filters.asignado);
   const qs = params.toString();
-  return http.get<any[]>(`/tickets${qs ? `?${qs}` : ''}`).then(arr => arr.map(mapTicket));
+  const result = await http.get<any[]>(`/tickets${qs ? `?${qs}` : ''}`).then(arr => arr.map(mapTicket));
+  if (!filters) cacheSet('tickets', result);
+  return result;
 };
 
 export const getTicketById = async (id: string): Promise<Ticket | null> => {
@@ -492,10 +520,12 @@ export const createTicket = async (ticket: Partial<Ticket>): Promise<Ticket> => 
       await uploadAdjunto(blob, adj.nombre, { ticketId: created.id });
     }));
   }
+  cacheInvalidate('tickets');
   return http.get<any>(`/tickets/${created.id}`).then(mapTicket);
 };
 
 export const updateTicketStatus = async (id: string, estado: Ticket['estado'], asignado?: string): Promise<Ticket> => {
+  cacheInvalidate('tickets');
   return http.put<any>(`/tickets/${id}`, { estado, asignado }).then(mapTicket);
 };
 
@@ -518,10 +548,12 @@ export const updateTicketAdjuntos = async (
 
 export const updateTicket = async (id: string, data: Partial<Ticket>): Promise<Ticket> => {
   const { activo: _activo, creador: _creador, creadorEmail: _ce, comentarios: _com, adjuntos: _adj, ...payload } = data as any;
+  cacheInvalidate('tickets');
   return http.put<any>(`/tickets/${id}`, payload).then(mapTicket);
 };
 
 export const deleteTicket = async (id: string): Promise<void> => {
+  cacheInvalidate('tickets');
   return http.del(`/tickets/${id}`);
 };
 
@@ -563,10 +595,16 @@ export const calcularEstadoStock = (cantidad: number): 'ok' | 'bajo' | 'critico'
 };
 
 export const getStock = async (filters?: any): Promise<StockItem[]> => {
+  if (!filters) {
+    const hit = cacheGet<StockItem[]>('stock');
+    if (hit) return hit;
+  }
   const params = new URLSearchParams();
   if (filters?.estado) params.set('estado', filters.estado);
   const qs = params.toString();
-  return http.get<any[]>(`/stock/componentes${qs ? `?${qs}` : ''}`).then(arr => arr.map(mapStockItem));
+  const result = await http.get<any[]>(`/stock/componentes${qs ? `?${qs}` : ''}`).then(arr => arr.map(mapStockItem));
+  if (!filters) cacheSet('stock', result);
+  return result;
 };
 
 export const getStockById = async (id: string): Promise<StockItem | null> => {
@@ -574,6 +612,7 @@ export const getStockById = async (id: string): Promise<StockItem | null> => {
 };
 
 export const createStockMovimiento = async (movimiento: Partial<StockMovimiento>): Promise<StockMovimiento> => {
+  cacheInvalidate('stock');
   return http.post<StockMovimiento>('/stock/movimientos', movimiento);
 };
 
@@ -635,7 +674,11 @@ export interface HistorialMovimientoComponente {
 }
 
 export const getComponentes = async (): Promise<Componente[]> => {
-  return http.get<any[]>('/componentes').then(arr => arr.map(mapComponente));
+  const hit = cacheGet<Componente[]>('componentes');
+  if (hit) return hit;
+  const result = await http.get<any[]>('/componentes').then(arr => arr.map(mapComponente));
+  cacheSet('componentes', result);
+  return result;
 };
 
 export const buscarComponentePorSerie = async (numeroSerie: string): Promise<Componente | null> => {
@@ -643,14 +686,17 @@ export const buscarComponentePorSerie = async (numeroSerie: string): Promise<Com
 };
 
 export const createComponente = async (data: Omit<Componente, 'id'>): Promise<Componente> => {
+  cacheInvalidate('componentes', 'stock');
   return componentePayload(data).then(p => http.post<any>('/componentes', p)).then(mapComponente);
 };
 
 export const updateComponente = async (id: string, data: Partial<Omit<Componente, 'id'>>): Promise<Componente> => {
+  cacheInvalidate('componentes', 'stock');
   return componentePayload(data).then(p => http.put<any>(`/componentes/${id}`, p)).then(mapComponente);
 };
 
 export const deleteComponente = async (id: string): Promise<void> => {
+  cacheInvalidate('componentes', 'stock');
   return http.del(`/componentes/${id}`);
 };
 
@@ -749,8 +795,14 @@ export interface Tarea {
 }
 
 export const getTareas = async (estado?: string): Promise<Tarea[]> => {
+  if (!estado) {
+    const hit = cacheGet<Tarea[]>('tareas');
+    if (hit) return hit;
+  }
   const qs = estado ? `?estado=${estado}` : '';
-  return http.get<any[]>(`/tareas${qs}`).then(arr => arr.map(mapTarea));
+  const result = await http.get<any[]>(`/tareas${qs}`).then(arr => arr.map(mapTarea));
+  if (!estado) cacheSet('tareas', result);
+  return result;
 };
 
 export const getTareaById = async (id: string): Promise<Tarea | null> => {
@@ -776,6 +828,7 @@ export const updateTaskStatus = async (id: string, estado: Tarea['estado'], asig
     const users = await getUsersIdCache();
     asignadosIds = asignados.map(n => users.find((u: any) => u.nombre === n)?.id).filter(Boolean);
   }
+  cacheInvalidate('tareas');
   return http.patch<any>(`/tareas/${id}/estado`, { estado, asignadosIds }).then(mapTarea);
 };
 
@@ -800,10 +853,12 @@ export const deleteComentarioTarea = async (tareaId: string, comentarioId: strin
 };
 
 export const updateTarea = async (id: string, cambios: Partial<Tarea>): Promise<Tarea> => {
+  cacheInvalidate('tareas');
   return tareaPayload(cambios).then(p => http.put<any>(`/tareas/${id}`, p)).then(mapTarea);
 };
 
 export const deleteTarea = async (id: string): Promise<void> => {
+  cacheInvalidate('tareas');
   return http.del(`/tareas/${id}`);
 };
 

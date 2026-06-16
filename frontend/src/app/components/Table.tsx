@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { memo, ReactNode } from 'react';
 import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 
 interface Column {
@@ -18,7 +18,7 @@ interface TableProps {
   emptyMessage?: string;
 }
 
-export default function Table({ columns, data, onRowClick, emptyMessage = 'No hay datos para mostrar' }: TableProps) {
+const Table = memo(function Table({ columns, data, onRowClick, emptyMessage = 'No hay datos para mostrar' }: TableProps) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full">
@@ -74,4 +74,6 @@ export default function Table({ columns, data, onRowClick, emptyMessage = 'No ha
       </table>
     </div>
   );
-}
+});
+
+export default Table;

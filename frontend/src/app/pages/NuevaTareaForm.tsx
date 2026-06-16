@@ -4,6 +4,7 @@ import { ArrowLeft, Plus, Check, ChevronDown, Paperclip } from 'lucide-react';
 import { createTarea, getActivos, getUbicaciones, getUsuarios } from '../services/apiClient';
 import MultimediaUpload, { type Adjunto } from '../components/MultimediaUpload';
 import SearchableSelect from '../components/SearchableSelect';
+import ClearableInput from '../components/ClearableInput';
 import DraftBanner from '../components/DraftBanner';
 import { toast } from 'sonner@2.0.3';
 import { useFormPersistence, hasPersistedData } from '../services/useFormPersistence';
@@ -117,7 +118,7 @@ export default function NuevaTareaForm() {
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Título <span className="text-red-500">*</span>
           </label>
-          <input
+          <ClearableInput
             name="titulo"
             type="text"
             required

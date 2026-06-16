@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { Plus, Search, Filter, TrendingDown, Package, Cpu, Pencil, Trash2, Clock, Monitor, Warehouse, Eye, BarChart3, CheckCircle2, FileDown } from 'lucide-react';
+import { Plus, Search, Filter, X, TrendingDown, Package, Cpu, Pencil, Trash2, Clock, Monitor, Warehouse, Eye, BarChart3, CheckCircle2, FileDown } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import {
@@ -17,6 +17,8 @@ import HistorialComponenteModal from '../components/HistorialComponenteModal';
 import SearchableSelect from '../components/SearchableSelect';
 import { toast } from 'sonner@2.0.3';
 
+const normalize = (s: string) => (s ?? '').toLowerCase().trim().replace(/\s+/g, ' ');
+
 export default function Stock() {
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
@@ -25,7 +27,6 @@ export default function Stock() {
   // ── Stock Items (inventario de cantidades) ──
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<any[]>([]);
-  const [filteredItems, setFilteredItems] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterEstado, setFilterEstado] = useState(() => {
     const e = searchParams.get('estado') || '';
@@ -38,8 +39,8 @@ export default function Stock() {
 
   // ── Componentes ──
   const [componentes, setComponentes] = useState<Componente[]>([]);
-  const [filteredComponentes, setFilteredComponentes] = useState<Componente[]>([]);
   const [componenteSearch, setComponenteSearch] = useState('');
+  const [compPage, setCompPage] = useState(1);
 
   // ── Filtros de columna de componentes ──
   const [compFilterId, setCompFilterId] = useState('');
@@ -60,12 +61,7 @@ export default function Stock() {
   // ── Detalle por modelo (Control de Stock) ──
   const [stockDetalleItem, setStockDetalleItem] = useState<any | null>(null);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  useEffect(() => { applyFilters(); }, [items, searchTerm, filterEstado, filterCategoria]);
-  useEffect(() => { applyComponenteFilter(); }, [componentes, componenteSearch, compFilterId, compFilterTipo, compFilterFecha, compFilterProveedor]);
+  useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
     try {
@@ -79,87 +75,102 @@ export default function Stock() {
     }
   };
 
-  // Recarga solo el stock (derivado de componentes) sin mostrar spinner global
   const reloadStockItems = async () => {
-    try {
-      const stockData = await getStock();
-      setItems(stockData);
-    } catch (error) {
-      console.error('Error recargando stock:', error);
-    }
-  };
-
-  const applyFilters = () => {
-    let filtered = [...items];
-    if (searchTerm) {
-      filtered = filtered.filter(
-        i =>
-          i.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          i.categoria.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          i.proveedor?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-    if (filterEstado) filtered = filtered.filter(i => i.estado === filterEstado);
-    if (filterCategoria) filtered = filtered.filter(i => i.categoria === filterCategoria);
-    setFilteredItems(filtered);
-  };
-
-  const applyComponenteFilter = () => {
-    let result = [...componentes];
-    if (componenteSearch.trim()) {
-      const q = componenteSearch.toLowerCase();
-      result = result.filter(c =>
-        c.idManual.toLowerCase().includes(q) ||
-        c.tipoComponente.toLowerCase().includes(q) ||
-        c.marca.toLowerCase().includes(q) ||
-        c.modelo.toLowerCase().includes(q) ||
-        c.numeroSerie.toLowerCase().includes(q) ||
-        c.ubicacion.toLowerCase().includes(q) ||
-        c.proveedor.toLowerCase().includes(q) ||
-        c.responsable.toLowerCase().includes(q)
-      );
-    }
-    if (compFilterId.trim()) result = result.filter(c => c.idManual.toLowerCase().includes(compFilterId.toLowerCase()));
-    if (compFilterTipo) result = result.filter(c => c.tipoComponente === compFilterTipo);
-    if (compFilterFecha) result = result.filter(c => c.fecha === compFilterFecha);
-    if (compFilterProveedor) result = result.filter(c => c.proveedor === compFilterProveedor);
-    setFilteredComponentes(result);
+    try { setItems(await getStock()); }
+    catch (error) { console.error('Error recargando stock:', error); }
   };
 
   const clearCompFilters = () => {
+    if (compSearchDebounceRef.current) clearTimeout(compSearchDebounceRef.current);
+    if (compSearchInputRef.current) compSearchInputRef.current.value = '';
     setCompFilterId('');
     setCompFilterTipo('');
     setCompFilterFecha('');
     setCompFilterProveedor('');
     setComponenteSearch('');
+    setCompPage(1);
   };
 
   const hasCompFilters = compFilterId || compFilterTipo || compFilterFecha || compFilterProveedor || componenteSearch;
 
   const clearFilters = () => { setSearchTerm(''); setFilterEstado(''); setFilterCategoria(''); };
 
-  const handleCompSort = (key: string) => {
+  const handleCompSort = React.useCallback((key: string) => {
     setCompSort(prev =>
       prev?.key === key
         ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
         : { key, dir: 'asc' }
     );
-  };
+  }, []);
 
-  const sortedComponentes = compSort
+  // Filtrado y ordenamiento como useMemo: una sola pasada, sin setState ni doble render
+  const filteredItems = useMemo(() => {
+    let list = items;
+    if (searchTerm.trim()) {
+      const words = normalize(searchTerm).split(' ').filter(Boolean);
+      list = list.filter(i => {
+        const text = [i.nombre, i.categoria, i.proveedor ?? ''].map(normalize).join(' ');
+        return words.every(w => text.includes(w));
+      });
+    }
+    if (filterEstado) list = list.filter(i => i.estado === filterEstado);
+    if (filterCategoria) list = list.filter(i => i.categoria === filterCategoria);
+    return list;
+  }, [items, searchTerm, filterEstado, filterCategoria]);
+
+  const filteredComponentes = useMemo(() => {
+    let list = componentes;
+    if (componenteSearch.trim()) {
+      const words = normalize(componenteSearch).split(' ').filter(Boolean);
+      list = list.filter(c => {
+        const text = [
+          c.idManual, c.tipoComponente, c.marca, c.modelo,
+          c.numeroSerie, c.ubicacion, c.proveedor, c.responsable,
+        ].map(normalize).join(' ');
+        return words.every(w => text.includes(w));
+      });
+    }
+    if (compFilterId.trim()) list = list.filter(c => normalize(c.idManual).includes(normalize(compFilterId)));
+    if (compFilterTipo) list = list.filter(c => c.tipoComponente === compFilterTipo);
+    if (compFilterFecha) list = list.filter(c => c.fecha === compFilterFecha);
+    if (compFilterProveedor) list = list.filter(c => c.proveedor === compFilterProveedor);
+    return list;
+  }, [componentes, componenteSearch, compFilterId, compFilterTipo, compFilterFecha, compFilterProveedor]);
+
+  const sortedComponentes = useMemo(() => compSort
     ? [...filteredComponentes].sort((a, b) => {
-        const valA = (a[compSort.key as keyof typeof a] ?? '') as string;
-        const valB = (b[compSort.key as keyof typeof b] ?? '') as string;
-        const cmp = valA.toString().localeCompare(valB.toString(), 'es', { numeric: true });
+        const valA = String(a[compSort.key as keyof typeof a] ?? '');
+        const valB = String(b[compSort.key as keyof typeof b] ?? '');
+        const cmp = valA.localeCompare(valB, 'es', { numeric: true });
         return compSort.dir === 'asc' ? cmp : -cmp;
       })
-    : filteredComponentes;
-  const categorias = [...new Set(items.map(i => i.categoria))];
-  const itemsBajos = items.filter(i => i.estado === 'bajo' || i.estado === 'critico');
+    : filteredComponentes,
+  [filteredComponentes, compSort]);
 
-  const compTipos = [...new Set(componentes.map(c => c.tipoComponente))].sort((a, b) => a.localeCompare(b, 'es'));
-  const compProveedores = [...new Set(componentes.map(c => c.proveedor))].sort((a, b) => a.localeCompare(b, 'es'));
-  const compFechas = [...new Set(componentes.map(c => c.fecha))].sort().reverse();
+  const COMP_PAGE_SIZE = 30;
+  const compTotalPages = Math.ceil(sortedComponentes.length / COMP_PAGE_SIZE);
+  const pagedComponentes = useMemo(
+    () => sortedComponentes.slice((compPage - 1) * COMP_PAGE_SIZE, compPage * COMP_PAGE_SIZE),
+    [sortedComponentes, compPage],
+  );
+
+  // Resetear página cuando cambian filtros
+  useEffect(() => { setCompPage(1); }, [filteredComponentes]);
+
+  const categorias      = useMemo(() => [...new Set(items.map(i => i.categoria))], [items]);
+  const itemsBajos      = useMemo(() => items.filter(i => i.estado === 'bajo' || i.estado === 'critico'), [items]);
+  const compTipos       = useMemo(() => [...new Set(componentes.map(c => c.tipoComponente))].sort((a, b) => a.localeCompare(b, 'es')), [componentes]);
+  const compProveedores = useMemo(() => [...new Set(componentes.map(c => c.proveedor))].sort((a, b) => a.localeCompare(b, 'es')), [componentes]);
+  const compFechas      = useMemo(() => [...new Set(componentes.map(c => c.fecha))].sort().reverse(), [componentes]);
+
+  // Input de búsqueda de componentes no controlado para no re-renderizar en cada tecla
+  const compSearchInputRef = useRef<HTMLInputElement>(null);
+  const compSearchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleCompSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (compSearchDebounceRef.current) clearTimeout(compSearchDebounceRef.current);
+    compSearchDebounceRef.current = setTimeout(() => setComponenteSearch(value), 250);
+  };
 
   // Formato de fecha para componentes
   const formatFecha = (iso: string) => {
@@ -335,7 +346,7 @@ export default function Stock() {
   };
 
   // ── Columnas grilla Stock (cantidades) ──
-  const stockColumns = [
+  const stockColumns = useMemo(() => [
     {
       key: 'nombre',
       label: 'Nombre',
@@ -390,10 +401,11 @@ export default function Stock() {
         </button>
       ),
     },
-  ];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], []);
 
   // ── Columnas grilla Componentes ──
-  const componenteColumns = [
+  const componenteColumns = useMemo(() => [
     {
       key: 'idManual',
       label: 'ID',
@@ -530,7 +542,7 @@ export default function Stock() {
         </div>
       ),
     },
-  ];
+  ], [compSort, handleCompSort]);
 
   const handleConfirmDelete = async () => {
     if (!componenteToDelete) return;
@@ -624,66 +636,63 @@ export default function Stock() {
       </div>
 
       {/* ── Sección Componentes ── */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
-              <Cpu size={16} className="text-purple-600 dark:text-purple-400" />
-            </div>
-            <div>
-              <h2 className="font-semibold text-gray-900 dark:text-white">Componentes Registrados</h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{sortedComponentes.length} registros</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="relative sm:w-64">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Buscar por ID, tipo, marca, serie..."
-                value={componenteSearch}
-                onChange={e => setComponenteSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500"
-              />
-            </div>
-            <button
-              onClick={() => setShowCompFilters(v => !v)}
-              title="Filtros de columna"
-              className={`flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border transition-colors ${showCompFilters || hasCompFilters ? 'bg-[#00a6d6] border-[#00a6d6] text-white' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
-            >
-              <Filter size={15} />
-              <span className="hidden sm:inline">Filtros</span>
-              {hasCompFilters && <span className="w-2 h-2 rounded-full bg-white/80 inline-block" />}
-            </button>
-            {hasCompFilters && (
+      {/* Barra de búsqueda separada */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-3">
+        <div className="flex gap-2">
+          <div className="flex-1 relative">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              ref={compSearchInputRef}
+              type="text"
+              placeholder="Buscar componente por ID, tipo, marca, N° serie, proveedor..."
+              defaultValue={componenteSearch}
+              onChange={handleCompSearchChange}
+              className="w-full pl-9 pr-8 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent placeholder:text-gray-400"
+            />
+            {componenteSearch && (
               <button
-                onClick={clearCompFilters}
-                title="Limpiar filtros"
-                className="px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                onClick={() => {
+                  if (compSearchDebounceRef.current) clearTimeout(compSearchDebounceRef.current);
+                  if (compSearchInputRef.current) compSearchInputRef.current.value = '';
+                  setComponenteSearch('');
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
               >
-                ✕
+                <X size={14} />
               </button>
             )}
           </div>
+          <button
+            onClick={() => setShowCompFilters(v => !v)}
+            className={`flex items-center gap-2 px-3 py-2 text-sm border rounded-lg transition-colors ${showCompFilters || hasCompFilters ? 'bg-[#00a6d6]/10 border-[#00a6d6] text-[#00a6d6] dark:text-[#00c4f0]' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+          >
+            <Filter size={16} />
+            <span className="hidden sm:inline">Filtros</span>
+            {hasCompFilters && <span className="w-2 h-2 bg-[#00a6d6] rounded-full" />}
+          </button>
+          {(compFilterId || compFilterTipo || compFilterFecha || compFilterProveedor) && (
+            <button onClick={clearCompFilters} className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors" title="Limpiar filtros">
+              <X size={16} />
+            </button>
+          )}
         </div>
-
-        {/* Panel de filtros de columna */}
         {showCompFilters && (
-          <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/40 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {/* Filtro ID */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-gray-100 dark:border-gray-700">
             <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">ID</label>
-              <input
-                type="text"
-                placeholder="Ej: RAM-001"
-                value={compFilterId}
-                onChange={e => setCompFilterId(e.target.value)}
-                className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500"
-              />
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">ID</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Ej: RAM-001"
+                  value={compFilterId}
+                  onChange={e => setCompFilterId(e.target.value)}
+                  className="w-full px-3 pr-8 py-1.5 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                />
+                {compFilterId && <button onClick={() => setCompFilterId('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"><X size={13} /></button>}
+              </div>
             </div>
-            {/* Filtro Componente */}
             <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">Componente</label>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Componente</label>
               <SearchableSelect
                 options={compTipos}
                 value={compFilterTipo}
@@ -691,9 +700,8 @@ export default function Stock() {
                 placeholder="Todos los tipos..."
               />
             </div>
-            {/* Filtro Fecha */}
             <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">Fecha</label>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Fecha</label>
               <SearchableSelect
                 options={compFechas.map(f => ({ value: f, label: formatFecha(f) }))}
                 value={compFilterFecha}
@@ -701,9 +709,8 @@ export default function Stock() {
                 placeholder="Todas las fechas..."
               />
             </div>
-            {/* Filtro Proveedor */}
             <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wider">Proveedor</label>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Proveedor</label>
               <SearchableSelect
                 options={compProveedores}
                 value={compFilterProveedor}
@@ -713,12 +720,70 @@ export default function Stock() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Tabla de componentes */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
+              <Cpu size={16} className="text-purple-600 dark:text-purple-400" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-gray-900 dark:text-white">Componentes Registrados</h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{sortedComponentes.length} de {componentes.length} registros</p>
+            </div>
+          </div>
+        </div>
 
         <Table
           columns={componenteColumns}
-          data={sortedComponentes}
+          data={pagedComponentes}
           emptyMessage="No hay componentes registrados. Haga clic en 'Nuevo Componente' para agregar uno."
         />
+        {/* Paginación componentes */}
+        {compTotalPages > 1 && (
+          <div className="flex items-center justify-between px-5 py-3 border-t border-gray-200 dark:border-gray-700">
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              {(compPage - 1) * COMP_PAGE_SIZE + 1}–{Math.min(compPage * COMP_PAGE_SIZE, sortedComponentes.length)} de {sortedComponentes.length} componentes
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCompPage(p => p - 1)}
+                disabled={compPage === 1}
+                className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >‹ Anterior</button>
+              <div className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
+                <span>Pág.</span>
+                <input
+                  key={compPage}
+                  type="number"
+                  min={1}
+                  max={compTotalPages}
+                  defaultValue={compPage}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      const v = parseInt((e.target as HTMLInputElement).value);
+                      if (!isNaN(v) && v >= 1 && v <= compTotalPages) setCompPage(v);
+                    }
+                  }}
+                  onBlur={e => {
+                    const v = parseInt(e.target.value);
+                    if (!isNaN(v) && v >= 1 && v <= compTotalPages) setCompPage(v);
+                    else e.target.value = String(compPage);
+                  }}
+                  className="w-12 text-center px-1 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
+                <span>de {compTotalPages}</span>
+              </div>
+              <button
+                onClick={() => setCompPage(p => p + 1)}
+                disabled={compPage === compTotalPages}
+                className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >Siguiente ›</button>
+            </div>
+          </div>
+        )}
         <div className="px-5 py-3 border-t border-gray-200 dark:border-gray-700 flex justify-end">
           <button
             onClick={exportarComponentesPDF}
@@ -731,42 +796,43 @@ export default function Stock() {
       </div>
 
       {/* ── Sección Stock de Cantidades ── */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-              <Package size={16} className="text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <h2 className="font-semibold text-gray-900 dark:text-white">Control de Stock</h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{filteredItems.length} ítems</p>
-            </div>
+      {/* Barra de búsqueda separada */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-3">
+        <div className="flex gap-2">
+          <div className="flex-1 relative">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Buscar ítem por nombre, categoría, proveedor..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-8 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent placeholder:text-gray-400"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
-          {/* Búsqueda + Filtros */}
-          <div className="flex gap-2">
-            <div className="relative flex-1 sm:w-60">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Buscar..."
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500"
-              />
-            </div>
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors dark:text-white"
-            >
-              <Filter size={16} />
-              <span className="hidden sm:inline">Filtros</span>
-              {(filterEstado || filterCategoria) && <span className="w-2 h-2 bg-blue-600 rounded-full" />}
+          <button
+            onClick={() => setShowFilters(v => !v)}
+            className={`flex items-center gap-2 px-3 py-2 text-sm border rounded-lg transition-colors ${showFilters || filterEstado || filterCategoria ? 'bg-[#00a6d6]/10 border-[#00a6d6] text-[#00a6d6] dark:text-[#00c4f0]' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+          >
+            <Filter size={16} />
+            <span className="hidden sm:inline">Filtros</span>
+            {(filterEstado || filterCategoria) && <span className="w-2 h-2 bg-[#00a6d6] rounded-full" />}
+          </button>
+          {(filterEstado || filterCategoria) && (
+            <button onClick={clearFilters} className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors" title="Limpiar filtros">
+              <X size={16} />
             </button>
-          </div>
+          )}
         </div>
-
         {showFilters && (
-          <div className="px-5 py-3 border-b border-gray-200 dark:border-gray-700 grid grid-cols-1 sm:grid-cols-2 gap-3 bg-gray-50 dark:bg-gray-700/30">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-gray-100 dark:border-gray-700">
             <div>
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Estado</label>
               <SearchableSelect
@@ -791,16 +857,21 @@ export default function Stock() {
                 placeholder="Todas"
               />
             </div>
-            {(filterEstado || filterCategoria) && (
-              <div className="sm:col-span-2 flex justify-end">
-                <button onClick={clearFilters} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
-                  Limpiar filtros
-                </button>
-              </div>
-            )}
           </div>
         )}
+      </div>
 
+      {/* Tabla de stock */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+            <Package size={16} className="text-blue-600 dark:text-blue-400" />
+          </div>
+          <div>
+            <h2 className="font-semibold text-gray-900 dark:text-white">Control de Stock</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{filteredItems.length} ítems</p>
+          </div>
+        </div>
         <Table columns={stockColumns} data={filteredItems} emptyMessage="No se encontraron ítems en el inventario" />
       </div>
 

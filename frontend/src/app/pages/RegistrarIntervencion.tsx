@@ -5,6 +5,7 @@ import { getActivoById, createIntervencion, getStock, createStockMovimiento } fr
 import { useAuth } from '../components/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
 import SearchableSelect from '../components/SearchableSelect';
+import ClearableInput from '../components/ClearableInput';
 import DraftBanner from '../components/DraftBanner';
 import { toast } from 'sonner@2.0.3';
 import { useFormPersistence, hasPersistedData } from '../services/useFormPersistence';
@@ -336,7 +337,7 @@ export default function RegistrarIntervencion() {
             <label htmlFor="resultado" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Resultado <span className="text-red-500">*</span>
             </label>
-            <input
+            <ClearableInput
               id="resultado"
               name="resultado"
               type="text"

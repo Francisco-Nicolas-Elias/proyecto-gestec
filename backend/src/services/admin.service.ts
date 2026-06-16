@@ -94,8 +94,13 @@ export async function updateTipoComponenteService(id: string, nombre: string, ad
 }
 
 export async function deleteTipoComponenteService(id: string, adminNombre: string) {
-  const t = await prisma.tipoComponente.findUnique({ where: { id } });
+  const t = await prisma.tipoComponente.findUnique({ where: { id }, include: { _count: { select: { componentes: true, stockItems: true } } } });
   if (!t) throw new AppError(404, 'Tipo de componente no encontrado');
+  const partes: string[] = [];
+  if (t._count.componentes > 0) partes.push(`${t._count.componentes} componente${t._count.componentes !== 1 ? 's' : ''}`);
+  if (t._count.stockItems > 0) partes.push(`${t._count.stockItems} ítem${t._count.stockItems !== 1 ? 's' : ''} de stock`);
+  if (partes.length > 0)
+    throw new AppError(409, `No se puede eliminar "${t.nombre}" porque tiene ${partes.join(' y ')} asociado${partes.length > 1 ? 's' : ''}`);
   await prisma.tipoComponente.delete({ where: { id } });
   await addLogService(`Tipo de componente "${t.nombre}" eliminado`, 'Administracion', adminNombre, 'administrador');
 }
@@ -117,8 +122,10 @@ export async function updateMarcaService(id: string, nombre: string, adminNombre
 }
 
 export async function deleteMarcaService(id: string, adminNombre: string) {
-  const m = await prisma.marca.findUnique({ where: { id } });
+  const m = await prisma.marca.findUnique({ where: { id }, include: { _count: { select: { componentes: true } } } });
   if (!m) throw new AppError(404, 'Marca no encontrada');
+  if (m._count.componentes > 0)
+    throw new AppError(409, `No se puede eliminar "${m.nombre}" porque tiene ${m._count.componentes} componente${m._count.componentes !== 1 ? 's' : ''} asociado${m._count.componentes !== 1 ? 's' : ''}`);
   await prisma.marca.delete({ where: { id } });
   await addLogService(`Marca "${m.nombre}" eliminada`, 'Administracion', adminNombre, 'administrador');
 }
@@ -143,8 +150,13 @@ export async function updateProveedorService(id: string, data: { nombre: string;
 }
 
 export async function deleteProveedorService(id: string, adminNombre: string) {
-  const p = await prisma.proveedor.findUnique({ where: { id } });
+  const p = await prisma.proveedor.findUnique({ where: { id }, include: { _count: { select: { componentes: true, stockItems: true } } } });
   if (!p) throw new AppError(404, 'Proveedor no encontrado');
+  const partes: string[] = [];
+  if (p._count.componentes > 0) partes.push(`${p._count.componentes} componente${p._count.componentes !== 1 ? 's' : ''}`);
+  if (p._count.stockItems > 0) partes.push(`${p._count.stockItems} ítem${p._count.stockItems !== 1 ? 's' : ''} de stock`);
+  if (partes.length > 0)
+    throw new AppError(409, `No se puede eliminar "${p.nombre}" porque tiene ${partes.join(' y ')} asociado${partes.length > 1 ? 's' : ''}`);
   await prisma.proveedor.delete({ where: { id } });
   await addLogService(`Proveedor "${p.nombre}" eliminado`, 'Administracion', adminNombre, 'administrador');
 }

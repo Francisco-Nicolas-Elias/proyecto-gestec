@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, QrCode, User, Save, Loader2, Pencil } from 'lucide-react';
 import SearchableSelect from './SearchableSelect';
+import ClearableInput from './ClearableInput';
 import QrScannerModal from './QrScannerModal';
 import {
   getCurrentUser,
@@ -152,7 +153,7 @@ export default function EditarComponenteModal({
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     ID Manual <span className="text-red-500">*</span>
                   </label>
-                  <input
+                  <ClearableInput
                     type="text"
                     value={form.idManual}
                     onChange={e => setForm(f => ({ ...f, idManual: e.target.value }))}
@@ -166,12 +167,13 @@ export default function EditarComponenteModal({
                     Número de Serie <span className="text-red-500">*</span>
                   </label>
                   <div className="flex gap-2">
-                    <input
+                    <ClearableInput
                       type="text"
                       value={form.numeroSerie}
                       onChange={e => setForm(f => ({ ...f, numeroSerie: e.target.value }))}
                       placeholder="Ej: SN12345678"
-                      className={`flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500`}
+                      wrapperClassName="flex-1"
+                      className={inputClass}
                     />
                     <button
                       type="button"
@@ -234,7 +236,7 @@ export default function EditarComponenteModal({
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Modelo <span className="text-red-500">*</span>
                   </label>
-                  <input
+                  <ClearableInput
                     type="text"
                     value={form.modelo}
                     onChange={e => setForm(f => ({ ...f, modelo: e.target.value }))}
@@ -250,7 +252,7 @@ export default function EditarComponenteModal({
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Capacidad
                   </label>
-                  <input
+                  <ClearableInput
                     type="text"
                     value={form.capacidad}
                     onChange={e => setForm(f => ({ ...f, capacidad: e.target.value }))}

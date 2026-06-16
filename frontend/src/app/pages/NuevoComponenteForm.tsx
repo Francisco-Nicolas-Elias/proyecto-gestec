@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { ArrowLeft, QrCode, User, Calendar, Save, Loader2 } from 'lucide-react';
 import SearchableSelect from '../components/SearchableSelect';
+import ClearableInput from '../components/ClearableInput';
 import QrScannerModal from '../components/QrScannerModal';
 import {
   getCurrentUser,
@@ -128,7 +129,7 @@ export default function NuevoComponenteForm() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 ID Manual <span className="text-red-500">*</span>
               </label>
-              <input
+              <ClearableInput
                 type="text"
                 value={form.idManual}
                 onChange={e => setForm(f => ({ ...f, idManual: e.target.value }))}
@@ -145,12 +146,13 @@ export default function NuevoComponenteForm() {
                 Número de Serie <span className="text-red-500">*</span>
               </label>
               <div className="flex gap-2">
-                <input
+                <ClearableInput
                   type="text"
                   value={form.numeroSerie}
                   onChange={e => setForm(f => ({ ...f, numeroSerie: e.target.value }))}
                   placeholder="Ej: SN12345678"
-                  className={`flex-1 ${inputClass}`}
+                  wrapperClassName="flex-1"
+                  className={inputClass}
                 />
                 <button
                   type="button"
@@ -189,7 +191,7 @@ export default function NuevoComponenteForm() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Capacidad
               </label>
-              <input
+              <ClearableInput
                 type="text"
                 value={form.capacidad}
                 onChange={e => setForm(f => ({ ...f, capacidad: e.target.value }))}
@@ -223,7 +225,7 @@ export default function NuevoComponenteForm() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Modelo <span className="text-red-500">*</span>
               </label>
-              <input
+              <ClearableInput
                 type="text"
                 value={form.modelo}
                 onChange={e => setForm(f => ({ ...f, modelo: e.target.value }))}

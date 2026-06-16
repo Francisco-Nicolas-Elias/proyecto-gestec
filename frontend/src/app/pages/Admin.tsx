@@ -17,6 +17,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import Modal from '../components/Modal';
 import Table from '../components/Table';
 import SearchableSelect from '../components/SearchableSelect';
+import ClearableInput from '../components/ClearableInput';
 import { toast } from 'sonner@2.0.3';
 import { getLogs, addLog, clearLogs, type LogEntry, type LogModulo } from '../services/logsService';
 import { useFormPersistence } from '../services/useFormPersistence';
@@ -53,6 +54,8 @@ const PERMISOS_DISPONIBLES = [
 ];
 
 type AdminTab = 'usuarios' | 'ubicaciones' | 'roles' | 'componentes' | 'marcas' | 'proveedores' | 'areas' | 'logs';
+
+const normalize = (s: string) => (s ?? '').toLowerCase().trim().replace(/\s+/g, ' ');
 
 export default function Admin() {
   const { hasPermission, usuario } = useAuth();
@@ -508,9 +511,12 @@ export default function Admin() {
 
           {/* ── Usuarios Tab ── */}
           {activeTab === 'usuarios' && (() => {
+            const _uWords = normalize(usuariosSearch).split(' ').filter(Boolean);
             const filteredUsuarios = usuarios.filter(u => {
-              const term = usuariosSearch.toLowerCase();
-              const matchSearch = !term || u.nombre.toLowerCase().includes(term) || u.email.toLowerCase().includes(term);
+              const matchSearch = !_uWords.length || (() => {
+                const text = [u.nombre, u.email].map(normalize).join(' ');
+                return _uWords.every(w => text.includes(w));
+              })();
               const matchRol = !usuariosRolFiltro || u.rol === usuariosRolFiltro;
               const matchArea = !usuariosAreaFiltro || (u.area ?? '') === usuariosAreaFiltro;
               return matchSearch && matchRol && matchArea;
@@ -537,8 +543,9 @@ export default function Admin() {
                       placeholder="Buscar por nombre o email..."
                       value={usuariosSearch}
                       onChange={e => setUsuariosSearch(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg text-sm focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent"
+                      className="w-full pl-9 pr-8 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg text-sm focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent"
                     />
+                    {usuariosSearch && <button onClick={() => setUsuariosSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"><X size={14} /></button>}
                   </div>
                   <div className="sm:w-48">
                     <SearchableSelect
@@ -581,9 +588,9 @@ export default function Admin() {
 
           {/* ── Ubicaciones Tab ── */}
           {activeTab === 'ubicaciones' && (() => {
+            const _ubWords = normalize(ubicacionesSearch).split(' ').filter(Boolean);
             const filteredUbicaciones = ubicaciones.filter(u => {
-              const term = ubicacionesSearch.toLowerCase();
-              const matchSearch = !term || u.sector.toLowerCase().includes(term);
+              const matchSearch = !_ubWords.length || _ubWords.every(w => normalize(u.sector).includes(w));
               const matchPiso = !ubicacionesPisoFiltro || u.piso === ubicacionesPisoFiltro;
               return matchSearch && matchPiso;
             });
@@ -608,8 +615,9 @@ export default function Admin() {
                     placeholder="Buscar por sector..."
                     value={ubicacionesSearch}
                     onChange={e => setUbicacionesSearch(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg text-sm focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent"
+                    className="w-full pl-9 pr-8 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg text-sm focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent"
                   />
+                  {ubicacionesSearch && <button onClick={() => setUbicacionesSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"><X size={14} /></button>}
                 </div>
                 <div className="sm:w-48">
                   <SearchableSelect
@@ -671,8 +679,8 @@ export default function Admin() {
 
           {/* ── Áreas Tab ── */}
           {activeTab === 'areas' && (() => {
-            const term = areasSearch.toLowerCase();
-            const filteredAreas = areas.filter(a => !term || a.nombre.toLowerCase().includes(term));
+            const _aWords = normalize(areasSearch).split(' ').filter(Boolean);
+            const filteredAreas = areas.filter(a => !_aWords.length || _aWords.every(w => normalize(a.nombre).includes(w)));
             return (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
@@ -693,8 +701,9 @@ export default function Admin() {
                   placeholder="Buscar área..."
                   value={areasSearch}
                   onChange={e => setAreasSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg text-sm focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent"
+                  className="w-full pl-9 pr-8 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg text-sm focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent"
                 />
+                {areasSearch && <button onClick={() => setAreasSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"><X size={14} /></button>}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -804,8 +813,8 @@ export default function Admin() {
 
           {/* ── Componentes Tab ── */}
           {activeTab === 'componentes' && (() => {
-            const term = tiposCompSearch.toLowerCase();
-            const filteredTipos = tiposComponente.filter(t => !term || t.nombre.toLowerCase().includes(term));
+            const _tcWords = normalize(tiposCompSearch).split(' ').filter(Boolean);
+            const filteredTipos = tiposComponente.filter(t => !_tcWords.length || _tcWords.every(w => normalize(t.nombre).includes(w)));
             return (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
@@ -826,8 +835,9 @@ export default function Admin() {
                   placeholder="Buscar tipo de componente..."
                   value={tiposCompSearch}
                   onChange={e => setTiposCompSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg text-sm focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent"
+                  className="w-full pl-9 pr-8 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg text-sm focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent"
                 />
+                {tiposCompSearch && <button onClick={() => setTiposCompSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"><X size={14} /></button>}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -867,8 +877,8 @@ export default function Admin() {
 
           {/* ── Marcas Tab ── */}
           {activeTab === 'marcas' && (() => {
-            const term = marcasSearch.toLowerCase();
-            const filteredMarcas = marcas.filter(m => !term || m.nombre.toLowerCase().includes(term));
+            const _mWords = normalize(marcasSearch).split(' ').filter(Boolean);
+            const filteredMarcas = marcas.filter(m => !_mWords.length || _mWords.every(w => normalize(m.nombre).includes(w)));
             return (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
@@ -889,8 +899,9 @@ export default function Admin() {
                   placeholder="Buscar marca..."
                   value={marcasSearch}
                   onChange={e => setMarcasSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg text-sm focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent"
+                  className="w-full pl-9 pr-8 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg text-sm focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent"
                 />
+                {marcasSearch && <button onClick={() => setMarcasSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"><X size={14} /></button>}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -930,13 +941,12 @@ export default function Admin() {
 
           {/* ── Proveedores Tab ── */}
           {activeTab === 'proveedores' && (() => {
-            const term = proveedoresSearch.toLowerCase();
-            const filteredProveedores = proveedores.filter(p =>
-              !term
-              || p.nombre.toLowerCase().includes(term)
-              || (p.contacto ?? '').toLowerCase().includes(term)
-              || (p.telefono ?? '').toLowerCase().includes(term)
-            );
+            const _pWords = normalize(proveedoresSearch).split(' ').filter(Boolean);
+            const filteredProveedores = proveedores.filter(p => {
+              if (!_pWords.length) return true;
+              const text = [p.nombre, p.contacto ?? '', p.telefono ?? ''].map(normalize).join(' ');
+              return _pWords.every(w => text.includes(w));
+            });
             return (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
@@ -957,8 +967,9 @@ export default function Admin() {
                   placeholder="Buscar por nombre, contacto o teléfono..."
                   value={proveedoresSearch}
                   onChange={e => setProveedoresSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg text-sm focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent"
+                  className="w-full pl-9 pr-8 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg text-sm focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent"
                 />
+                {proveedoresSearch && <button onClick={() => setProveedoresSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"><X size={14} /></button>}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1022,8 +1033,11 @@ export default function Admin() {
 
             const filteredLogs = logs.filter(l => {
               const matchModulo = !logsModulo || l.modulo === logsModulo;
-              const term = logsSearch.toLowerCase();
-              const matchSearch = !term || l.accion.toLowerCase().includes(term) || l.usuario.toLowerCase().includes(term);
+              const _lWords = normalize(logsSearch).split(' ').filter(Boolean);
+              const matchSearch = !_lWords.length || (() => {
+                const text = [l.accion, l.usuario].map(normalize).join(' ');
+                return _lWords.every(w => text.includes(w));
+              })();
               return matchModulo && matchSearch;
             });
 
@@ -1166,8 +1180,9 @@ export default function Admin() {
                       placeholder="Buscar por acción o usuario..."
                       value={logsSearch}
                       onChange={e => setLogsSearch(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg text-sm focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent"
+                      className="w-full pl-9 pr-8 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg text-sm focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent"
                     />
+                    {logsSearch && <button onClick={() => setLogsSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"><X size={14} /></button>}
                   </div>
                   <div className="sm:w-52">
                     <SearchableSelect
@@ -1340,7 +1355,7 @@ export default function Admin() {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Nombre Completo <span className="text-red-500">*</span>
             </label>
-            <input
+            <ClearableInput
               type="text" required value={formData.nombre}
               onChange={e => setFormData(p => ({ ...p, nombre: e.target.value }))}
               className={ic} placeholder="Juan Pérez"
@@ -1450,7 +1465,7 @@ export default function Admin() {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Sector <span className="text-red-500">*</span>
             </label>
-            <input
+            <ClearableInput
               type="text" required
               value={ubicacionForm.sector}
               onChange={e => setUbicacionForm(p => ({ ...p, sector: e.target.value }))}
@@ -1522,7 +1537,7 @@ export default function Admin() {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Nombre del Rol <span className="text-red-500">*</span>
             </label>
-            <input
+            <ClearableInput
               type="text" required
               value={rolFormData.nombre}
               onChange={e => setRolFormData(p => ({ ...p, nombre: e.target.value }))}
@@ -1531,7 +1546,7 @@ export default function Admin() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descripción</label>
-            <input
+            <ClearableInput
               type="text"
               value={rolFormData.descripcion}
               onChange={e => setRolFormData(p => ({ ...p, descripcion: e.target.value }))}
@@ -1625,7 +1640,7 @@ export default function Admin() {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Nombre <span className="text-red-500">*</span>
             </label>
-            <input type="text" required value={tipoCompForm} onChange={e => setTipoCompForm(e.target.value)}
+            <ClearableInput type="text" required value={tipoCompForm} onChange={e => setTipoCompForm(e.target.value)}
               className={ic} placeholder="Ej: Procesador" />
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
@@ -1662,7 +1677,7 @@ export default function Admin() {
                 toast.success('Tipo de componente eliminado');
                 addLog(`Tipo de componente "${tipoCompToDelete.nombre}" eliminado`, 'Administración', usuario?.nombre ?? 'Sistema', usuario?.rol ?? '');
                 setShowDeleteTipoCompModal(false); setTipoCompToDelete(null);
-              } catch { toast.error('Error al eliminar'); }
+              } catch (err: any) { toast.error(err?.message ?? 'Error al eliminar'); }
               finally { setSaving(false); }
             }} disabled={saving}
               className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg disabled:opacity-50 transition-colors text-sm">
@@ -1707,7 +1722,7 @@ export default function Admin() {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Nombre de la Marca <span className="text-red-500">*</span>
             </label>
-            <input type="text" required value={marcaForm} onChange={e => setMarcaForm(e.target.value)}
+            <ClearableInput type="text" required value={marcaForm} onChange={e => setMarcaForm(e.target.value)}
               className={ic} placeholder="Ej: Samsung" />
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
@@ -1744,7 +1759,7 @@ export default function Admin() {
                 toast.success('Marca eliminada');
                 addLog(`Marca "${marcaToDelete.nombre}" eliminada`, 'Administración', usuario?.nombre ?? 'Sistema', usuario?.rol ?? '');
                 setShowDeleteMarcaModal(false); setMarcaToDelete(null);
-              } catch { toast.error('Error al eliminar'); }
+              } catch (err: any) { toast.error(err?.message ?? 'Error al eliminar'); }
               finally { setSaving(false); }
             }} disabled={saving}
               className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg disabled:opacity-50 transition-colors text-sm">
@@ -1789,12 +1804,12 @@ export default function Admin() {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Nombre del Proveedor <span className="text-red-500">*</span>
             </label>
-            <input type="text" required value={proveedorForm.nombre} onChange={e => setProveedorForm(p => ({ ...p, nombre: e.target.value }))}
+            <ClearableInput type="text" required value={proveedorForm.nombre} onChange={e => setProveedorForm(p => ({ ...p, nombre: e.target.value }))}
               className={ic} placeholder="Ej: TechSupply SA" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Contacto / Email</label>
-            <input type="text" value={proveedorForm.contacto} onChange={e => setProveedorForm(p => ({ ...p, contacto: e.target.value }))}
+            <ClearableInput type="text" value={proveedorForm.contacto} onChange={e => setProveedorForm(p => ({ ...p, contacto: e.target.value }))}
               className={ic} placeholder="ventas@proveedor.com" />
           </div>
           <div>
@@ -1804,7 +1819,7 @@ export default function Admin() {
                 Teléfono
               </span>
             </label>
-            <input
+            <ClearableInput
               type="tel"
               value={proveedorForm.telefono}
               onChange={e => setProveedorForm(p => ({ ...p, telefono: e.target.value }))}
@@ -1846,7 +1861,7 @@ export default function Admin() {
                 toast.success('Proveedor eliminado');
                 addLog(`Proveedor "${proveedorToDelete.nombre}" eliminado`, 'Administración', usuario?.nombre ?? 'Sistema', usuario?.rol ?? '');
                 setShowDeleteProveedorModal(false); setProveedorToDelete(null);
-              } catch { toast.error('Error al eliminar'); }
+              } catch (err: any) { toast.error(err?.message ?? 'Error al eliminar'); }
               finally { setSaving(false); }
             }} disabled={saving}
               className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg disabled:opacity-50 transition-colors text-sm">
@@ -1891,7 +1906,7 @@ export default function Admin() {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Nombre del Área <span className="text-red-500">*</span>
             </label>
-            <input type="text" required value={areaForm} onChange={e => setAreaForm(e.target.value)}
+            <ClearableInput type="text" required value={areaForm} onChange={e => setAreaForm(e.target.value)}
               className={ic} placeholder="Ej: IT, Matemáticas, Administración..." />
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">

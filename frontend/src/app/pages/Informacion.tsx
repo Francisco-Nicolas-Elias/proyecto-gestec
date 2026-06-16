@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   Phone, PhoneCall, Clock, Mail, Pencil, Plus, Trash2,
-  Building2, Info, Check, Loader2,
+  Building2, Info, Check, Loader2, X,
 } from 'lucide-react';
 import { useAuth } from '../components/AuthContext';
 import {
@@ -253,9 +253,14 @@ export default function Informacion() {
                 required
                 value={form.telefono}
                 onChange={e => setForm(p => ({ ...p, telefono: e.target.value }))}
-                className={`${ic} pl-8`}
+                className={`${ic} pl-8 ${form.telefono ? 'pr-8' : ''}`}
                 placeholder="Ej: (011) 4523-0800"
               />
+              {form.telefono && (
+                <button type="button" onClick={() => setForm(p => ({ ...p, telefono: '' }))} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+                  <X size={14} />
+                </button>
+              )}
             </div>
           </div>
 
@@ -270,9 +275,14 @@ export default function Informacion() {
                 type="text"
                 value={form.telefonoInterno}
                 onChange={e => setForm(p => ({ ...p, telefonoInterno: e.target.value }))}
-                className={`${ic} pl-8`}
+                className={`${ic} pl-8 ${form.telefonoInterno ? 'pr-8' : ''}`}
                 placeholder="Ej: 203 / 204"
               />
+              {form.telefonoInterno && (
+                <button type="button" onClick={() => setForm(p => ({ ...p, telefonoInterno: '' }))} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+                  <X size={14} />
+                </button>
+              )}
             </div>
           </div>
 
@@ -317,9 +327,14 @@ export default function Informacion() {
                       type="email"
                       value={mail}
                       onChange={e => updateMail(idx, e.target.value)}
-                      className={`${ic} pl-8`}
+                      className={`${ic} pl-8 ${mail ? 'pr-8' : ''}`}
                       placeholder="correo@institucion.edu.ar"
                     />
+                    {mail && (
+                      <button type="button" onClick={() => updateMail(idx, '')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+                        <X size={14} />
+                      </button>
+                    )}
                   </div>
                   {form.mailsContacto.length > 1 && (
                     <button

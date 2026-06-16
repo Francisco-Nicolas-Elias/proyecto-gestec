@@ -163,8 +163,16 @@ export default function SearchableSelect({
               if (e.key === 'Escape') { setOpen(false); setQuery(''); }
             }}
             placeholder="Buscar..."
-            className="w-full pl-7 pr-3 py-1.5 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:border-[#00a6d6]"
+            className="w-full pl-7 pr-7 py-1.5 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:border-[#00a6d6]"
           />
+          {query && (
+            <button
+              onMouseDown={e => { e.preventDefault(); setQuery(''); calcPosition(); }}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+            >
+              <X size={13} />
+            </button>
+          )}
         </div>
       </div>
 
