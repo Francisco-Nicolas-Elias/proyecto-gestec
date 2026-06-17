@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { loginService, getMeService, registroService, verificarEmailService } from '../services/auth.service';
+import { loginService, getMeService, registroService, verificarEmailService, solicitarRecuperacionService, resetPasswordService } from '../services/auth.service';
 
 export async function login(req: Request, res: Response, next: NextFunction) {
   try {
@@ -33,6 +33,26 @@ export async function registro(req: Request, res: Response, next: NextFunction) 
 export async function verificarEmail(req: Request, res: Response, next: NextFunction) {
   try {
     const result = await verificarEmailService(req.params.token);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function solicitarRecuperacion(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { email } = req.body;
+    const result = await solicitarRecuperacionService(email);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function resetPassword(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { token, password } = req.body;
+    const result = await resetPasswordService(token, password);
     res.json(result);
   } catch (err) {
     next(err);

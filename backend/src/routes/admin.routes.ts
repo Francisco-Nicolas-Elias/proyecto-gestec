@@ -12,6 +12,7 @@ router.get('/usuarios', isAdmin, ctrl.getUsuarios);
 router.post('/usuarios', isAdmin, ctrl.createUsuario);
 router.put('/usuarios/:id', isAdmin, ctrl.updateUsuario);
 router.delete('/usuarios/:id', isAdmin, ctrl.deleteUsuario);
+router.patch('/usuarios/:id/bloquear', isAdmin, ctrl.toggleBloqueoUsuario);
 
 // Catálogo: lectura abierta a todos los autenticados, escritura solo admin
 router.get('/ubicaciones', isAnyUser, ctrl.getUbicaciones);

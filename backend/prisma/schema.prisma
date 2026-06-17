@@ -140,6 +140,10 @@ model Usuario {
   rol      Rol
   area     String?
 
+  resetPasswordToken  String?   @unique
+  resetPasswordExpiry DateTime?
+  bloqueado           Boolean   @default(false)
+
   ticketsCreados    Ticket[]           @relation("TicketCreador")
   ticketsAsignados  Ticket[]           @relation("TicketAsignado")
   tareasCreadas     Tarea[]            @relation("TareaCreador")

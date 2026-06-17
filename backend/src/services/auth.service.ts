@@ -2,16 +2,18 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../middlewares/error.middleware';
-import { sendVerificationEmail } from '../lib/email';
+import { sendVerificationEmail, sendPasswordResetEmail } from '../lib/email';
 import { addLogService } from './logs.service';
 
 export async function loginService(email: string, password: string) {
   const usuario = await prisma.usuario.findUnique({ where: { email } });
 
-  if (!usuario) throw new AppError(401, 'Usuario o contraseña incorrectos');
+  if (!usuario) throw new AppError(401, 'El correo electrónico no está registrado');
+
+  if (usuario.bloqueado) throw new AppError(403, 'Tu cuenta está bloqueada. Contactá al administrador.');
 
   const valid = await bcrypt.compare(password, usuario.password);
-  if (!valid) throw new AppError(401, 'Usuario o contraseña incorrectos');
+  if (!valid) throw new AppError(401, 'La contraseña es incorrecta');
 
   const secret = process.env.JWT_SECRET;
   if (!secret) throw new Error('JWT_SECRET no configurado');
@@ -87,4 +89,50 @@ export async function verificarEmailService(token: string) {
   );
 
   return { message: 'Cuenta verificada correctamente. Ya podés iniciar sesión.' };
+}
+
+export async function solicitarRecuperacionService(email: string) {
+  const usuario = await prisma.usuario.findUnique({ where: { email } });
+
+  // Siempre responder igual para no revelar si el email existe
+  if (!usuario) return { message: 'Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.' };
+
+  const token = crypto.randomUUID();
+  const expiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
+
+  await prisma.usuario.update({
+    where: { id: usuario.id },
+    data: { resetPasswordToken: token, resetPasswordExpiry: expiry },
+  });
+
+  await sendPasswordResetEmail(usuario.email, usuario.nombre, token);
+
+  return { message: 'Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.' };
+}
+
+export async function resetPasswordService(token: string, nuevaPassword: string) {
+  const usuario = await prisma.usuario.findUnique({ where: { resetPasswordToken: token } });
+
+  if (!usuario || !usuario.resetPasswordExpiry) throw new AppError(400, 'El enlace es inválido o ya fue usado');
+  if (usuario.resetPasswordExpiry < new Date()) throw new AppError(410, 'El enlace de recuperación ha expirado. Solicitá uno nuevo.');
+
+  const esMismaPassword = await bcrypt.compare(nuevaPassword, usuario.password);
+  if (esMismaPassword) throw new AppError(400, 'La nueva contraseña no puede ser igual a la anterior');
+
+  const hash = await bcrypt.hash(nuevaPassword, 12);
+
+  await prisma.usuario.update({
+    where: { id: usuario.id },
+    data: { password: hash, resetPasswordToken: null, resetPasswordExpiry: null },
+  });
+
+  await addLogService(
+    `Contraseña restablecida por recuperación: ${usuario.email}`,
+    'Administracion',
+    usuario.nombre,
+    usuario.rol,
+    usuario.id,
+  );
+
+  return { message: 'Contraseña restablecida correctamente. Ya podés iniciar sesión.' };
 }

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Users, MapPin, Pencil, Trash2, Shield, Check, Cpu, Truck, Star, Plus, X, ScrollText, Search, Download, AlertTriangle, RefreshCw, Phone, Building2 } from 'lucide-react';
+import { Users, MapPin, Pencil, Trash2, Shield, Check, Cpu, Truck, Star, Plus, X, ScrollText, Search, Download, AlertTriangle, RefreshCw, Phone, Building2, Ban, ShieldCheck } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import {
-  getUsuarios, createUsuario, updateUsuario,
+  getUsuarios, createUsuario, updateUsuario, toggleBloqueoUsuario,
   getUbicacionesStruct, createUbicacionEntry, updateUbicacionEntry, deleteUbicacionEntry,
   getTiposComponente, getMarcas, getProveedores, getAreas,
   createTipoComponente, updateTipoComponente, deleteTipoComponente,
@@ -69,6 +69,8 @@ export default function Admin() {
   const [editingUsuario, setEditingUsuario] = useState<any | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [userToDelete, setUserToDelete] = useState<any | null>(null);
+  const [showBloqueoModal, setShowBloqueoModal] = useState(false);
+  const [userToBloquear, setUserToBloquear] = useState<any | null>(null);
   // Formularios con persistencia de draft en sessionStorage
   const [formData, setFormData, clearFormDataPersistence] = useFormPersistence('gestec:admin:usuario:new', INIT_USUARIO);
   const [usuariosSearch, setUsuariosSearch] = useState('');
@@ -242,6 +244,32 @@ export default function Admin() {
     }
   };
 
+  const handleToggleBloqueo = (u: any) => {
+    setUserToBloquear(u);
+    setShowBloqueoModal(true);
+  };
+
+  const confirmToggleBloqueo = async () => {
+    if (!userToBloquear) return;
+    setSaving(true);
+    try {
+      const actualizado = await toggleBloqueoUsuario(userToBloquear.id);
+      setUsuarios(prev => prev.map(x => x.id === userToBloquear.id ? { ...x, bloqueado: (actualizado as any).bloqueado } : x));
+      const accion = (actualizado as any).bloqueado ? 'bloqueado' : 'desbloqueado';
+      toast.success(`Usuario "${userToBloquear.nombre}" ${accion} correctamente`);
+      addLog(
+        `Usuario "${userToBloquear.nombre}" ${accion}`,
+        'Administración', usuario?.nombre ?? 'Sistema', usuario?.rol ?? '',
+      );
+      setShowBloqueoModal(false);
+      setUserToBloquear(null);
+    } catch {
+      toast.error('Error al cambiar el estado del usuario');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // ── Ubicaciones handlers ──────────────────────────────────────────────────
   const openNuevaUbicacion = () => {
     setEditingUbicacion(null);
@@ -402,7 +430,16 @@ export default function Admin() {
     {
       key: 'nombre',
       label: 'Nombre',
-      render: (value: string) => <span className="font-medium text-gray-900 dark:text-white">{value}</span>,
+      render: (value: string, row: any) => (
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-gray-900 dark:text-white">{value}</span>
+          {row.bloqueado && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+              <Ban size={10} /> Bloqueado
+            </span>
+          )}
+        </div>
+      ),
     },
     { key: 'email', label: 'Email', className: 'hidden md:table-cell' },
     {
@@ -438,6 +475,13 @@ export default function Admin() {
             className="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
           >
             <Pencil size={15} />
+          </button>
+          <button
+            onClick={() => handleToggleBloqueo(row)}
+            title={row.bloqueado ? 'Desbloquear usuario' : 'Bloquear usuario'}
+            className={`p-1.5 rounded transition-colors ${row.bloqueado ? 'text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20' : 'text-orange-500 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20'}`}
+          >
+            {row.bloqueado ? <ShieldCheck size={15} /> : <Ban size={15} />}
           </button>
           <button
             onClick={() => { setUserToDelete(row); setShowDeleteModal(true); }}
@@ -582,6 +626,8 @@ export default function Admin() {
                     Mostrando {filteredUsuarios.length} de {usuarios.length} usuarios
                   </p>
                 )}
+
+
               </div>
             );
           })()}
@@ -1444,6 +1490,44 @@ export default function Admin() {
             <button onClick={confirmDeleteUsuario} disabled={saving}
               className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg disabled:opacity-50 transition-colors text-sm">
               {saving ? 'Eliminando...' : 'Eliminar'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal Bloquear/Desbloquear Usuario */}
+      <Modal
+        isOpen={showBloqueoModal}
+        onClose={() => setShowBloqueoModal(false)}
+        title={userToBloquear?.bloqueado ? 'Desbloquear Usuario' : 'Bloquear Usuario'}
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className={`flex items-start gap-3 p-3 rounded-lg ${userToBloquear?.bloqueado ? 'bg-green-50 dark:bg-green-900/20' : 'bg-orange-50 dark:bg-orange-900/20'}`}>
+            {userToBloquear?.bloqueado
+              ? <ShieldCheck size={20} className="text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+              : <Ban size={20} className="text-orange-500 dark:text-orange-400 flex-shrink-0 mt-0.5" />
+            }
+            <p className="text-sm text-gray-700 dark:text-gray-300">
+              {userToBloquear?.bloqueado
+                ? <>¿Querés desbloquear a <strong className="text-gray-900 dark:text-white">{userToBloquear?.nombre}</strong>? Podrá volver a iniciar sesión normalmente.</>
+                : <>¿Querés bloquear a <strong className="text-gray-900 dark:text-white">{userToBloquear?.nombre}</strong>? No podrá iniciar sesión hasta que lo desbloqueés.</>
+              }
+            </p>
+          </div>
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <button
+              onClick={() => setShowBloqueoModal(false)}
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors dark:text-white text-sm"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={confirmToggleBloqueo}
+              disabled={saving}
+              className={`px-6 py-2 rounded-lg text-white disabled:opacity-50 transition-colors text-sm ${userToBloquear?.bloqueado ? 'bg-green-600 hover:bg-green-700' : 'bg-orange-500 hover:bg-orange-600'}`}
+            >
+              {saving ? 'Procesando...' : (userToBloquear?.bloqueado ? 'Desbloquear' : 'Bloquear')}
             </button>
           </div>
         </div>

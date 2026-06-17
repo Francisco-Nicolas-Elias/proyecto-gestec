@@ -15,12 +15,21 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setEmailError('');
+    setPasswordError('');
     setLoading(true);
+
+    if (!email.toLowerCase().endsWith('@ies21.edu.ar')) {
+      setEmailError('Este formato no se acepta, el correo debe ser @ies21.edu.ar');
+      setPassword('');
+      setLoading(false);
+      return;
+    }
 
     try {
       const usuario = await login(email, password);
@@ -28,7 +37,20 @@ export default function Login() {
       toast.success(`Bienvenido, ${usuario.nombre}`);
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Error al iniciar sesión');
+      const msg: string = err?.message ?? 'Error al iniciar sesión';
+      if (msg.includes('bloqueada')) {
+        setEmailError(msg);
+        setPassword('');
+      } else if (msg.includes('correo') || msg.includes('registrado') || msg.toLowerCase().includes('email')) {
+        setEmailError(msg);
+        setPassword('');
+      } else if (msg.includes('contraseña') || msg.includes('incorrecta') || msg.includes('requerida')) {
+        setPasswordError(msg);
+        setPassword('');
+      } else {
+        setEmailError(msg);
+        setPassword('');
+      }
     } finally {
       setLoading(false);
     }
@@ -73,14 +95,7 @@ export default function Login() {
 
         {/* Login Form */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 p-8">
-          <h2 className="text-xl font-semibold mb-6">Iniciar Sesión</h2>
-
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
-              <AlertCircle className="text-red-600 flex-shrink-0 mt-0.5" size={18} />
-              <p className="text-sm text-red-700">{error}</p>
-            </div>
-          )}
+          <h2 className="text-xl font-semibold mb-6 dark:text-white">Iniciar Sesión</h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -88,17 +103,23 @@ export default function Login() {
                 Correo electrónico
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 ${emailError ? 'text-red-400' : 'text-gray-400'}`} size={20} />
                 <input
                   id="email"
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={e => { setEmail(e.target.value); setEmailError(''); }}
                   required
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                  className={`w-full pl-10 pr-4 py-2.5 border rounded-lg focus:ring-2 focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${emailError ? 'border-red-400 dark:border-red-500 focus:ring-red-400' : 'border-gray-300 dark:border-gray-600 focus:ring-[#00a6d6]'}`}
                   placeholder="usuario@institucion.edu"
                 />
               </div>
+              {emailError && (
+                <p className="mt-1.5 flex items-center gap-1.5 text-sm text-red-600 dark:text-red-400">
+                  <AlertCircle size={14} className="flex-shrink-0" />
+                  {emailError}
+                </p>
+              )}
             </div>
 
             <div>
@@ -106,14 +127,14 @@ export default function Login() {
                 Contraseña
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                <Lock className={`absolute left-3 top-1/2 -translate-y-1/2 ${passwordError ? 'text-red-400' : 'text-gray-400'}`} size={20} />
                 <input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={e => { setPassword(e.target.value); setPasswordError(''); }}
                   required
-                  className="w-full pl-10 pr-12 py-2.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                  className={`w-full pl-10 pr-12 py-2.5 border rounded-lg focus:ring-2 focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${passwordError ? 'border-red-400 dark:border-red-500 focus:ring-red-400' : 'border-gray-300 dark:border-gray-600 focus:ring-[#00a6d6]'}`}
                   placeholder="••••••••"
                 />
                 <button
@@ -124,6 +145,12 @@ export default function Login() {
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
+              {passwordError && (
+                <p className="mt-1.5 flex items-center gap-1.5 text-sm text-red-600 dark:text-red-400">
+                  <AlertCircle size={14} className="flex-shrink-0" />
+                  {passwordError}
+                </p>
+              )}
             </div>
 
             <button

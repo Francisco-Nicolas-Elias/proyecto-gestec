@@ -47,6 +47,45 @@ export async function sendVerificationEmail(email: string, nombre: string, token
   }
 }
 
+export async function sendPasswordResetEmail(email: string, nombre: string, token: string): Promise<void> {
+  const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:5173';
+  const link = `${frontendUrl}/reset-password?token=${token}`;
+
+  try {
+    await transporter.sendMail({
+      from: `"GESTEC" <${process.env.SMTP_FROM ?? 'noreply@ies21.edu.ar'}>`,
+      to: email,
+      subject: 'Restablecer contraseña — GESTEC',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto;">
+          <h2 style="color: #00a6d6;">Hola ${nombre},</h2>
+          <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta en GESTEC.</p>
+          <p>Hacé clic en el siguiente botón para crear una nueva contraseña:</p>
+          <a href="${link}" style="
+            display: inline-block;
+            background: #00a6d6;
+            color: white;
+            padding: 12px 28px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            margin: 16px 0;
+          ">Restablecer contraseña</a>
+          <p style="color: #666; font-size: 13px;">
+            Este enlace expira en 1 hora. Si no solicitaste el restablecimiento, podés ignorar este email — tu contraseña no cambiará.
+          </p>
+          <p style="color: #999; font-size: 12px;">
+            Si el botón no funciona copiá este enlace en tu navegador:<br/>
+            <a href="${link}" style="color: #00a6d6;">${link}</a>
+          </p>
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.error('[email] Error al enviar email de recuperación de contraseña:', err);
+  }
+}
+
 export async function sendTaskAssignedEmail(
   email: string,
   nombre: string,

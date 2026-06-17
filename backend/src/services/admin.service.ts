@@ -50,6 +50,21 @@ export async function deleteUsuarioService(id: string, adminId: string, adminNom
   await addLogService(`Usuario "${usuario.nombre}" eliminado`, 'Administracion', adminNombre, 'administrador');
 }
 
+export async function toggleBloqueoUsuarioService(id: string, adminId: string, adminNombre: string) {
+  if (id === adminId) throw new AppError(400, 'No podés bloquear tu propio usuario');
+  const usuario = await prisma.usuario.findUnique({ where: { id } });
+  if (!usuario) throw new AppError(404, 'Usuario no encontrado');
+  const nuevo = !usuario.bloqueado;
+  const actualizado = await prisma.usuario.update({
+    where: { id },
+    data: { bloqueado: nuevo },
+    omit: { password: true },
+  });
+  const accion = nuevo ? 'bloqueado' : 'desbloqueado';
+  await addLogService(`Usuario "${usuario.nombre}" ${accion}`, 'Administracion', adminNombre, 'administrador');
+  return actualizado;
+}
+
 // ── Ubicaciones ───────────────────────────────────────────────────────────────
 
 export async function getUbicacionesService() {

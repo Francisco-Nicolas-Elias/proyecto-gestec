@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { login, me, registro, verificarEmail } from '../controllers/auth.controller';
+import { login, me, registro, verificarEmail, solicitarRecuperacion, resetPassword } from '../controllers/auth.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 import { validate } from '../middlewares/validate.middleware';
 import { z } from 'zod';
@@ -20,9 +20,23 @@ const registroSchema = z.object({
 
 const router = Router();
 
+const recuperarSchema = z.object({
+  email: z.string().email('Email inválido'),
+});
+
+const resetSchema = z.object({
+  token: z.string().min(1, 'Token requerido'),
+  password: z.string()
+    .min(8, 'La contraseña debe tener al menos 8 caracteres')
+    .refine((v) => /[A-Z]/.test(v), 'La contraseña debe contener al menos una mayúscula')
+    .refine((v) => /[^A-Za-z0-9]/.test(v), 'La contraseña debe contener al menos un carácter especial'),
+});
+
 router.post('/login', validate(loginSchema), login);
 router.get('/me', authenticate, me);
 router.post('/registro', validate(registroSchema), registro);
 router.get('/verificar/:token', verificarEmail);
+router.post('/recuperar-password', validate(recuperarSchema), solicitarRecuperacion);
+router.post('/reset-password', validate(resetSchema), resetPassword);
 
 export default router;

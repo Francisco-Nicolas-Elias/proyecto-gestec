@@ -1,5 +1,14 @@
 import * as http from './http';
 
+// ── Auth: recuperación de contraseña ─────────────────────────────────────────
+export async function solicitarRecuperacionPassword(email: string): Promise<{ message: string }> {
+  return http.post('/auth/recuperar-password', { email });
+}
+
+export async function resetPassword(token: string, password: string): Promise<{ message: string }> {
+  return http.post('/auth/reset-password', { token, password });
+}
+
 // ── Adjuntos: upload a Supabase Storage vía backend ──────────────────────────
 export async function uploadAdjunto(
   fileOrBlob: File | Blob,
@@ -897,6 +906,10 @@ export const getUsuarios = async (): Promise<Usuario[]> => {
 
 export const updateUsuario = async (id: string, data: Partial<Usuario>): Promise<Usuario> => {
   return http.put<Usuario>(`/admin/usuarios/${id}`, data);
+};
+
+export const toggleBloqueoUsuario = async (id: string): Promise<Usuario> => {
+  return http.patch<Usuario>(`/admin/usuarios/${id}/bloquear`, {});
 };
 
 export const createUsuario = async (usuario: Partial<Usuario> & { password?: string }): Promise<Usuario> => {

@@ -18,6 +18,9 @@ export async function deleteUsuario(req: Request, res: Response, next: NextFunct
     res.status(204).send();
   } catch (err) { next(err); }
 }
+export async function toggleBloqueoUsuario(req: Request, res: Response, next: NextFunction) {
+  try { res.json(await svc.toggleBloqueoUsuarioService(req.params.id, req.user!.id, req.user!.nombre)); } catch (err) { next(err); }
+}
 
 // Ubicaciones
 export async function getUbicaciones(req: Request, res: Response, next: NextFunction) {

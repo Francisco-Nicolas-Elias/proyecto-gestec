@@ -4,6 +4,7 @@ import { Mail, AlertCircle, CheckCircle, ArrowLeft, Sun, Moon } from 'lucide-rea
 import { useTheme } from '../components/ThemeContext';
 import { toast } from 'sonner@2.0.3';
 import logoImage from 'figma:asset/244c2ba8753ee74fe56548105b9eef40883f7717.png';
+import { solicitarRecuperacionPassword } from '../services/apiClient';
 
 export default function RecuperarPassword() {
   const navigate = useNavigate();
@@ -19,9 +20,7 @@ export default function RecuperarPassword() {
     setLoading(true);
 
     try {
-      // Simular llamada a API para enviar email de recuperación
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
+      await solicitarRecuperacionPassword(email);
       setSuccess(true);
       toast.success('Correo de recuperación enviado');
     } catch (err: any) {
