@@ -912,6 +912,10 @@ export const toggleBloqueoUsuario = async (id: string): Promise<Usuario> => {
   return http.patch<Usuario>(`/admin/usuarios/${id}/bloquear`, {});
 };
 
+export const deleteUsuario = async (id: string): Promise<void> => {
+  return http.del(`/admin/usuarios/${id}`);
+};
+
 export const createUsuario = async (usuario: Partial<Usuario> & { password?: string }): Promise<Usuario> => {
   return http.post<Usuario>('/admin/usuarios', usuario);
 };

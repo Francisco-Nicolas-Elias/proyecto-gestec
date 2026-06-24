@@ -3,7 +3,7 @@ import { Users, MapPin, Pencil, Trash2, Shield, Check, Cpu, Truck, Star, Plus, X
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import {
-  getUsuarios, createUsuario, updateUsuario, toggleBloqueoUsuario,
+  getUsuarios, createUsuario, updateUsuario, deleteUsuario, toggleBloqueoUsuario,
   getUbicacionesStruct, createUbicacionEntry, updateUbicacionEntry, deleteUbicacionEntry,
   getTiposComponente, getMarcas, getProveedores, getAreas,
   createTipoComponente, updateTipoComponente, deleteTipoComponente,
@@ -229,6 +229,7 @@ export default function Admin() {
     if (!userToDelete) return;
     setSaving(true);
     try {
+      await deleteUsuario(userToDelete.id);
       setUsuarios(prev => prev.filter(u => u.id !== userToDelete.id));
       toast.success('Usuario eliminado correctamente');
       addLog(
