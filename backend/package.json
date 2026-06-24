@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "API REST para GESTEC — Sistema de gestión de recursos IT",
   "main": "dist/server.js",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
