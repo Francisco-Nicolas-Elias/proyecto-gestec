@@ -16,7 +16,8 @@
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma migrate reset",
-    "import-excel": "tsx src/scripts/import-excel.ts"
+    "import-excel": "tsx src/scripts/import-excel.ts",
+    "populate-codigo-excel": "tsx src/scripts/populate-codigo-excel.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",

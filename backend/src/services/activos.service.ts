@@ -46,6 +46,13 @@ export async function getActivoByIdService(id: string) {
   return activo;
 }
 
+export async function buscarActivoPorNroPcService(nroPc: string) {
+  return prisma.activo.findFirst({
+    where: { nroPc: { equals: nroPc, mode: 'insensitive' } },
+    select: { id: true, nroPc: true },
+  });
+}
+
 export async function createActivoService(data: Prisma.ActivoUncheckedCreateInput, usuarioNombre: string) {
   const activo = await prisma.activo.create({
     data,

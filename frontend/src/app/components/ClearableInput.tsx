@@ -4,6 +4,8 @@ import React from 'react';
 interface Props extends React.InputHTMLAttributes<HTMLInputElement> {
   /** Clases extra para el div envolvente (útil para flex-1, w-full, etc.) */
   wrapperClassName?: string;
+  /** Si es true, oculta el botón de limpiar aunque haya valor */
+  noClear?: boolean;
 }
 
 export default function ClearableInput({
@@ -12,9 +14,11 @@ export default function ClearableInput({
   onChange,
   name,
   value,
+  noClear = false,
   ...props
 }: Props) {
   const hasValue = !!value;
+  const showClear = hasValue && !noClear;
 
   const handleClear = () => {
     onChange?.({
@@ -29,9 +33,9 @@ export default function ClearableInput({
         name={name}
         value={value}
         onChange={onChange}
-        className={`${className} ${hasValue ? 'pr-8' : ''}`}
+        className={`${className} ${showClear ? 'pr-8' : ''}`}
       />
-      {hasValue && (
+      {showClear && (
         <button
           type="button"
           onClick={handleClear}

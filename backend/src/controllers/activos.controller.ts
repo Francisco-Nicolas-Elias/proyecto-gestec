@@ -33,6 +33,13 @@ export async function deleteActivo(req: Request, res: Response, next: NextFuncti
   } catch (err) { next(err); }
 }
 
+export async function checkNroPc(req: Request, res: Response, next: NextFunction) {
+  try {
+    const activo = await svc.buscarActivoPorNroPcService(req.params.nroPc);
+    res.json(activo ?? null);
+  } catch (err) { next(err); }
+}
+
 export async function getIntervenciones(req: Request, res: Response, next: NextFunction) {
   try {
     res.json(await svc.getIntervencionesService(req.params.id));

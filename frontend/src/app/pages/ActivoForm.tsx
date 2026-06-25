@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import {
   getActivoById, createActivo, updateActivo, updateComponente,
-  getSectores, getPisoForSector, buscarComponentePorSerie,
+  getSectores, getPisoForSector, buscarComponentePorSerie, buscarActivoPorNroPc,
   type ModuloRAM, type ModuloAlmacenamiento,
 } from '../services/apiClient';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -132,6 +132,39 @@ export default function ActivoForm() {
   const [pADInput, setPADInput] = useState('');
   const [pADError, setPADError] = useState('');
 
+  // Validación N° PC duplicado
+  const [nroPcEnUso, setNroPcEnUso] = useState<string | null>(null);
+  const [nroPcChecking, setNroPcChecking] = useState(false);
+
+  useEffect(() => {
+    const nroPc = form.nroPc.trim();
+    if (!nroPc) { setNroPcEnUso(null); return; }
+    setNroPcChecking(true);
+    const timer = setTimeout(async () => {
+      try {
+        const encontrado = await buscarActivoPorNroPc(nroPc);
+        setNroPcEnUso(encontrado && encontrado.id !== id ? encontrado.id : null);
+      } catch {
+        setNroPcEnUso(null);
+      } finally {
+        setNroPcChecking(false);
+      }
+    }, 500);
+    return () => { clearTimeout(timer); setNroPcChecking(false); };
+  }, [form.nroPc, id]);
+
+  // Conflictos de componentes instalados en otro equipo: key → ubicacion del equipo conflictivo
+  const [conflictosEnUso, setConflictosEnUso] = useState<Record<string, string>>({});
+  const marcarConflicto = (key: string, ubicacion: string | null) => {
+    setConflictosEnUso(prev => {
+      if (ubicacion === null) {
+        const { [key]: _, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [key]: ubicacion };
+    });
+  };
+
   const hadPersistedDataRef = useRef(hasPersistedData(storageKey));
   const showDraftBanner = !isEdit && hadPersistedDataRef.current;
   const originalGpuSerialRef = useRef<string>('');
@@ -197,9 +230,13 @@ export default function ActivoForm() {
     setForm(prev => ({ ...prev, sector: val, piso: pisoBySector }));
   };
 
-  const warnIfEnUso = (comp: any) => {
+  const warnIfEnUso = (comp: any, key: string) => {
     if (comp.activoId && comp.activoId !== id) {
-      toast.warning(`Este componente ya está instalado en ${comp.ubicacion ?? comp.activoId}`);
+      const desc = comp.ubicacion ?? comp.activoId;
+      toast.warning(`Este componente ya está instalado en ${desc}`);
+      marcarConflicto(key, desc);
+    } else {
+      marcarConflicto(key, null);
     }
   };
 
@@ -215,11 +252,12 @@ export default function ActivoForm() {
       [`${field}Modelo`]: '',
       ...(field === 'placaVideo' ? { placaVideoCapacidad: '' } : {}),
     }));
+    marcarConflicto(field, null);
     if (nroSerie.trim()) {
       try {
         const comp = await buscarComponentePorSerie(nroSerie);
         if (comp) {
-          warnIfEnUso(comp);
+          warnIfEnUso(comp, field);
           setForm(prev => ({
             ...prev,
             [`${field}Marca`]: comp.marca,
@@ -243,6 +281,8 @@ export default function ActivoForm() {
   };
 
   const handleRemoveRAM = (index: number) => {
+    const moduleId = form.ramModulos[index]?.id;
+    if (moduleId) marcarConflicto(moduleId, null);
     setForm(prev => ({ ...prev, ramModulos: prev.ramModulos.filter((_, i) => i !== index) }));
   };
 
@@ -250,15 +290,19 @@ export default function ActivoForm() {
     const newModulos = [...form.ramModulos];
     newModulos[index] = { ...newModulos[index], [field]: value };
     setForm(prev => ({ ...prev, ramModulos: newModulos }));
-    if (field === 'nroSerie' && value.trim()) {
-      try {
-        const comp = await buscarComponentePorSerie(value);
-        if (comp) {
-          warnIfEnUso(comp);
-          newModulos[index] = { ...newModulos[index], marca: comp.marca, modelo: comp.modelo, capacidad: comp.capacidad ?? '' };
-          setForm(prev => ({ ...prev, ramModulos: [...newModulos] }));
-        }
-      } catch { /* silencioso */ }
+    if (field === 'nroSerie') {
+      const key = newModulos[index].id;
+      marcarConflicto(key, null);
+      if (value.trim()) {
+        try {
+          const comp = await buscarComponentePorSerie(value);
+          if (comp) {
+            warnIfEnUso(comp, key);
+            newModulos[index] = { ...newModulos[index], marca: comp.marca, modelo: comp.modelo, capacidad: comp.capacidad ?? '' };
+            setForm(prev => ({ ...prev, ramModulos: [...newModulos] }));
+          }
+        } catch { /* silencioso */ }
+      }
     }
   };
 
@@ -290,6 +334,8 @@ export default function ActivoForm() {
   };
 
   const handleRemoveAlmacenamiento = (index: number) => {
+    const moduleId = form.almacenamientoModulos[index]?.id;
+    if (moduleId) marcarConflicto(moduleId, null);
     setForm(prev => ({
       ...prev,
       almacenamientoModulos: prev.almacenamientoModulos.filter((_, i) => i !== index),
@@ -297,14 +343,16 @@ export default function ActivoForm() {
   };
 
   const handleAlmacenamientoSerieChange = async (index: number, nroSerie: string) => {
+    const key = form.almacenamientoModulos[index]?.id ?? `dsk-${index}`;
     const newModulos = [...form.almacenamientoModulos];
     newModulos[index] = { ...newModulos[index], nroSerie, tipo: '', marca: '', modelo: '', capacidad: '' };
     setForm(prev => ({ ...prev, almacenamientoModulos: newModulos }));
+    marcarConflicto(key, null);
     if (nroSerie.trim()) {
       try {
         const comp = await buscarComponentePorSerie(nroSerie);
         if (comp) {
-          warnIfEnUso(comp);
+          warnIfEnUso(comp, key);
           newModulos[index] = {
             ...newModulos[index],
             tipo: comp.tipoComponente,
@@ -499,8 +547,16 @@ export default function ActivoForm() {
                   const raw = e.target.value.toUpperCase().replace(/[^PC0-9]/g, '');
                   setForm(prev => ({ ...prev, nroPc: raw }));
                 }}
-                className={`${inputClass} font-mono`}
+                className={`${inputClass} font-mono ${nroPcEnUso ? 'border-red-400 focus:ring-red-400' : ''}`}
               />
+              {nroPcChecking && (
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Verificando...</p>
+              )}
+              {!nroPcChecking && nroPcEnUso && (
+                <p className="text-xs text-red-600 dark:text-red-400 mt-1 font-medium">
+                  Este N° de PC ya está asignado a otro equipo.
+                </p>
+              )}
             </Field>
             <Field label="Usuario">
               <ClearableInput
@@ -555,6 +611,11 @@ export default function ActivoForm() {
                 placeholder="Ej: SN-CPU-001"
                 className={`${inputClass} font-mono`}
               />
+              {conflictosEnUso['micro'] && (
+                <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                  Ya instalado en {conflictosEnUso['micro']}.
+                </p>
+              )}
             </Field>
             <Field label="Marca" hint="Autocompletado">
               <input type="text" value={form.microMarca} readOnly className={readonlyClass} placeholder="—" />
@@ -576,6 +637,11 @@ export default function ActivoForm() {
                 placeholder="Ej: SN-MB-001"
                 className={`${inputClass} font-mono`}
               />
+              {conflictosEnUso['placaMadre'] && (
+                <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                  Ya instalado en {conflictosEnUso['placaMadre']}.
+                </p>
+              )}
             </Field>
             <Field label="Marca" hint="Autocompletado">
               <input type="text" value={form.placaMadreMarca} readOnly className={readonlyClass} placeholder="—" />
@@ -611,6 +677,11 @@ export default function ActivoForm() {
                       placeholder="Ej: SN-RAM-001"
                       className={`${inputClass} font-mono`}
                     />
+                    {conflictosEnUso[modulo.id] && (
+                      <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                        Ya instalado en {conflictosEnUso[modulo.id]}.
+                      </p>
+                    )}
                   </Field>
                   <Field label="Marca">
                     <input type="text" value={modulo.marca} readOnly className={readonlyClass} placeholder="—" />
@@ -673,6 +744,11 @@ export default function ActivoForm() {
                       placeholder="Ej: SN-DSK-001"
                       className={`${inputClass} font-mono`}
                     />
+                    {conflictosEnUso[modulo.id] && (
+                      <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                        Ya instalado en {conflictosEnUso[modulo.id]}.
+                      </p>
+                    )}
                   </Field>
                   <Field label="Marca" hint="Autocompletado">
                     <input type="text" value={modulo.marca} readOnly className={readonlyClass} placeholder="—" />
@@ -711,6 +787,11 @@ export default function ActivoForm() {
                 placeholder="Ej: SN-GPU-001"
                 className={`${inputClass} font-mono`}
               />
+              {conflictosEnUso['placaVideo'] && (
+                <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                  Ya instalado en {conflictosEnUso['placaVideo']}.
+                </p>
+              )}
             </Field>
             <Field label="Marca" hint="Autocompletado">
               <input type="text" value={form.placaVideoMarca} readOnly className={readonlyClass} placeholder="—" />
@@ -823,6 +904,11 @@ export default function ActivoForm() {
                 placeholder="Ej: SN-IMP-001"
                 className={`${inputClass} font-mono`}
               />
+              {conflictosEnUso['impresora'] && (
+                <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                  Ya instalado en {conflictosEnUso['impresora']}.
+                </p>
+              )}
             </Field>
             <Field label="Marca" hint="Autocompletado">
               <input type="text" value={form.impresoraMarca} readOnly className={readonlyClass} placeholder="—" />
@@ -874,22 +960,29 @@ export default function ActivoForm() {
         </Section>
 
         {/* ── Botones ── */}
-        <div className="flex justify-end gap-3 pt-2">
-          <button
-            type="button"
-            onClick={() => { clearFormPersistence(); navigate('/activos'); }}
-            className="px-5 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            disabled={saving}
-            className="flex items-center gap-2 px-5 py-2 text-sm bg-[#00a6d6] hover:bg-[#0095c0] text-white rounded-lg transition-colors disabled:opacity-60"
-          >
-            <Save size={16} />
-            {saving ? 'Guardando...' : isEdit ? 'Guardar cambios' : 'Crear equipo'}
-          </button>
+        <div className="flex flex-col items-end gap-2 pt-2">
+          {Object.keys(conflictosEnUso).length > 0 && (
+            <p className="text-xs text-red-600 dark:text-red-400">
+              Hay {Object.keys(conflictosEnUso).length} componente{Object.keys(conflictosEnUso).length !== 1 ? 's' : ''} instalado{Object.keys(conflictosEnUso).length !== 1 ? 's' : ''} en otro equipo. Corregí los conflictos antes de guardar.
+            </p>
+          )}
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => { clearFormPersistence(); navigate('/activos'); }}
+              className="px-5 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={saving || Object.keys(conflictosEnUso).length > 0 || !!nroPcEnUso || nroPcChecking}
+              className="flex items-center gap-2 px-5 py-2 text-sm bg-[#00a6d6] hover:bg-[#0095c0] text-white rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <Save size={16} />
+              {saving ? 'Guardando...' : isEdit ? 'Guardar cambios' : 'Crear equipo'}
+            </button>
+          </div>
         </div>
       </form>
     </div>

@@ -217,6 +217,7 @@ model Activo {
 model Componente {
   id               String         @id @default(cuid())
   idManual         String         @unique
+  codigoExcel      String?
   tipoComponenteId String
   tipoComponente   TipoComponente @relation(fields: [tipoComponenteId], references: [id])
   marcaId          String

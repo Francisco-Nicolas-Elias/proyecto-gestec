@@ -656,6 +656,7 @@ export interface Area {
 export interface Componente {
   id: string;
   idManual: string;
+  codigoExcel?: string;
   ubicacion: string;
   tipoComponente: string;
   fecha: string;
@@ -692,6 +693,10 @@ export const getComponentes = async (): Promise<Componente[]> => {
 
 export const buscarComponentePorSerie = async (numeroSerie: string): Promise<Componente | null> => {
   return http.get<any>(`/componentes/serie/${encodeURIComponent(numeroSerie)}`).then(c => c ? mapComponente(c) : null);
+};
+
+export const buscarActivoPorNroPc = async (nroPc: string): Promise<{ id: string; nroPc: string } | null> => {
+  return http.get<any>(`/activos/check/${encodeURIComponent(nroPc)}`);
 };
 
 export const createComponente = async (data: Omit<Componente, 'id'>): Promise<Componente> => {

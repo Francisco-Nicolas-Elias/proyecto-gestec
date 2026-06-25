@@ -12,6 +12,8 @@ import {
   getProveedores,
   getComponentes,
   createComponente,
+  buscarComponentePorSerie,
+  type Componente,
 } from '../services/apiClient';
 import { toast } from 'sonner@2.0.3';
 
@@ -50,6 +52,8 @@ export default function NuevoComponenteForm() {
   const [saving, setSaving] = useState(false);
   const [showQr, setShowQr] = useState(false);
   const [ultimoIdManual, setUltimoIdManual] = useState<string | null>(null);
+  const [serieConflicto, setSerieConflicto] = useState<Componente | null>(null);
+  const [serieChecking, setSerieChecking] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -77,13 +81,36 @@ export default function NuevoComponenteForm() {
         }
       }
       setUltimoIdManual(maxId);
+      if (maxNum >= 0) {
+        const nextId = `IMP-${String(maxNum + 1).padStart(4, '0')}`;
+        setForm(f => ({ ...f, idManual: nextId }));
+      }
     }).finally(() => setLoadingCatalogos(false));
   }, []);
+
+  useEffect(() => {
+    const serie = form.numeroSerie.trim();
+    if (!serie) { setSerieConflicto(null); return; }
+    setSerieChecking(true);
+    const timer = setTimeout(async () => {
+      try {
+        const encontrado = await buscarComponentePorSerie(serie);
+        setSerieConflicto(encontrado ?? null);
+      } catch {
+        setSerieConflicto(null);
+      } finally {
+        setSerieChecking(false);
+      }
+    }, 500);
+    return () => { clearTimeout(timer); setSerieChecking(false); };
+  }, [form.numeroSerie]);
 
   const isFormValid =
     form.idManual.trim() !== '' &&
     form.tipoComponente !== '' &&
     form.numeroSerie.trim() !== '' &&
+    serieConflicto === null &&
+    !serieChecking &&
     form.marca !== '' &&
     form.modelo.trim() !== '' &&
     form.proveedor !== '';
@@ -146,21 +173,12 @@ export default function NuevoComponenteForm() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 ID Manual <span className="text-red-500">*</span>
               </label>
-              <ClearableInput
-                type="text"
-                value={form.idManual}
-                onChange={e => setForm(f => ({ ...f, idManual: e.target.value }))}
-                placeholder="Ej: IMP-001"
-                className={inputClass}
-              />
+              <div className="flex items-center px-3 py-2 text-sm bg-gray-50 dark:bg-gray-700/60 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white font-mono">
+                {form.idManual || <span className="text-gray-400 dark:text-gray-500">Cargando...</span>}
+              </div>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                Identificador visible. Compatible con registros Excel anteriores.
+                Asignado automáticamente. No editable.
               </p>
-              {ultimoIdManual && (
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  El último ID Manual es <strong>{ultimoIdManual}</strong>
-                </p>
-              )}
             </div>
 
             <div>
@@ -186,9 +204,21 @@ export default function NuevoComponenteForm() {
                   <span className="hidden sm:inline">QR</span>
                 </button>
               </div>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                Ingresá manualmente o escaneá el código QR.
-              </p>
+              {serieChecking && (
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Verificando...</p>
+              )}
+              {!serieChecking && serieConflicto && (
+                <p className="text-xs text-red-600 dark:text-red-400 mt-1 font-medium">
+                  {serieConflicto.activoId
+                    ? `Este N° de serie se encuentra asignado al equipo ${serieConflicto.ubicacion}.`
+                    : 'Este N° de serie ya está registrado en el sistema (en depósito).'}
+                </p>
+              )}
+              {!serieChecking && !serieConflicto && (
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                  Ingresá manualmente o escaneá el código QR.
+                </p>
+              )}
             </div>
           </div>
 
@@ -315,29 +345,36 @@ export default function NuevoComponenteForm() {
           </div>
 
           {/* Acciones */}
-          <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-700">
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              <span className="text-red-500">*</span> Campos obligatorios
-            </p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => navigate('/stock')}
-                className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={!isFormValid || saving}
-                className="flex items-center gap-2 px-5 py-2 text-sm bg-[#00a6d6] text-white rounded-lg hover:bg-[#008bb8] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {saving ? (
-                  <><Loader2 size={15} className="animate-spin" /> Guardando...</>
-                ) : (
-                  <><Save size={15} /> Registrar Componente</>
-                )}
-              </button>
+          <div className="flex flex-col gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
+            {serieConflicto && (
+              <p className="text-xs text-red-600 dark:text-red-400 text-right">
+                1 número de serie en conflicto — no se puede guardar.
+              </p>
+            )}
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                <span className="text-red-500">*</span> Campos obligatorios
+              </p>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => navigate('/stock')}
+                  className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={!isFormValid || saving}
+                  className="flex items-center gap-2 px-5 py-2 text-sm bg-[#00a6d6] text-white rounded-lg hover:bg-[#008bb8] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {saving ? (
+                    <><Loader2 size={15} className="animate-spin" /> Guardando...</>
+                  ) : (
+                    <><Save size={15} /> Registrar Componente</>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </form>

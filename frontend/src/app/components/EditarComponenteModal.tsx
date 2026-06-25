@@ -5,11 +5,11 @@ import ClearableInput from './ClearableInput';
 import QrScannerModal from './QrScannerModal';
 import {
   getCurrentUser,
-  getUbicaciones,
   getTiposComponente,
   getMarcas,
   getProveedores,
   updateComponente,
+  buscarComponentePorSerie,
   type Componente,
 } from '../services/apiClient';
 import { toast } from 'sonner@2.0.3';
@@ -26,7 +26,6 @@ export default function EditarComponenteModal({
 }: EditarComponenteModalProps) {
   const usuario = getCurrentUser();
 
-  const [ubicaciones, setUbicaciones] = useState<string[]>([]);
   const [tiposComponente, setTiposComponente] = useState<string[]>([]);
   const [marcas, setMarcas] = useState<string[]>([]);
   const [proveedores, setProveedores] = useState<string[]>([]);
@@ -34,7 +33,6 @@ export default function EditarComponenteModal({
 
   const [form, setForm] = useState({
     idManual: '',
-    ubicacion: '',
     tipoComponente: '',
     numeroSerie: '',
     marca: '',
@@ -45,14 +43,17 @@ export default function EditarComponenteModal({
 
   const [saving, setSaving] = useState(false);
   const [showQr, setShowQr] = useState(false);
+  const [serieConflicto, setSerieConflicto] = useState<Componente | null>(null);
+  const [serieChecking, setSerieChecking] = useState(false);
 
   useEffect(() => {
     if (!isOpen || !componente) return;
+    setSerieConflicto(null);
+    setSerieChecking(false);
     setLoadingCatalogos(true);
 
-    Promise.all([getUbicaciones(), getTiposComponente(), getMarcas(), getProveedores()])
-      .then(([ubs, tipos, mks, provs]) => {
-        setUbicaciones(ubs);
+    Promise.all([getTiposComponente(), getMarcas(), getProveedores()])
+      .then(([tipos, mks, provs]) => {
         setTiposComponente(tipos.map(t => t.nombre));
         setMarcas(mks.map(m => m.nombre));
         setProveedores(provs.map(p => p.nombre));
@@ -62,7 +63,6 @@ export default function EditarComponenteModal({
     // Pre-cargar datos del componente
     setForm({
       idManual: componente.idManual,
-      ubicacion: componente.ubicacion,
       tipoComponente: componente.tipoComponente,
       numeroSerie: componente.numeroSerie,
       marca: componente.marca,
@@ -72,14 +72,27 @@ export default function EditarComponenteModal({
     });
   }, [isOpen, componente]);
 
+  useEffect(() => {
+    const serie = form.numeroSerie.trim();
+    if (!serie || serie === componente?.numeroSerie) { setSerieConflicto(null); return; }
+    setSerieChecking(true);
+    const timer = setTimeout(async () => {
+      try {
+        const encontrado = await buscarComponentePorSerie(serie);
+        setSerieConflicto(encontrado && encontrado.id !== componente?.id ? encontrado : null);
+      } catch {
+        setSerieConflicto(null);
+      } finally {
+        setSerieChecking(false);
+      }
+    }, 500);
+    return () => { clearTimeout(timer); setSerieChecking(false); };
+  }, [form.numeroSerie, componente]);
+
   const isFormValid =
     form.idManual.trim() !== '' &&
-    form.ubicacion !== '' &&
-    form.tipoComponente !== '' &&
-    form.numeroSerie.trim() !== '' &&
-    form.marca !== '' &&
-    form.modelo.trim() !== '' &&
-    form.proveedor !== '';
+    serieConflicto === null &&
+    !serieChecking;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,13 +101,12 @@ export default function EditarComponenteModal({
     try {
       const actualizado = await updateComponente(componente.id, {
         idManual: form.idManual.trim(),
-        ubicacion: form.ubicacion,
-        tipoComponente: form.tipoComponente,
-        numeroSerie: form.numeroSerie.trim(),
-        marca: form.marca,
-        modelo: form.modelo.trim(),
-        proveedor: form.proveedor,
-        responsable: usuario?.nombre || componente.responsable,
+        ...(form.tipoComponente ? { tipoComponente: form.tipoComponente } : {}),
+        ...(form.numeroSerie.trim() ? { numeroSerie: form.numeroSerie.trim() } : {}),
+        ...(form.marca ? { marca: form.marca } : {}),
+        ...(form.modelo.trim() ? { modelo: form.modelo.trim() } : {}),
+        ...(form.proveedor ? { proveedor: form.proveedor } : {}),
+        ...(usuario?.nombre ? { responsable: usuario.nombre } : {}),
         capacidad: form.capacidad.trim() || undefined,
       });
       toast.success(`Componente "${actualizado.idManual}" actualizado correctamente`);
@@ -153,13 +165,9 @@ export default function EditarComponenteModal({
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     ID Manual <span className="text-red-500">*</span>
                   </label>
-                  <ClearableInput
-                    type="text"
-                    value={form.idManual}
-                    onChange={e => setForm(f => ({ ...f, idManual: e.target.value }))}
-                    placeholder="Ej: IMP-001"
-                    className={inputClass}
-                  />
+                  <div className="flex items-center px-3 py-2 text-sm bg-gray-50 dark:bg-gray-700/60 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white font-mono">
+                    {form.idManual}
+                  </div>
                 </div>
 
                 <div>
@@ -185,6 +193,16 @@ export default function EditarComponenteModal({
                       <span className="hidden sm:inline">QR</span>
                     </button>
                   </div>
+                  {serieChecking && (
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Verificando...</p>
+                  )}
+                  {!serieChecking && serieConflicto && (
+                    <p className="text-xs text-red-600 dark:text-red-400 mt-1 font-medium">
+                      {serieConflicto.activoId
+                        ? `Este N° de serie se encuentra asignado al equipo ${serieConflicto.ubicacion}.`
+                        : 'Este N° de serie ya está registrado en el sistema (en depósito).'}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -204,16 +222,13 @@ export default function EditarComponenteModal({
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Ubicación <span className="text-red-500">*</span>
+                    Ubicación
                   </label>
-                  <SearchableSelect
-                    options={ubicaciones}
-                    value={form.ubicacion}
-                    onChange={v => setForm(f => ({ ...f, ubicacion: v }))}
-                    placeholder="Seleccionar ubicación..."
-                  />
-                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                    Cambiar la ubicación registrará un movimiento en el historial.
+                  <div className="flex items-center px-3 py-2 text-sm bg-gray-50 dark:bg-gray-700/60 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300">
+                    {componente?.ubicacion || '—'}
+                  </div>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                    Solo editable desde el formulario del equipo.
                   </p>
                 </div>
               </div>
@@ -298,9 +313,15 @@ export default function EditarComponenteModal({
               </div>
 
               {/* Footer */}
-              <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex flex-col gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
+                {serieConflicto && (
+                  <p className="text-xs text-red-600 dark:text-red-400 text-right">
+                    1 número de serie en conflicto — no se puede guardar.
+                  </p>
+                )}
+                <div className="flex items-center justify-between">
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  <span className="text-red-500">*</span> Todos los campos son obligatorios
+                  Solo el ID Manual es obligatorio. El resto puede dejarse vacío.
                 </p>
                 <div className="flex gap-3">
                   <button
@@ -321,6 +342,7 @@ export default function EditarComponenteModal({
                       <><Save size={15} /> Guardar cambios</>
                     )}
                   </button>
+                </div>
                 </div>
               </div>
             </form>

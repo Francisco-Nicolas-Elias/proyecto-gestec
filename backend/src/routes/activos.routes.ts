@@ -8,6 +8,7 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/', isOperaciones, ctrl.getActivos);
+router.get('/check/:nroPc', isOperaciones, ctrl.checkNroPc);
 router.get('/:id', isOperaciones, ctrl.getActivo);
 router.post('/', isOperaciones, ctrl.createActivo);
 router.put('/:id', isOperaciones, ctrl.updateActivo);

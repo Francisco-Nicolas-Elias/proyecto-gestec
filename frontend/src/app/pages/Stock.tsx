@@ -124,13 +124,16 @@ export default function Stock() {
       const words = normalize(componenteSearch).split(' ').filter(Boolean);
       list = list.filter(c => {
         const text = [
-          c.idManual, c.tipoComponente, c.marca, c.modelo,
+          c.idManual, c.codigoExcel, c.tipoComponente, c.marca, c.modelo,
           c.numeroSerie, c.ubicacion, c.proveedor, c.responsable,
         ].map(normalize).join(' ');
         return words.every(w => text.includes(w));
       });
     }
-    if (compFilterId.trim()) list = list.filter(c => normalize(c.idManual).includes(normalize(compFilterId)));
+    if (compFilterId.trim()) list = list.filter(c =>
+      normalize(c.idManual).includes(normalize(compFilterId)) ||
+      normalize(c.codigoExcel ?? '').includes(normalize(compFilterId))
+    );
     if (compFilterTipo) list = list.filter(c => c.tipoComponente === compFilterTipo);
     if (compFilterFecha) list = list.filter(c => c.fecha === compFilterFecha);
     if (compFilterProveedor) list = list.filter(c => c.proveedor === compFilterProveedor);
@@ -256,7 +259,7 @@ export default function Stock() {
         { header: 'Responsable', dataKey: 'responsable' },
       ],
       body: sortedComponentes.map(c => ({
-        idManual:    c.idManual,
+        idManual:    c.codigoExcel ? `${c.idManual}\n#${c.codigoExcel}` : c.idManual,
         tipo:        c.tipoComponente,
         marca:       c.marca,
         modelo:      c.modelo,
@@ -412,8 +415,15 @@ export default function Stock() {
       sortable: true,
       sortDir: compSort?.key === 'idManual' ? compSort.dir : null,
       onHeaderClick: () => handleCompSort('idManual'),
-      render: (value: string) => (
-        <span className="font-mono font-medium text-[#00a6d6] dark:text-[#00c8f0] text-sm">{value}</span>
+      render: (value: string, row: Componente) => (
+        <div>
+          <span className="font-mono font-medium text-[#00a6d6] dark:text-[#00c8f0] text-sm">{value}</span>
+          {row.codigoExcel && (
+            <p className="text-xs text-gray-400 dark:text-gray-500 font-mono mt-0.5" title="ID original del Excel">
+              #{row.codigoExcel}
+            </p>
+          )}
+        </div>
       ),
     },
     {
