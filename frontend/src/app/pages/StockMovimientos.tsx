@@ -10,7 +10,7 @@ import { toast } from 'sonner@2.0.3';
 
 export default function StockMovimientos() {
   const navigate = useNavigate();
-  const { hasPermission } = useAuth();
+  const { hasPermission, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [movimientos, setMovimientos] = useState<any[]>([]);
   const [stockItems, setStockItems] = useState<any[]>([]);
@@ -116,6 +116,14 @@ export default function StockMovimientos() {
         return tipo;
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="p-6">
+        <LoadingSpinner />
+      </div>
+    );
+  }
 
   if (!hasPermission('stock')) {
     return (

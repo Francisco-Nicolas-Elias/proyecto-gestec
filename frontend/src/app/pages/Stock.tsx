@@ -21,7 +21,7 @@ const normalize = (s: string) => (s ?? '').toLowerCase().trim().replace(/\s+/g, 
 
 export default function Stock() {
   const navigate = useNavigate();
-  const { hasPermission } = useAuth();
+  const { hasPermission, loading: authLoading } = useAuth();
   const [searchParams] = useSearchParams();
 
   // ── Stock Items (inventario de cantidades) ──
@@ -559,6 +559,8 @@ export default function Stock() {
       setComponenteToDelete(null);
     }
   };
+
+  if (authLoading) return <div className="p-6"><LoadingSpinner /></div>;
 
   if (!hasPermission('stock')) {
     return (

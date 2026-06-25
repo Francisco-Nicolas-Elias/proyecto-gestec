@@ -10,6 +10,7 @@ import {
   getTiposComponente,
   getMarcas,
   getProveedores,
+  getComponentes,
   createComponente,
 } from '../services/apiClient';
 import { toast } from 'sonner@2.0.3';
@@ -48,6 +49,7 @@ export default function NuevoComponenteForm() {
 
   const [saving, setSaving] = useState(false);
   const [showQr, setShowQr] = useState(false);
+  const [ultimoIdManual, setUltimoIdManual] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -55,11 +57,26 @@ export default function NuevoComponenteForm() {
       getTiposComponente(),
       getMarcas(),
       getProveedores(),
-    ]).then(([ubs, tipos, mks, provs]) => {
+      getComponentes(),
+    ]).then(([ubs, tipos, mks, provs, componentes]) => {
       setUbicaciones(ubs);
       setTiposComponente(tipos.map((t: any) => t.nombre));
       setMarcas(mks.map((m: any) => m.nombre));
       setProveedores(provs.map((p: any) => p.nombre));
+
+      let maxNum = -1;
+      let maxId: string | null = null;
+      for (const c of componentes) {
+        const match = /^IMP-(\d+)$/i.exec(c.idManual.trim());
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (num > maxNum) {
+            maxNum = num;
+            maxId = c.idManual.trim();
+          }
+        }
+      }
+      setUltimoIdManual(maxId);
     }).finally(() => setLoadingCatalogos(false));
   }, []);
 
@@ -133,12 +150,17 @@ export default function NuevoComponenteForm() {
                 type="text"
                 value={form.idManual}
                 onChange={e => setForm(f => ({ ...f, idManual: e.target.value }))}
-                placeholder="Ej: RAM-001"
+                placeholder="Ej: IMP-001"
                 className={inputClass}
               />
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                 Identificador visible. Compatible con registros Excel anteriores.
               </p>
+              {ultimoIdManual && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  El último ID Manual es <strong>{ultimoIdManual}</strong>
+                </p>
+              )}
             </div>
 
             <div>

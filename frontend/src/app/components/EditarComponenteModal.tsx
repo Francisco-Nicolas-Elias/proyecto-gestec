@@ -157,7 +157,7 @@ export default function EditarComponenteModal({
                     type="text"
                     value={form.idManual}
                     onChange={e => setForm(f => ({ ...f, idManual: e.target.value }))}
-                    placeholder="Ej: RAM-001"
+                    placeholder="Ej: IMP-001"
                     className={inputClass}
                   />
                 </div>

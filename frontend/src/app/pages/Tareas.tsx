@@ -10,7 +10,7 @@ import { toast } from 'sonner@2.0.3';
 
 export default function Tareas() {
   const navigate = useNavigate();
-  const { hasPermission } = useAuth();
+  const { hasPermission, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [tareas, setTareas] = useState<any[]>([]);
   const [tareaSeleccionada, setTareaSeleccionada] = useState<any | null>(null);
@@ -69,6 +69,8 @@ export default function Tareas() {
   const tareasPendientes = tareas.filter(t => t.estado === 'pendiente');
   const tareasEnCurso = tareas.filter(t => t.estado === 'en_curso');
   const tareasFinalizadas = tareas.filter(t => t.estado === 'finalizada');
+
+  if (authLoading) return <div className="p-6"><LoadingSpinner /></div>;
 
   if (!hasPermission('tareas')) {
     return (

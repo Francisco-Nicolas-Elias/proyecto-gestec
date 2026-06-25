@@ -58,7 +58,7 @@ type AdminTab = 'usuarios' | 'ubicaciones' | 'roles' | 'componentes' | 'marcas' 
 const normalize = (s: string) => (s ?? '').toLowerCase().trim().replace(/\s+/g, ' ');
 
 export default function Admin() {
-  const { hasPermission, usuario } = useAuth();
+  const { hasPermission, usuario, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<AdminTab>('usuarios');
   const [saving, setSaving] = useState(false);
@@ -497,6 +497,8 @@ export default function Admin() {
   ];
 
   // ── Guards ─────────────────────────────────────────────────────────────────
+  if (authLoading) return <div className="p-6"><LoadingSpinner /></div>;
+
   if (!hasPermission('admin')) {
     return (
       <div className="p-6">
