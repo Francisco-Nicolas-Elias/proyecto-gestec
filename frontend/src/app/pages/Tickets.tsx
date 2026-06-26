@@ -10,6 +10,8 @@ import SearchableSelect from '../components/SearchableSelect';
 
 type QuickFilter = 'activos' | 'todos' | 'nuevo' | 'en_progreso' | 'resuelto';
 
+const normalize = (s: string) => (s ?? '').toLowerCase().trim().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
 export default function Tickets() {
   const navigate = useNavigate();
   const { hasPermission, loading: authLoading } = useAuth();
@@ -62,11 +64,12 @@ export default function Tickets() {
     }
 
     if (searchTerm) {
+      const q = normalize(searchTerm);
       filtered = filtered.filter(t =>
-        t.descripcion?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        t.creador?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        t.ubicacion?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        t.activo?.toLowerCase().includes(searchTerm.toLowerCase())
+        normalize(t.descripcion).includes(q) ||
+        normalize(t.creador).includes(q) ||
+        normalize(t.ubicacion).includes(q) ||
+        normalize(t.activo).includes(q)
       );
     }
 

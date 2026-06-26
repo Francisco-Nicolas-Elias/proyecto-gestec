@@ -103,6 +103,7 @@ export default function Activos() {
   // re-render (pesado) de la grilla en cada tecla, solo al hacer una pausa
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); }, []);
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);

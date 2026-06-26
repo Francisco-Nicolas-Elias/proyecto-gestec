@@ -104,21 +104,21 @@
 ## Fase 4 — ⚪ Bajos (limpieza)
 
 ### 4.1 Import implícito de crypto
-- [ ] **4.1.1** En `auth.service.ts`: agregar `import crypto from 'node:crypto'` explícito al inicio del archivo
+- [x] **4.1.1** En `auth.service.ts`: agregar `import crypto from 'node:crypto'` explícito al inicio del archivo
 
 ### 4.2 CORS sin fallback seguro
-- [ ] **4.2.1** En la configuración de CORS (probablemente `app.ts` o middleware dedicado): si `FRONTEND_URL` no está seteada, usar `''` (bloquear todo) en vez de `'*'` o `undefined`
+- [x] **4.2.1** En la configuración de CORS (probablemente `app.ts` o middleware dedicado): si `FRONTEND_URL` no está seteada, usar `''` (bloquear todo) en vez de `'*'` o `undefined`
 
 ### 4.3 JWT en localStorage
-- [ ] **4.3.1** Documentar el riesgo en un comentario en `AuthContext.tsx` (no hay acción inmediata posible sin cambiar toda la arquitectura de auth)
+- [x] **4.3.1** Documentar el riesgo en un comentario en `AuthContext.tsx` (no hay acción inmediata posible sin cambiar toda la arquitectura de auth)
 
 ### 4.4 Debounce sin cleanup
-- [ ] **4.4.1** Identificar el componente con debounce sin cleanup (probablemente un buscador)
-- [ ] **4.4.2** Agregar `return () => clearTimeout(timer)` en el `useEffect`
+- [x] **4.4.1** Identificar el componente con debounce sin cleanup (probablemente un buscador)
+- [x] **4.4.2** Agregar `return () => clearTimeout(timer)` en el `useEffect`
 
 ### 4.5 normalize() inconsistente con tildes
-- [ ] **4.5.1** Identificar el filtro afectado
-- [ ] **4.5.2** Aplicar `.normalize('NFD').replace(/[̀-ͯ]/g, '')` tanto al valor del input como al campo comparado
+- [x] **4.5.1** Identificar el filtro afectado
+- [x] **4.5.2** Aplicar `.normalize('NFD').replace(/[̀-ͯ]/g, '')` tanto al valor del input como al campo comparado
 
 ---
 
