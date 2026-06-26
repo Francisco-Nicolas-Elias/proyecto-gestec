@@ -124,9 +124,9 @@
 
 ## Verificación final
 
-- [ ] **V.1** Probar flujo de comentarios de tickets con rol `docente_empleado` — no debe poder comentar en tickets ajenos
-- [ ] **V.2** Probar borrado de adjunto con usuario que no es el dueño — debe recibir 403
-- [ ] **V.3** Enviar body inválido a cada endpoint con Zod — debe recibir 400 con mensaje descriptivo
-- [ ] **V.4** Verificar que un movimiento de stock tipo "ajuste" cambia la cantidad en pantalla
-- [ ] **V.5** Navegar a Activos, ActivoDetalle, Tickets, TicketDetalle como usuario no autenticado — no debe redirigir antes de que auth cargue
-- [ ] **V.6** Registrar una intervención con múltiples repuestos y verificar que todos se descontaron del stock correctamente
+- [x] **V.1** Probar flujo de comentarios de tickets con rol `docente_empleado` — no debe poder comentar en tickets ajenos
+- [x] **V.2** Probar borrado de adjunto con usuario que no es el dueño — debe recibir 403
+- [x] **V.3** Enviar body inválido a cada endpoint con Zod — debe recibir 400 con mensaje descriptivo
+- [x] **V.4** Verificar que un movimiento de stock tipo "ajuste" cambia la cantidad en pantalla
+- [x] **V.5** Navegar a Activos, ActivoDetalle, Tickets, TicketDetalle como usuario no autenticado — no debe redirigir antes de que auth cargue
+- [x] **V.6** Registrar una intervención con múltiples repuestos y verificar que todos se descontaron del stock correctamente
