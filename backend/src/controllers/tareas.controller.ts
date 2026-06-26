@@ -15,7 +15,7 @@ export async function getTarea(req: Request, res: Response, next: NextFunction) 
 
 export async function createTarea(req: Request, res: Response, next: NextFunction) {
   try {
-    res.status(201).json(await svc.createTareaService(req.body, req.user!.id, req.user!.nombre));
+    res.status(201).json(await svc.createTareaService(req.body, req.user!.id, req.user!.nombre, req.user!.rol));
   } catch (err) { next(err); }
 }
 
@@ -32,7 +32,7 @@ export async function updateTarea(req: Request, res: Response, next: NextFunctio
 
 export async function deleteTarea(req: Request, res: Response, next: NextFunction) {
   try {
-    await svc.deleteTareaService(req.params.id, req.user!.nombre);
+    await svc.deleteTareaService(req.params.id, req.user!.nombre, req.user!.rol);
     res.status(204).send();
   } catch (err) { next(err); }
 }

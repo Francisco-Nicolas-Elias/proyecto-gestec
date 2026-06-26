@@ -16,19 +16,19 @@ export async function getActivo(req: Request, res: Response, next: NextFunction)
 
 export async function createActivo(req: Request, res: Response, next: NextFunction) {
   try {
-    res.status(201).json(await svc.createActivoService(req.body, req.user!.nombre));
+    res.status(201).json(await svc.createActivoService(req.body, req.user!.nombre, req.user!.rol));
   } catch (err) { next(err); }
 }
 
 export async function updateActivo(req: Request, res: Response, next: NextFunction) {
   try {
-    res.json(await svc.updateActivoService(req.params.id, req.body, req.user!.nombre));
+    res.json(await svc.updateActivoService(req.params.id, req.body, req.user!.nombre, req.user!.rol));
   } catch (err) { next(err); }
 }
 
 export async function deleteActivo(req: Request, res: Response, next: NextFunction) {
   try {
-    await svc.deleteActivoService(req.params.id, req.user!.nombre);
+    await svc.deleteActivoService(req.params.id, req.user!.nombre, req.user!.rol);
     res.status(204).send();
   } catch (err) { next(err); }
 }
@@ -48,12 +48,12 @@ export async function getIntervenciones(req: Request, res: Response, next: NextF
 
 export async function createIntervencion(req: Request, res: Response, next: NextFunction) {
   try {
-    res.status(201).json(await svc.createIntervencionService(req.params.id, req.body, req.user!.nombre));
+    res.status(201).json(await svc.createIntervencionService(req.params.id, req.body, req.user!.nombre, req.user!.rol, req.user!.id));
   } catch (err) { next(err); }
 }
 
 export async function addMantenimiento(req: Request, res: Response, next: NextFunction) {
   try {
-    res.status(201).json(await svc.addMantenimientoService(req.params.id, req.body, req.user!.nombre));
+    res.status(201).json(await svc.addMantenimientoService(req.params.id, req.body, req.user!.nombre, req.user!.rol));
   } catch (err) { next(err); }
 }

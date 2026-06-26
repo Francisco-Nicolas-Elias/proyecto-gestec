@@ -73,6 +73,7 @@ export async function createStockMovimientoService(
   },
   usuarioId: string,
   usuarioNombre: string,
+  usuarioRol: string,
 ) {
   const item = await prisma.stockItem.findUnique({ where: { id: data.stockItemId } });
   if (!item) throw new Error('Item de stock no encontrado');
@@ -97,7 +98,7 @@ export async function createStockMovimientoService(
     `${accion} de stock: ${data.cantidad} unidades de "${item.nombre}"`,
     'Stock',
     usuarioNombre,
-    'operaciones',
+    usuarioRol,
   );
 
   return movimiento;

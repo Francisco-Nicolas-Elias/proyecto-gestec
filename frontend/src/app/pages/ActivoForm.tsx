@@ -460,13 +460,13 @@ export default function ActivoForm() {
             if (oldComp && oldComp.activoId === savedId) {
               await updateComponente(oldComp.id, { activoId: null } as any);
             }
-          } catch { /* silencioso */ }
+          } catch (err) { toast.error('No se pudo desvincular la placa de video anterior'); console.error(err); }
         }
         if (newGpuSerial) {
           try {
             const newComp = await buscarComponentePorSerie(newGpuSerial);
             if (newComp) await updateComponente(newComp.id, { activoId: savedId } as any);
-          } catch { /* silencioso */ }
+          } catch (err) { toast.error('No se pudo vincular la placa de video'); console.error(err); }
         }
       }
 
@@ -480,13 +480,13 @@ export default function ActivoForm() {
             if (oldComp && oldComp.activoId === savedId) {
               await updateComponente(oldComp.id, { activoId: null } as any);
             }
-          } catch { /* silencioso */ }
+          } catch (err) { toast.error('No se pudo desvincular la placa madre anterior'); console.error(err); }
         }
         if (newMbSerial) {
           try {
             const newComp = await buscarComponentePorSerie(newMbSerial);
             if (newComp) await updateComponente(newComp.id, { activoId: savedId } as any);
-          } catch { /* silencioso */ }
+          } catch (err) { toast.error('No se pudo vincular la placa madre'); console.error(err); }
         }
       }
 

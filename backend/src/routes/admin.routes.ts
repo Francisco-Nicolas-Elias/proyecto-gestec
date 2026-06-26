@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { authenticate } from '../middlewares/auth.middleware';
 import { isAdmin, isAnyUser } from '../middlewares/roles.middleware';
+import { validate } from '../middlewares/validate.middleware';
+import { createUsuarioSchema, updateUsuarioSchema } from '../schemas/usuario.schema';
 import * as ctrl from '../controllers/admin.controller';
 
 const router = Router();
@@ -9,8 +11,8 @@ router.use(authenticate);
 
 // Usuarios y logs — solo admin
 router.get('/usuarios', isAdmin, ctrl.getUsuarios);
-router.post('/usuarios', isAdmin, ctrl.createUsuario);
-router.put('/usuarios/:id', isAdmin, ctrl.updateUsuario);
+router.post('/usuarios', isAdmin, validate(createUsuarioSchema), ctrl.createUsuario);
+router.put('/usuarios/:id', isAdmin, validate(updateUsuarioSchema), ctrl.updateUsuario);
 router.delete('/usuarios/:id', isAdmin, ctrl.deleteUsuario);
 router.patch('/usuarios/:id/bloquear', isAdmin, ctrl.toggleBloqueoUsuario);
 

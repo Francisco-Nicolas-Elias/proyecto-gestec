@@ -33,7 +33,7 @@ const PAGE_SIZE = 30;
 
 export default function Activos() {
   const navigate = useNavigate();
-  const { hasPermission } = useAuth();
+  const { hasPermission, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [activos, setActivos] = useState<Activo[]>([]);
   const [filtered, setFiltered] = useState<Activo[]>([]);
@@ -462,7 +462,7 @@ export default function Activos() {
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginatedRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  if (loading) return <div className="p-6"><LoadingSpinner /></div>;
+  if (loading || authLoading) return <div className="p-6"><LoadingSpinner /></div>;
 
   return (
     <div className="p-4 lg:p-6 space-y-4">

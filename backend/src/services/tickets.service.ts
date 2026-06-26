@@ -31,7 +31,11 @@ export async function getTicketByIdService(id: string, userId: string, userRol: 
       creador: { omit: { password: true } },
       asignado: { omit: { password: true } },
       activo: true,
-      comentarios: { include: { autor: { omit: { password: true } }, adjuntos: true }, orderBy: { fecha: 'asc' } },
+      comentarios: {
+        where: userRol === Rol.docente_empleado ? { esInterno: false } : {},
+        include: { autor: { omit: { password: true } }, adjuntos: true },
+        orderBy: { fecha: 'asc' },
+      },
       adjuntos: true,
     },
   });
@@ -46,13 +50,14 @@ export async function createTicketService(
   data: Omit<Prisma.TicketUncheckedCreateInput, 'creadorId'>,
   creadorId: string,
   usuarioNombre: string,
+  usuarioRol: string,
 ) {
   const ticket = await prisma.ticket.create({
     data: { ...data, creadorId, estado: EstadoTicket.nuevo },
     include: { creador: { omit: { password: true } } },
   });
   const desc = ticket.descripcion.length > 60 ? ticket.descripcion.slice(0, 57) + '…' : ticket.descripcion;
-  await addLogService(`Ticket #${ticket.nro} creado — "${desc}"`, 'Tickets', usuarioNombre, 'docente_empleado');
+  await addLogService(`Ticket #${ticket.nro} creado — "${desc}"`, 'Tickets', usuarioNombre, usuarioRol);
   return ticket;
 }
 
@@ -65,10 +70,21 @@ const PRIORIDAD_LABELS: Record<string, string> = {
 
 export async function updateTicketService(
   id: string,
-  data: Prisma.TicketUncheckedUpdateInput,
+  rawData: Prisma.TicketUncheckedUpdateInput,
   usuarioNombre: string,
   usuarioRol: string,
 ) {
+  const { titulo, descripcion, estado, prioridad, tipo, ubicacion, activoId, asignadoId } = rawData as any;
+  const data: Prisma.TicketUncheckedUpdateInput = {};
+  if (titulo !== undefined) data.titulo = titulo;
+  if (descripcion !== undefined) data.descripcion = descripcion;
+  if (estado !== undefined) data.estado = estado;
+  if (prioridad !== undefined) data.prioridad = prioridad;
+  if (tipo !== undefined) data.tipo = tipo;
+  if (ubicacion !== undefined) data.ubicacion = ubicacion;
+  if (activoId !== undefined) data.activoId = activoId;
+  if (asignadoId !== undefined) data.asignadoId = asignadoId;
+
   // Capturar estado anterior para el diff
   const anterior = await prisma.ticket.findUnique({
     where: { id },
@@ -119,12 +135,12 @@ export async function updateTicketService(
   return ticket;
 }
 
-export async function deleteTicketService(id: string, usuarioNombre: string) {
+export async function deleteTicketService(id: string, usuarioNombre: string, usuarioRol: string) {
   const ticket = await prisma.ticket.findUnique({ where: { id } });
   if (!ticket) throw new AppError(404, 'Ticket no encontrado');
   await prisma.ticket.delete({ where: { id } });
   const desc = ticket.descripcion.length > 60 ? ticket.descripcion.slice(0, 57) + '…' : ticket.descripcion;
-  await addLogService(`Ticket #${ticket.nro} eliminado — "${desc}"`, 'Tickets', usuarioNombre, 'administrador');
+  await addLogService(`Ticket #${ticket.nro} eliminado — "${desc}"`, 'Tickets', usuarioNombre, usuarioRol);
 }
 
 export async function addComentarioTicketService(
@@ -132,7 +148,16 @@ export async function addComentarioTicketService(
   texto: string,
   esInterno: boolean,
   autorId: string,
+  userRol: Rol,
 ) {
+  const ticket = await prisma.ticket.findUnique({ where: { id: ticketId }, select: { creadorId: true } });
+  if (!ticket) throw new AppError(404, 'Ticket no encontrado');
+
+  if (userRol === Rol.docente_empleado) {
+    if (ticket.creadorId !== autorId) throw new AppError(403, 'No podés comentar en tickets ajenos');
+    esInterno = false;
+  }
+
   return prisma.comentarioTicket.create({
     data: { ticketId, texto, esInterno, autorId },
     include: { autor: { omit: { password: true } } },

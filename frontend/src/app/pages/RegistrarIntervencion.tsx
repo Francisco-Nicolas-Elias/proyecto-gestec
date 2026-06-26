@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { ArrowLeft, Save, Package } from 'lucide-react';
-import { getActivoById, createIntervencion, getStock, createStockMovimiento } from '../services/apiClient';
+import { getActivoById, createIntervencion, getStock } from '../services/apiClient';
 import { useAuth } from '../components/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
 import SearchableSelect from '../components/SearchableSelect';
@@ -112,7 +112,7 @@ export default function RegistrarIntervencion() {
     setSaving(true);
 
     try {
-      const intervencion = await createIntervencion({
+      await createIntervencion({
         activoId: id,
         fecha: new Date().toISOString().split('T')[0],
         tipo: formData.tipo,
@@ -123,20 +123,12 @@ export default function RegistrarIntervencion() {
         tecnico: usuario?.nombre || '',
         tiempoEstimado: formData.tiempoEstimado ? Number(formData.tiempoEstimado) : undefined,
         tiempoReal: formData.tiempoReal ? Number(formData.tiempoReal) : undefined,
-        repuestos: repuestos.filter(r => r.itemId).map(r => ({ item: r.itemNombre, cantidad: r.cantidad })),
+        repuestos: repuestos.filter(r => r.itemId).map(r => ({
+          item: r.itemNombre,
+          cantidad: r.cantidad,
+          stockItemId: r.itemId,
+        })),
       });
-
-      // Registrar movimientos de stock
-      for (const repuesto of repuestos.filter(r => r.itemId)) {
-        await createStockMovimiento({
-          itemId: repuesto.itemId,
-          itemNombre: repuesto.itemNombre,
-          tipo: 'salida',
-          cantidad: repuesto.cantidad,
-          motivo: `Usado en intervención ${formData.tipo} - ${activo.codigo}`,
-          referenciaIntervencion: intervencion.id,
-        });
-      }
 
       clearAll(); // ← Limpiar draft al guardar con éxito
       toast.success('Intervención registrada correctamente');

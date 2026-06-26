@@ -14,16 +14,16 @@ export async function buscarPorSerie(req: Request, res: Response, next: NextFunc
 }
 
 export async function createComponente(req: Request, res: Response, next: NextFunction) {
-  try { res.status(201).json(await svc.createComponenteService(req.body, req.user!.nombre)); } catch (err) { next(err); }
+  try { res.status(201).json(await svc.createComponenteService(req.body, req.user!.nombre, req.user!.rol)); } catch (err) { next(err); }
 }
 
 export async function updateComponente(req: Request, res: Response, next: NextFunction) {
-  try { res.json(await svc.updateComponenteService(req.params.id, req.body, req.user!.nombre)); } catch (err) { next(err); }
+  try { res.json(await svc.updateComponenteService(req.params.id, req.body, req.user!.nombre, req.user!.rol)); } catch (err) { next(err); }
 }
 
 export async function deleteComponente(req: Request, res: Response, next: NextFunction) {
   try {
-    await svc.deleteComponenteService(req.params.id, req.user!.nombre);
+    await svc.deleteComponenteService(req.params.id, req.user!.nombre, req.user!.rol);
     res.status(204).send();
   } catch (err) { next(err); }
 }

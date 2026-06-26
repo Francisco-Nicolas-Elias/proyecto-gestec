@@ -14,7 +14,7 @@ export async function getStockItems(req: Request, res: Response, next: NextFunct
 
 export async function createMovimiento(req: Request, res: Response, next: NextFunction) {
   try {
-    res.status(201).json(await svc.createStockMovimientoService(req.body, req.user!.id, req.user!.nombre));
+    res.status(201).json(await svc.createStockMovimientoService(req.body, req.user!.id, req.user!.nombre, req.user!.rol));
   } catch (err) { next(err); }
 }
 

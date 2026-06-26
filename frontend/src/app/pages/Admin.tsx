@@ -793,44 +793,23 @@ export default function Admin() {
           {/* ── Roles Tab ── */}
           {activeTab === 'roles' && (
             <div className="space-y-4">
-              <div className="flex justify-between items-center">
+              <div className="flex items-center justify-between">
                 <h3 className="font-semibold dark:text-white">Roles del Sistema</h3>
-                <button
-                  onClick={openNuevoRol}
-                  className="flex items-center gap-2 bg-[#00a6d6] hover:bg-[#0095c0] text-white px-4 py-2 rounded-lg transition-colors text-sm"
-                >
-                  <Plus size={16} /> Nuevo Rol
-                </button>
+                <span className="text-xs text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">
+                  Solo lectura — definidos por el sistema
+                </span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {roles.map(rol => (
-                  <div key={rol.id} className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 space-y-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <div className="w-9 h-9 rounded-lg bg-[#e6f7fc] dark:bg-[#004d63]/30 flex items-center justify-center flex-shrink-0">
-                          <Shield size={18} className="text-[#00a6d6]" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900 dark:text-white">{rol.nombre}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">{rol.descripcion}</p>
-                        </div>
+                  <div key={rol.id} className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-9 h-9 rounded-lg bg-[#e6f7fc] dark:bg-[#004d63]/30 flex items-center justify-center flex-shrink-0">
+                        <Shield size={18} className="text-[#00a6d6]" />
                       </div>
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <button
-                          onClick={() => handleEditRol(rol)}
-                          title="Editar rol"
-                          className="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
-                        >
-                          <Pencil size={15} />
-                        </button>
-                        <button
-                          onClick={() => { setRolToDelete(rol); setShowDeleteRolModal(true); }}
-                          title="Eliminar rol"
-                          className="p-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                        >
-                          <Trash2 size={15} />
-                        </button>
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white">{rol.nombre}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{rol.descripcion}</p>
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
@@ -854,7 +833,7 @@ export default function Admin() {
 
               <div className="bg-[#e6f7fc] dark:bg-[#004d63]/20 border border-[#b3e7f7] dark:border-[#004d63]/40 rounded-lg p-4">
                 <p className="text-sm text-[#007a9e] dark:text-[#00c8f0]">
-                  Los roles controlan el acceso a las distintas secciones del sistema. Cada usuario tiene asignado un rol que determina sus permisos.
+                  Los roles están definidos por el sistema y no son editables. Para cambiar los permisos de un usuario, modificá su rol desde la pestaña Usuarios.
                 </p>
               </div>
             </div>

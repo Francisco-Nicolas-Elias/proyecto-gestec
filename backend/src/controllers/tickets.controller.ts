@@ -16,7 +16,7 @@ export async function getTicket(req: Request, res: Response, next: NextFunction)
 
 export async function createTicket(req: Request, res: Response, next: NextFunction) {
   try {
-    res.status(201).json(await svc.createTicketService(req.body, req.user!.id, req.user!.nombre));
+    res.status(201).json(await svc.createTicketService(req.body, req.user!.id, req.user!.nombre, req.user!.rol));
   } catch (err) { next(err); }
 }
 
@@ -28,7 +28,7 @@ export async function updateTicket(req: Request, res: Response, next: NextFuncti
 
 export async function deleteTicket(req: Request, res: Response, next: NextFunction) {
   try {
-    await svc.deleteTicketService(req.params.id, req.user!.nombre);
+    await svc.deleteTicketService(req.params.id, req.user!.nombre, req.user!.rol);
     res.status(204).send();
   } catch (err) { next(err); }
 }
@@ -36,6 +36,8 @@ export async function deleteTicket(req: Request, res: Response, next: NextFuncti
 export async function addComentario(req: Request, res: Response, next: NextFunction) {
   try {
     const { texto, esInterno } = req.body;
-    res.status(201).json(await svc.addComentarioTicketService(req.params.id, texto, !!esInterno, req.user!.id));
+    res.status(201).json(
+      await svc.addComentarioTicketService(req.params.id, texto, !!esInterno, req.user!.id, req.user!.rol),
+    );
   } catch (err) { next(err); }
 }

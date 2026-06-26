@@ -67,7 +67,7 @@ type Tab = 'hardware' | 'historial' | 'tickets';
 export default function ActivoDetalle() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { hasPermission } = useAuth();
+  const { hasPermission, loading: authLoading } = useAuth();
   const usuario = getCurrentUser();
   const [loading, setLoading] = useState(true);
   const [activo, setActivo] = useState<Activo | null>(null);
@@ -351,7 +351,7 @@ export default function ActivoDetalle() {
     }
   };
 
-  if (loading) return <div className="p-6"><LoadingSpinner /></div>;
+  if (loading || authLoading) return <div className="p-6"><LoadingSpinner /></div>;
   if (!activo) return null;
 
   const tabs: { id: Tab; label: string }[] = [

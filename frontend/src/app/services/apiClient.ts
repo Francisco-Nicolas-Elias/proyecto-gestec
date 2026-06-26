@@ -400,7 +400,7 @@ export interface Intervencion {
   tipo: string;
   diagnostico: string;
   accion: string;
-  repuestos: { item: string; cantidad: number }[];
+  repuestos: { item: string; cantidad: number; stockItemId?: string }[];
   tecnico: string;
   tiempoEstimado?: number;
   tiempoReal?: number;

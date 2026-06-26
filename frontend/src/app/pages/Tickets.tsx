@@ -12,7 +12,7 @@ type QuickFilter = 'activos' | 'todos' | 'nuevo' | 'en_progreso' | 'resuelto';
 
 export default function Tickets() {
   const navigate = useNavigate();
-  const { hasPermission } = useAuth();
+  const { hasPermission, loading: authLoading } = useAuth();
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [tickets, setTickets] = useState<any[]>([]);
@@ -195,7 +195,7 @@ export default function Tickets() {
     resuelto: 'No hay tickets resueltos',
   };
 
-  if (loading) {
+  if (loading || authLoading) {
     return <div className="p-6"><LoadingSpinner /></div>;
   }
 

@@ -1,4 +1,4 @@
-import { Prisma, EstadoActivo } from '@prisma/client';
+import { Prisma, EstadoActivo, TipoMovimientoStock } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../middlewares/error.middleware';
 import { addLogService } from './logs.service';
@@ -53,12 +53,12 @@ export async function buscarActivoPorNroPcService(nroPc: string) {
   });
 }
 
-export async function createActivoService(data: Prisma.ActivoUncheckedCreateInput, usuarioNombre: string) {
+export async function createActivoService(data: Prisma.ActivoUncheckedCreateInput, usuarioNombre: string, usuarioRol: string) {
   const activo = await prisma.activo.create({
     data,
     include: { ubicacion: true },
   });
-  await addLogService(`Equipo "${activo.nroPc}" registrado`, 'Equipos', usuarioNombre, 'operaciones');
+  await addLogService(`Equipo "${activo.nroPc}" registrado`, 'Equipos', usuarioNombre, usuarioRol);
   return activo;
 }
 
@@ -66,27 +66,29 @@ export async function updateActivoService(
   id: string,
   data: Prisma.ActivoUncheckedUpdateInput,
   usuarioNombre: string,
+  usuarioRol: string,
 ) {
   const activo = await prisma.activo.update({
     where: { id },
     data,
     include: { ubicacion: true },
   });
-  await addLogService(`Equipo "${activo.nroPc}" editado`, 'Equipos', usuarioNombre, 'operaciones');
+  await addLogService(`Equipo "${activo.nroPc}" editado`, 'Equipos', usuarioNombre, usuarioRol);
   return activo;
 }
 
-export async function deleteActivoService(id: string, usuarioNombre: string) {
+export async function deleteActivoService(id: string, usuarioNombre: string, usuarioRol: string) {
   const activo = await prisma.activo.findUnique({ where: { id } });
   if (!activo) throw new AppError(404, 'Activo no encontrado');
   await prisma.activo.delete({ where: { id } });
-  await addLogService(`Equipo "${activo.nroPc}" eliminado`, 'Equipos', usuarioNombre, 'administrador');
+  await addLogService(`Equipo "${activo.nroPc}" eliminado`, 'Equipos', usuarioNombre, usuarioRol);
 }
 
 export async function addMantenimientoService(
   activoId: string,
   data: { fecha: string; tipo: string; descripcion: string; tecnico: string },
   usuarioNombre: string,
+  usuarioRol: string,
 ) {
   const [record] = await prisma.$transaction([
     prisma.mantenimientoRecord.create({
@@ -97,7 +99,7 @@ export async function addMantenimientoService(
       data: { fechaUltimoMantenimiento: new Date(data.fecha) },
     }),
   ]);
-  await addLogService(`Mantenimiento registrado en activo`, 'Equipos', usuarioNombre, 'operaciones');
+  await addLogService(`Mantenimiento registrado en activo`, 'Equipos', usuarioNombre, usuarioRol);
   return record;
 }
 
@@ -121,26 +123,52 @@ export async function createIntervencionService(
     tiempoReal?: number;
     resultado: string;
     comentarios?: string;
-    repuestos: { item: string; cantidad: number }[];
+    repuestos: { item: string; cantidad: number; stockItemId?: string }[];
   },
   usuarioNombre: string,
+  usuarioRol: string,
+  usuarioId: string,
 ) {
-  const intervencion = await prisma.intervencion.create({
-    data: {
-      activoId,
-      fecha: new Date(data.fecha),
-      tipo: data.tipo,
-      diagnostico: data.diagnostico,
-      accion: data.accion,
-      tecnico: data.tecnico,
-      tiempoEstimado: data.tiempoEstimado,
-      tiempoReal: data.tiempoReal,
-      resultado: data.resultado,
-      comentarios: data.comentarios,
-      repuestos: { create: data.repuestos },
-    },
-    include: { repuestos: true },
+  const intervencion = await prisma.$transaction(async (tx) => {
+    const inv = await tx.intervencion.create({
+      data: {
+        activoId,
+        fecha: new Date(data.fecha),
+        tipo: data.tipo,
+        diagnostico: data.diagnostico,
+        accion: data.accion,
+        tecnico: data.tecnico,
+        tiempoEstimado: data.tiempoEstimado,
+        tiempoReal: data.tiempoReal,
+        resultado: data.resultado,
+        comentarios: data.comentarios,
+        repuestos: { create: data.repuestos.map(({ item, cantidad }) => ({ item, cantidad })) },
+      },
+      include: { repuestos: true },
+    });
+
+    for (const rep of data.repuestos.filter((r) => r.stockItemId)) {
+      const item = await tx.stockItem.findUnique({ where: { id: rep.stockItemId! } });
+      if (!item) throw new AppError(404, `Item de stock "${rep.item}" no encontrado`);
+      await tx.stockMovimiento.create({
+        data: {
+          stockItemId: rep.stockItemId!,
+          tipo: TipoMovimientoStock.salida,
+          cantidad: rep.cantidad,
+          motivo: `Intervención: ${data.tipo}`,
+          referenciaIntervencion: inv.id,
+          usuarioId,
+        },
+      });
+      await tx.stockItem.update({
+        where: { id: rep.stockItemId! },
+        data: { cantidad: { decrement: rep.cantidad }, ultimaActualizacion: new Date() },
+      });
+    }
+
+    return inv;
   });
-  await addLogService(`Intervención técnica registrada en activo`, 'Equipos', usuarioNombre, 'operaciones');
+
+  await addLogService(`Intervención técnica registrada en activo`, 'Equipos', usuarioNombre, usuarioRol);
   return intervencion;
 }

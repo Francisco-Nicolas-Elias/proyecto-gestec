@@ -14,6 +14,8 @@ export async function uploadAdjunto(req: Request, res: Response, next: NextFunct
       file.mimetype,
       file.size,
       { ticketId, tareaId, comentarioTicketId, comentarioTareaId },
+      req.user!.id,
+      req.user!.rol,
     );
 
     res.status(201).json(adjunto);
@@ -22,7 +24,7 @@ export async function uploadAdjunto(req: Request, res: Response, next: NextFunct
 
 export async function deleteAdjunto(req: Request, res: Response, next: NextFunction) {
   try {
-    await svc.deleteAdjuntoService(req.params.id);
+    await svc.deleteAdjuntoService(req.params.id, req.user!.id, req.user!.rol);
     res.status(204).send();
   } catch (err) { next(err); }
 }

@@ -36,6 +36,7 @@ export async function buscarPorSerieService(numeroSerie: string) {
 export async function createComponenteService(
   data: Prisma.ComponenteUncheckedCreateInput,
   usuarioNombre: string,
+  usuarioRol: string,
 ) {
   const componente = await prisma.$transaction(async (tx) => {
     const c = await tx.componente.create({ data, include: { tipoComponente: true } });
@@ -51,7 +52,7 @@ export async function createComponenteService(
     });
     return c;
   });
-  await addLogService(`Componente "${componente.idManual}" registrado`, 'Stock', usuarioNombre, 'operaciones');
+  await addLogService(`Componente "${componente.idManual}" registrado`, 'Stock', usuarioNombre, usuarioRol);
   return componente;
 }
 
@@ -59,6 +60,7 @@ export async function updateComponenteService(
   id: string,
   data: Prisma.ComponenteUncheckedUpdateInput,
   usuarioNombre: string,
+  usuarioRol: string,
 ) {
   const prev = await prisma.componente.findUnique({ where: { id }, include: { activo: true } });
   if (!prev) throw new AppError(404, 'Componente no encontrado');
@@ -88,18 +90,18 @@ export async function updateComponenteService(
     return c;
   });
 
-  await addLogService(`Componente "${componente.idManual}" editado`, 'Stock', usuarioNombre, 'operaciones');
+  await addLogService(`Componente "${componente.idManual}" editado`, 'Stock', usuarioNombre, usuarioRol);
   return componente;
 }
 
-export async function deleteComponenteService(id: string, usuarioNombre: string) {
+export async function deleteComponenteService(id: string, usuarioNombre: string, usuarioRol: string) {
   const c = await prisma.componente.findUnique({ where: { id } });
   if (!c) throw new AppError(404, 'Componente no encontrado');
   await prisma.$transaction([
     prisma.historialMovimientoComponente.deleteMany({ where: { componenteId: id } }),
     prisma.componente.delete({ where: { id } }),
   ]);
-  await addLogService(`Componente "${c.idManual}" eliminado`, 'Stock', usuarioNombre, 'administrador');
+  await addLogService(`Componente "${c.idManual}" eliminado`, 'Stock', usuarioNombre, usuarioRol);
 }
 
 export async function getHistorialComponenteService(componenteId: string) {

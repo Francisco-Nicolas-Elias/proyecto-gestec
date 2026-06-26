@@ -27,7 +27,7 @@ const tiposProblema = [
 export default function TicketDetalle() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { usuario, hasPermission } = useAuth();
+  const { usuario, hasPermission, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [ticket, setTicket] = useState<any>(null);
   const [usuarios, setUsuarios] = useState<any[]>([]);
@@ -257,7 +257,7 @@ export default function TicketDetalle() {
     }
   };
 
-  if (loading) return <div className="p-6"><LoadingSpinner /></div>;
+  if (loading || authLoading) return <div className="p-6"><LoadingSpinner /></div>;
   if (!ticket) return null;
 
   const formatDate = (dateString: string) => {

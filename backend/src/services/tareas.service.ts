@@ -48,6 +48,7 @@ export async function createTareaService(
   data: { titulo: string; descripcion: string; prioridad: any; fechaLimite?: string; ubicacionTexto?: string; activoId?: string; asignadosIds?: string[]; asignadosNombres?: string[] },
   creadoPorId: string,
   usuarioNombre: string,
+  usuarioRol: string,
 ) {
   const { asignadosIds, asignadosNombres, ...rest } = data;
 
@@ -75,7 +76,7 @@ export async function createTareaService(
     include: { asignados: { include: { usuario: { omit: { password: true } } } } },
   });
 
-  await addLogService(`Tarea "${tarea.titulo}" creada`, 'Tareas', usuarioNombre, 'operaciones');
+  await addLogService(`Tarea "${tarea.titulo}" creada`, 'Tareas', usuarioNombre, usuarioRol);
 
   if (tarea.asignados.length > 0) {
     await notificarTareaAsignadaService(
@@ -232,11 +233,11 @@ export async function updateTareaService(id: string, data: any, usuarioNombre: s
   return tarea;
 }
 
-export async function deleteTareaService(id: string, usuarioNombre: string) {
+export async function deleteTareaService(id: string, usuarioNombre: string, usuarioRol: string) {
   const tarea = await prisma.tarea.findUnique({ where: { id } });
   if (!tarea) throw new AppError(404, 'Tarea no encontrada');
   await prisma.tarea.delete({ where: { id } });
-  await addLogService(`Tarea "${tarea.titulo}" eliminada`, 'Tareas', usuarioNombre, 'administrador');
+  await addLogService(`Tarea "${tarea.titulo}" eliminada`, 'Tareas', usuarioNombre, usuarioRol);
 }
 
 export async function addComentarioTareaService(tareaId: string, texto: string, autorId: string, usuarioNombre: string) {

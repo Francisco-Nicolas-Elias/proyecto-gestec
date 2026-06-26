@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { authenticate } from '../middlewares/auth.middleware';
 import { isOperaciones } from '../middlewares/roles.middleware';
+import { validate } from '../middlewares/validate.middleware';
+import { createActivoSchema, updateActivoSchema } from '../schemas/activo.schema';
 import * as ctrl from '../controllers/activos.controller';
 
 const router = Router();
@@ -10,8 +12,8 @@ router.use(authenticate);
 router.get('/', isOperaciones, ctrl.getActivos);
 router.get('/check/:nroPc', isOperaciones, ctrl.checkNroPc);
 router.get('/:id', isOperaciones, ctrl.getActivo);
-router.post('/', isOperaciones, ctrl.createActivo);
-router.put('/:id', isOperaciones, ctrl.updateActivo);
+router.post('/', isOperaciones, validate(createActivoSchema), ctrl.createActivo);
+router.put('/:id', isOperaciones, validate(updateActivoSchema), ctrl.updateActivo);
 router.delete('/:id', isOperaciones, ctrl.deleteActivo);
 
 router.get('/:id/intervenciones', isOperaciones, ctrl.getIntervenciones);
