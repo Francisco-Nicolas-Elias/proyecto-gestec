@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
+import { useAuth } from '../components/AuthContext';
 import { ArrowLeft, QrCode, User, Calendar, Save, Loader2 } from 'lucide-react';
 import SearchableSelect from '../components/SearchableSelect';
 import ClearableInput from '../components/ClearableInput';
@@ -30,6 +31,7 @@ const inputClass = 'w-full px-3 py-2 text-sm border border-gray-300 dark:border-
 
 export default function NuevoComponenteForm() {
   const navigate = useNavigate();
+  const { hasPermission, loading: authLoading } = useAuth();
   const usuario = getCurrentUser();
 
   const [ubicaciones, setUbicaciones] = useState<string[]>([]);
@@ -54,6 +56,10 @@ export default function NuevoComponenteForm() {
   const [ultimoIdManual, setUltimoIdManual] = useState<string | null>(null);
   const [serieConflicto, setSerieConflicto] = useState<Componente | null>(null);
   const [serieChecking, setSerieChecking] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading && !hasPermission('stock')) navigate('/stock', { replace: true });
+  }, [authLoading]);
 
   useEffect(() => {
     Promise.all([

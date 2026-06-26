@@ -75,6 +75,14 @@ export default function TicketDetalle() {
     if (id) loadTicketData();
   }, [id]);
 
+  // Cargar usuarios asignables cuando el rol ya está disponible
+  useEffect(() => {
+    if (!id || !isOperations) return;
+    getUsuarios()
+      .then((data) => setUsuarios(data.filter((u: any) => u.rol === 'operaciones' || u.rol === 'administrador')))
+      .catch(() => {});
+  }, [id, isOperations]);
+
   // Cargar catálogos cuando se activa el modo edición
   useEffect(() => {
     if (!editMode) return;
@@ -88,10 +96,7 @@ export default function TicketDetalle() {
 
   const loadTicketData = async () => {
     try {
-      const [ticketData, usuariosData] = await Promise.all([
-        getTicketById(id!),
-        isOperations ? getUsuarios() : Promise.resolve([]),
-      ]);
+      const ticketData = await getTicketById(id!);
 
       if (!ticketData) {
         toast.error('Ticket no encontrado');
@@ -101,9 +106,6 @@ export default function TicketDetalle() {
 
       setTicket(ticketData);
       setAdjuntos(ticketData.adjuntos || []);
-      if (isOperations) {
-        setUsuarios(usuariosData.filter((u: any) => u.rol === 'operaciones' || u.rol === 'administrador'));
-      }
     } catch (error) {
       console.error('Error loading ticket:', error);
       toast.error('Error al cargar el ticket');

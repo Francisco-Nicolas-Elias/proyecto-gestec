@@ -133,7 +133,9 @@ export async function createMarcaService(nombre: string, adminNombre: string) {
 }
 
 export async function updateMarcaService(id: string, nombre: string, adminNombre: string) {
-  return prisma.marca.update({ where: { id }, data: { nombre } });
+  const m = await prisma.marca.update({ where: { id }, data: { nombre } });
+  await addLogService(`Marca "${m.nombre}" editada`, 'Administracion', adminNombre, 'administrador');
+  return m;
 }
 
 export async function deleteMarcaService(id: string, adminNombre: string) {
@@ -161,7 +163,9 @@ export async function createProveedorService(
 }
 
 export async function updateProveedorService(id: string, data: { nombre: string; contacto?: string; telefono?: string }, adminNombre: string) {
-  return prisma.proveedor.update({ where: { id }, data });
+  const p = await prisma.proveedor.update({ where: { id }, data });
+  await addLogService(`Proveedor "${p.nombre}" editado`, 'Administracion', adminNombre, 'administrador');
+  return p;
 }
 
 export async function deleteProveedorService(id: string, adminNombre: string) {

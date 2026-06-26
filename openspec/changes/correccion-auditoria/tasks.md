@@ -78,26 +78,26 @@
 ## Fase 3 — 🟡 Medios (deuda técnica)
 
 ### 3.1 addLogService faltante en catálogo
-- [ ] **3.1.1** En `admin.service.ts (updateMarcaService)`: agregar `addLogService(...)` al final
-- [ ] **3.1.2** En `admin.service.ts (updateProveedorService)`: ídem
+- [x] **3.1.1** En `admin.service.ts (updateMarcaService)`: agregar `addLogService(...)` al final
+- [x] **3.1.2** En `admin.service.ts (updateProveedorService)`: ídem
 
 ### 3.2 stock.service lanza Error genérico
-- [ ] **3.2.1** En `stock.service.ts (createStockMovimientoService)`: reemplazar `throw new Error(...)` por `throw new AppError(404, ...)`
+- [x] **3.2.1** En `stock.service.ts (createStockMovimientoService)`: reemplazar `throw new Error(...)` por `throw new AppError(404, ...)`
 
 ### 3.3 Bug: ajuste de stock no aplica delta
-- [ ] **3.3.1** En `stock.service.ts`: en el case `'ajuste'` de `createStockMovimientoService`, agregar `prisma.stockItem.update({ where: { id }, data: { cantidad: { increment/decrement } } })`
-- [ ] **3.3.2** Verificar manualmente que un movimiento de ajuste cambia la cantidad visible en la UI
+- [x] **3.3.1** En `stock.service.ts`: en el case `'ajuste'` de `createStockMovimientoService`, agregar `prisma.stockItem.update({ where: { id }, data: { cantidad: { increment/decrement } } })`
+- [x] **3.3.2** Verificar manualmente que un movimiento de ajuste cambia la cantidad visible en la UI
 
 ### 3.4 Botón "Limpiar Todo" de logs sin try/catch
-- [ ] **3.4.1** En `Admin.tsx` (o donde esté el botón): envolver la llamada en try/catch con toast de error
+- [x] **3.4.1** En `Admin.tsx` (o donde esté el botón): envolver la llamada en try/catch con toast de error
 
 ### 3.5 Rutas frontend sin chequeo de permiso
-- [ ] **3.5.1** Identificar las rutas de creación de tarea y componente en `routes.tsx`
-- [ ] **3.5.2** Agregar `hasPermission(...)` o `ProtectedRoute` con rol requerido en esas rutas
+- [x] **3.5.1** Identificar las rutas de creación de tarea y componente en `routes.tsx`
+- [x] **3.5.2** Agregar `hasPermission(...)` o `ProtectedRoute` con rol requerido en esas rutas
 
 ### 3.6 Doble fetch en TicketDetalle.tsx
-- [ ] **3.6.1** Leer `TicketDetalle.tsx` e identificar los dos useEffect/fetch que cargan el mismo recurso
-- [ ] **3.6.2** Consolidar en un único fetch
+- [x] **3.6.1** Leer `TicketDetalle.tsx` e identificar los dos useEffect/fetch que cargan el mismo recurso
+- [x] **3.6.2** Consolidar en un único fetch
 
 ---
 

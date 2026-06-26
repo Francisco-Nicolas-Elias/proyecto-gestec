@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { useAuth } from '../components/AuthContext';
 import { ArrowLeft, Plus, Check, ChevronDown, Paperclip } from 'lucide-react';
 import { createTarea, getActivos, getUbicaciones, getUsuarios } from '../services/apiClient';
 import MultimediaUpload, { type Adjunto } from '../components/MultimediaUpload';
@@ -24,6 +25,7 @@ const selectClass = 'w-full px-3 py-2 border border-gray-300 dark:border-gray-60
 
 export default function NuevaTareaForm() {
   const navigate = useNavigate();
+  const { hasPermission, loading: authLoading } = useAuth();
   const [saving, setSaving] = useState(false);
   const [activos, setActivos] = useState<any[]>([]);
   const [ubicaciones, setUbicaciones] = useState<string[]>([]);
@@ -40,6 +42,10 @@ export default function NuevaTareaForm() {
   const activosFiltrados = formData.ubicacion
     ? activos.filter(a => a.sector === formData.ubicacion)
     : [];
+
+  useEffect(() => {
+    if (!authLoading && !hasPermission('tareas')) navigate('/tareas', { replace: true });
+  }, [authLoading]);
 
   useEffect(() => {
     Promise.all([getActivos(), getUbicaciones(), getUsuarios()]).then(

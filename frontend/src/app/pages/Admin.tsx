@@ -2034,10 +2034,14 @@ export default function Admin() {
               Cancelar
             </button>
             <button onClick={async () => {
-              await clearLogs();
-              setLogs([]);
-              setShowClearLogsModal(false);
-              toast.success('Historial de logs limpiado');
+              try {
+                await clearLogs();
+                setLogs([]);
+                setShowClearLogsModal(false);
+                toast.success('Historial de logs limpiado');
+              } catch {
+                toast.error('Error al limpiar los logs');
+              }
             }}
               className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition-colors text-sm">
               Limpiar Todo

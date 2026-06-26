@@ -1,5 +1,6 @@
 import { TipoMovimientoStock } from '@prisma/client';
 import { prisma } from '../lib/prisma';
+import { AppError } from '../middlewares/error.middleware';
 import { addLogService } from './logs.service';
 
 // Stock derivado desde Componentes (activos serializados)
@@ -76,7 +77,7 @@ export async function createStockMovimientoService(
   usuarioRol: string,
 ) {
   const item = await prisma.stockItem.findUnique({ where: { id: data.stockItemId } });
-  if (!item) throw new Error('Item de stock no encontrado');
+  if (!item) throw new AppError(404, 'Item de stock no encontrado');
 
   const movimiento = await prisma.$transaction(async (tx) => {
     const mov = await tx.stockMovimiento.create({
@@ -84,7 +85,11 @@ export async function createStockMovimientoService(
       include: { stockItem: true },
     });
 
-    const delta = data.tipo === 'entrada' ? data.cantidad : data.tipo === 'salida' ? -data.cantidad : 0;
+    // Para 'ajuste': el campo cantidad representa el nuevo total deseado,
+    // por lo que el delta es la diferencia respecto al stock actual.
+    const delta = data.tipo === 'entrada' ? data.cantidad
+                : data.tipo === 'salida'  ? -data.cantidad
+                : data.cantidad - item.cantidad;
     await tx.stockItem.update({
       where: { id: data.stockItemId },
       data: { cantidad: { increment: delta }, ultimaActualizacion: new Date() },
