@@ -103,6 +103,24 @@ export async function addMantenimientoService(
   return record;
 }
 
+export async function getHistorialComponentesByActivoService(activoId: string) {
+  return prisma.historialMovimientoComponente.findMany({
+    where: { activoId },
+    include: {
+      componente: {
+        select: {
+          idManual: true,
+          modelo: true,
+          numeroSerie: true,
+          tipoComponente: { select: { nombre: true } },
+          marca: { select: { nombre: true } },
+        },
+      },
+    },
+    orderBy: { fecha: 'desc' },
+  });
+}
+
 export async function getIntervencionesService(activoId: string) {
   return prisma.intervencion.findMany({
     where: { activoId },

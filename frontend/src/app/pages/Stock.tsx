@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router';
 import { Plus, Search, Filter, X, TrendingDown, Package, Cpu, Pencil, Trash2, Clock, Monitor, Warehouse, Eye, BarChart3, CheckCircle2, FileDown } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 import {
   getStock, getComponentes, deleteComponente,
   type Componente,
@@ -346,6 +347,29 @@ export default function Stock() {
       URL.revokeObjectURL(url);
       toast.success(`PDF exportado · ${sortedComponentes.length} componente${filteredComponentes.length !== 1 ? 's' : ''}`);
     }
+  };
+
+  // ── Exportar Componentes a Excel ──
+  const exportarComponentesExcel = () => {
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const rows = sortedComponentes.map(c => ({
+      'ID': c.idManual || '',
+      'Tipo': c.tipoComponente || '',
+      'Marca': c.marca || '',
+      'Modelo': c.modelo || '',
+      'Capacidad': c.capacidad || '',
+      'N° Serie': c.numeroSerie || '',
+      'Ubicación': c.activoId ? (c.ubicacion || '') : 'Depósito IT',
+      'Proveedor': c.proveedor || '',
+      'Fecha': c.fecha ? formatFecha(c.fecha) : '',
+      'Responsable': c.responsable || '',
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Componentes');
+    XLSX.writeFile(wb, `componentes_${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}.xlsx`);
+    toast.success(`Excel exportado · ${sortedComponentes.length} componente${sortedComponentes.length !== 1 ? 's' : ''}`);
   };
 
   // ── Columnas grilla Stock (cantidades) ──
@@ -746,6 +770,22 @@ export default function Stock() {
               <p className="text-xs text-gray-500 dark:text-gray-400">{sortedComponentes.length} de {componentes.length} registros</p>
             </div>
           </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={exportarComponentesExcel}
+              className="flex items-center gap-2 px-4 py-2 text-sm border border-green-500 text-green-600 dark:text-green-400 dark:border-green-500 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+            >
+              <FileDown size={15} />
+              <span className="hidden sm:inline">Exportar Excel</span>
+            </button>
+            <button
+              onClick={exportarComponentesPDF}
+              className="flex items-center gap-2 px-4 py-2 text-sm bg-[#00a6d6] text-white rounded-lg hover:bg-[#008bb8] transition-colors"
+            >
+              <FileDown size={15} />
+              <span className="hidden sm:inline">Exportar PDF</span>
+            </button>
+          </div>
         </div>
 
         <Table
@@ -796,15 +836,6 @@ export default function Stock() {
             </div>
           </div>
         )}
-        <div className="px-5 py-3 border-t border-gray-200 dark:border-gray-700 flex justify-end">
-          <button
-            onClick={exportarComponentesPDF}
-            className="flex items-center gap-2 px-4 py-2 text-sm bg-[#00a6d6] text-white rounded-lg hover:bg-[#008bb8] transition-colors"
-          >
-            <FileDown size={15} />
-            <span className="hidden sm:inline">Exportar PDF</span>
-          </button>
-        </div>
       </div>
 
       {/* ── Sección Stock de Cantidades ── */}

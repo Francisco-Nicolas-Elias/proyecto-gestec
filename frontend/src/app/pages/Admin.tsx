@@ -573,12 +573,6 @@ export default function Admin() {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <h3 className="font-semibold dark:text-white">Usuarios del Sistema</h3>
-                  <button
-                    onClick={openNuevoUsuario}
-                    className="flex items-center gap-2 bg-[#00a6d6] hover:bg-[#0095c0] text-white px-4 py-2 rounded-lg transition-colors text-sm"
-                  >
-                    <Plus size={16} /> Nuevo Usuario
-                  </button>
                 </div>
 
                 {/* Filters */}

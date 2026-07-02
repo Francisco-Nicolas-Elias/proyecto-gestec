@@ -117,8 +117,7 @@ function SvgBarChart({ data, isDark }: { data: BarDatum[]; isDark: boolean }) {
   const handleMouseMove = (e: React.MouseEvent<SVGRectElement>, idx: number) => {
     const rect = svgRef.current?.getBoundingClientRect();
     if (!rect) return;
-    const svgScale = W / rect.width;
-    setTooltip({ x: (e.clientX - rect.left) / svgScale, y: (e.clientY - rect.top) / svgScale, idx });
+    setTooltip({ x: e.clientX - rect.left, y: e.clientY - rect.top, idx });
     setHoveredIdx(idx);
   };
 
@@ -152,13 +151,10 @@ function SvgBarChart({ data, isDark }: { data: BarDatum[]; isDark: boolean }) {
         })}
       </svg>
       {tooltip !== null && (() => {
-        const svgRect = svgRef.current?.getBoundingClientRect();
-        if (!svgRect) return null;
-        const scale = svgRect.width / W;
         const d = data[tooltip.idx];
         return (
           <div
-            style={{ position: 'absolute', left: tooltip.x * scale + 10, top: tooltip.y * scale - 40, pointerEvents: 'none', zIndex: 50 }}
+            style={{ position: 'absolute', left: tooltip.x + 10, top: tooltip.y - 40, pointerEvents: 'none', zIndex: 50 }}
             className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm shadow-lg whitespace-nowrap"
           >
             <span className="text-gray-600 dark:text-gray-400 mr-1">{d.mes}:</span>

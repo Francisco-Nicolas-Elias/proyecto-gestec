@@ -8,8 +8,8 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import {
   getActivoById, getIntervenciones, getTickets, deleteActivo,
-  addMantenimientoRecord, getCurrentUser,
-  type Activo, type MantenimientoRecord,
+  addMantenimientoRecord, getCurrentUser, getHistorialComponentesByActivo,
+  type Activo, type MantenimientoRecord, type HistorialComponenteMovimiento,
 } from '../services/apiClient';
 import StatusBadge from '../components/StatusBadge';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -62,7 +62,7 @@ const Card = ({ title, icon: Icon, children }: { title: string; icon: any; child
   </div>
 );
 
-type Tab = 'hardware' | 'historial' | 'tickets';
+type Tab = 'hardware' | 'historial' | 'componentes' | 'tickets';
 
 export default function ActivoDetalle() {
   const { id } = useParams();
@@ -72,6 +72,7 @@ export default function ActivoDetalle() {
   const [loading, setLoading] = useState(true);
   const [activo, setActivo] = useState<Activo | null>(null);
   const [intervenciones, setIntervenciones] = useState<any[]>([]);
+  const [historialComponentes, setHistorialComponentes] = useState<HistorialComponenteMovimiento[]>([]);
   const [tickets, setTickets] = useState<any[]>([]);
   const [tab, setTab] = useState<Tab>('hardware');
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -88,15 +89,17 @@ export default function ActivoDetalle() {
 
   const loadData = async () => {
     try {
-      const [a, ints, ticks] = await Promise.all([
+      const [a, ints, ticks, histComp] = await Promise.all([
         getActivoById(id!),
         getIntervenciones(id!),
         getTickets(),
+        getHistorialComponentesByActivo(id!),
       ]);
       if (!a) { toast.error('Equipo no encontrado'); navigate('/activos'); return; }
       setActivo(a);
       setIntervenciones(ints);
       setTickets(ticks.filter((t: any) => t.activoId === id));
+      setHistorialComponentes(histComp);
     } catch { toast.error('Error al cargar el equipo'); }
     finally { setLoading(false); }
   };
@@ -357,6 +360,7 @@ export default function ActivoDetalle() {
   const tabs: { id: Tab; label: string }[] = [
     { id: 'hardware', label: 'Detalles Técnicos' },
     { id: 'historial', label: `Historial (${activo.historialMantenimiento.length})` },
+    { id: 'componentes', label: `Componentes (${historialComponentes.length})` },
     { id: 'tickets', label: `Tickets (${tickets.length})` },
   ];
 
@@ -757,6 +761,70 @@ export default function ActivoDetalle() {
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Historial de Componentes ── */}
+          {tab === 'componentes' && (
+            <div className="space-y-4">
+              <h3 className="font-semibold dark:text-white">Historial de Cambios de Componentes</h3>
+              {historialComponentes.length === 0 ? (
+                <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                  <Cpu size={36} className="mx-auto mb-3 opacity-40" />
+                  <p className="text-sm">Sin cambios de componentes registrados</p>
+                </div>
+              ) : (
+                <div className="space-y-0">
+                  {historialComponentes.map((h, i, arr) => {
+                    const accionColor =
+                      h.accion === 'instalado'   ? 'bg-green-500' :
+                      h.accion === 'removido'    ? 'bg-red-400' :
+                      h.accion === 'transferido' ? 'bg-blue-400' :
+                                                   'bg-gray-400';
+                    const accionBadge =
+                      h.accion === 'instalado'   ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' :
+                      h.accion === 'removido'    ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300' :
+                      h.accion === 'transferido' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' :
+                                                   'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400';
+                    const accionLabel =
+                      h.accion === 'instalado'   ? 'Instalado' :
+                      h.accion === 'removido'    ? 'Removido' :
+                      h.accion === 'transferido' ? 'Transferido' :
+                                                   'Registrado';
+                    return (
+                      <div key={h.id} className="flex gap-4">
+                        <div className="flex flex-col items-center pt-1">
+                          <div className={`w-3 h-3 rounded-full shrink-0 ${accionColor}`} />
+                          {i < arr.length - 1 && <div className="w-px flex-1 bg-gray-200 dark:bg-gray-700 my-1" />}
+                        </div>
+                        <div className="pb-5 flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-semibold dark:text-white">{fmtDate(h.fecha)}</span>
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${accionBadge}`}>{accionLabel}</span>
+                              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                {h.componente.tipoComponente.nombre} — {h.componente.marca.nombre} {h.componente.modelo}
+                              </span>
+                            </div>
+                            <span className="text-xs text-gray-400 dark:text-gray-500">por {h.responsable}</span>
+                          </div>
+                          <div className="mt-1 space-y-0.5">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">S/N: {h.componente.numeroSerie} · ID: {h.componente.idManual}</p>
+                            {(h.ubicacionOrigen || h.ubicacionDestino) && (
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {h.ubicacionOrigen && <span>Desde: <span className="font-medium">{h.ubicacionOrigen}</span></span>}
+                                {h.ubicacionOrigen && h.ubicacionDestino && <span className="mx-1">→</span>}
+                                {h.ubicacionDestino && <span>Hacia: <span className="font-medium">{h.ubicacionDestino}</span></span>}
+                              </p>
+                            )}
+                            {h.observaciones && <p className="text-xs text-gray-600 dark:text-gray-300 italic">{h.observaciones}</p>}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

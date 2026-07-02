@@ -16,6 +16,7 @@ router.post('/', isOperaciones, validate(createActivoSchema), ctrl.createActivo)
 router.put('/:id', isOperaciones, validate(updateActivoSchema), ctrl.updateActivo);
 router.delete('/:id', isOperaciones, ctrl.deleteActivo);
 
+router.get('/:id/historial-componentes', isOperaciones, ctrl.getHistorialComponentes);
 router.get('/:id/intervenciones', isOperaciones, ctrl.getIntervenciones);
 router.post('/:id/intervenciones', isOperaciones, ctrl.createIntervencion);
 router.post('/:id/mantenimiento', isOperaciones, ctrl.addMantenimiento);

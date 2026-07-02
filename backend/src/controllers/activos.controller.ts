@@ -40,6 +40,12 @@ export async function checkNroPc(req: Request, res: Response, next: NextFunction
   } catch (err) { next(err); }
 }
 
+export async function getHistorialComponentes(req: Request, res: Response, next: NextFunction) {
+  try {
+    res.json(await svc.getHistorialComponentesByActivoService(req.params.id));
+  } catch (err) { next(err); }
+}
+
 export async function getIntervenciones(req: Request, res: Response, next: NextFunction) {
   try {
     res.json(await svc.getIntervencionesService(req.params.id));

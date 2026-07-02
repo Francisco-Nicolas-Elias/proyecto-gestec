@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 import {
   getActivos, deleteActivo, getSectores,
   type Activo,
@@ -460,6 +461,41 @@ export default function Activos() {
     }
   };
 
+  const exportarEquiposExcel = () => {
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const fmtFecha = (v: string | null | undefined) =>
+      v ? new Date(v).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+    const rows = filtered.map(a => ({
+      'N° PC':        a.nroPc || '',
+      'Usuario':      a.usuario || '',
+      'Sector':       a.sector || '',
+      'Piso':         a.piso || '',
+      'Oficina':      a.oficina || '',
+      'CPU Marca':    a.microMarca || '',
+      'CPU Modelo':   a.microModelo || '',
+      'Placa Madre':  a.placaMadreMarca || '',
+      'RAM Total':    a.ramTotal || '',
+      'Alm. Marca':   (a.almacenamientoModulos?.length > 0 ? a.almacenamientoModulos.map((m: any) => m.marca).filter(Boolean).join(' / ') : a.discoMarca) || '',
+      'Alm. Modelo':  (a.almacenamientoModulos?.length > 0 ? a.almacenamientoModulos.map((m: any) => m.modelo).filter(Boolean).join(' / ') : a.discoModelo) || '',
+      'Alm. Total':   a.almacenamientoTotal || '',
+      'GPU':          [a.placaVideoMarca, a.placaVideoModelo].filter(Boolean).join(' ') || '',
+      'IP':           a.ip || '',
+      'MAC':          a.mac || '',
+      'ID AD':        a.idAD || '',
+      'P AD':         a.pAD || '',
+      'S.O.':         a.sistemaOperativo || '',
+      'Cambio PC':    fmtFecha(a.fechaCambioPC),
+      'Últ. Mant.':   fmtFecha(a.fechaUltimoMantenimiento),
+      'Estado':       a.estado === 'activa' ? 'Activo' : 'Inactivo',
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Equipos');
+    XLSX.writeFile(wb, `equipos_${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}.xlsx`);
+    toast.success(`Excel exportado · ${filtered.length} equipo${filtered.length !== 1 ? 's' : ''}`);
+  };
+
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginatedRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -476,6 +512,16 @@ export default function Activos() {
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {/* Exportar a Excel */}
+          <button
+            onClick={exportarEquiposExcel}
+            disabled={filtered.length === 0}
+            title={filtered.length === 0 ? 'No hay datos para exportar' : `Exportar ${filtered.length} equipo${filtered.length !== 1 ? 's' : ''} a Excel`}
+            className="flex items-center gap-2 px-3 py-2 text-sm border border-green-500 text-green-600 dark:text-green-400 dark:border-green-500 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <FileDown size={16} />
+            <span className="hidden sm:inline">Exportar Excel</span>
+          </button>
           {/* Exportar a PDF */}
           <button
             onClick={exportToPDF}

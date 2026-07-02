@@ -449,6 +449,27 @@ export const deleteActivo = async (id: string): Promise<void> => {
   emitActivosChange();
 };
 
+export interface HistorialComponenteMovimiento {
+  id: string;
+  accion: 'creado' | 'instalado' | 'removido' | 'transferido';
+  fecha: string;
+  responsable: string;
+  ubicacionOrigen?: string;
+  ubicacionDestino?: string;
+  observaciones?: string;
+  componente: {
+    idManual: string;
+    modelo: string;
+    numeroSerie: string;
+    tipoComponente: { nombre: string };
+    marca: { nombre: string };
+  };
+}
+
+export const getHistorialComponentesByActivo = async (activoId: string): Promise<HistorialComponenteMovimiento[]> => {
+  return http.get<HistorialComponenteMovimiento[]>(`/activos/${activoId}/historial-componentes`);
+};
+
 export const getIntervenciones = async (activoId: string): Promise<Intervencion[]> => {
   return http.get<Intervencion[]>(`/activos/${activoId}/intervenciones`);
 };
