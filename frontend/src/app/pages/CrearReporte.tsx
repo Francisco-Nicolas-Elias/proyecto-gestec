@@ -146,7 +146,7 @@ export default function CrearReporte() {
       <DraftBanner show={hadDraftRef.current} onDiscard={clearAll} />
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-6">
+      <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6 space-y-6">
 
         {/* Paso 1 — Ubicación */}
         <div>

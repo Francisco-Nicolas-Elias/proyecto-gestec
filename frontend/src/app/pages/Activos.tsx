@@ -614,29 +614,29 @@ export default function Activos() {
       {/* Grid Table */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
         <div ref={gridScrollRef} onScroll={handleGridScroll} className="overflow-x-auto">
-          <table className="w-full min-w-[1900px]">
+          <table className="w-full min-w-[400px]">
             <thead className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
               <tr>
                 <Th col="nroPc"     label="N° PC"         className="pl-4 sticky left-0 bg-gray-50 dark:bg-gray-700 z-10" />
-                <Th col="usuario"   label="Usuario" />
+                <Th col="usuario"   label="Usuario"            className="hidden sm:table-cell" />
                 <Th col="sector"    label="Sector" />
-                <Th col="piso"      label="Piso" />
-                <Th col="oficina"   label="Oficina" />
-                <Th col="microMarca" label="CPU Marca" />
-                <Th col="microModelo" label="CPU Modelo" />
-                <Th col="placaMadreMarca" label="Placa Madre" />
-                <Th col="ramTotal"  label="RAM Total" />
-                <Th col="discoMarca"  label="Alm. Marca" />
-                <Th col="discoModelo" label="Alm. Modelo" />
-                <Th col="almacenamientoTotal" label="Alm. Total" />
-                <Th col="placaVideoMarca" label="GPU" />
-                <Th col="ip"        label="IP" />
-                <Th col="mac"       label="MAC" />
-                <Th col="idAD"      label="ID AD" />
-                <Th col="pAD"       label="P AD" />
-                <Th col="sistemaOperativo" label="S.O." />
-                <Th col="fechaCambioPC"    label="Cambio PC" />
-                <Th col="fechaUltimoMantenimiento" label="Últ. Mant." />
+                <Th col="piso"      label="Piso"           className="hidden xl:table-cell" />
+                <Th col="oficina"   label="Oficina"        className="hidden xl:table-cell" />
+                <Th col="microMarca" label="CPU Marca"     className="hidden md:table-cell" />
+                <Th col="microModelo" label="CPU Modelo"   className="hidden lg:table-cell" />
+                <Th col="placaMadreMarca" label="Placa Madre" className="hidden xl:table-cell" />
+                <Th col="ramTotal"  label="RAM Total"      className="hidden md:table-cell" />
+                <Th col="discoMarca"  label="Alm. Marca"  className="hidden xl:table-cell" />
+                <Th col="discoModelo" label="Alm. Modelo" className="hidden xl:table-cell" />
+                <Th col="almacenamientoTotal" label="Alm. Total" className="hidden lg:table-cell" />
+                <Th col="placaVideoMarca" label="GPU"      className="hidden xl:table-cell" />
+                <Th col="ip"        label="IP"             className="hidden lg:table-cell" />
+                <Th col="mac"       label="MAC"            className="hidden xl:table-cell" />
+                <Th col="idAD"      label="ID AD"          className="hidden xl:table-cell" />
+                <Th col="pAD"       label="P AD"           className="hidden xl:table-cell" />
+                <Th col="sistemaOperativo" label="S.O."    className="hidden lg:table-cell" />
+                <Th col="fechaCambioPC"    label="Cambio PC" className="hidden xl:table-cell" />
+                <Th col="fechaUltimoMantenimiento" label="Últ. Mant." className="hidden lg:table-cell" />
                 <Th col="estado"    label="Estado" />
                 <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap sticky right-0 bg-gray-50 dark:bg-gray-700 z-10">
                   Acciones
@@ -665,39 +665,39 @@ export default function Activos() {
                         {a.nroPc}
                       </span>
                     </td>
-                    <td className="px-3 py-2.5 text-sm text-gray-800 dark:text-gray-200 whitespace-nowrap">{a.usuario || '—'}</td>
+                    <td className="px-3 py-2.5 text-sm text-gray-800 dark:text-gray-200 whitespace-nowrap hidden sm:table-cell">{a.usuario || '—'}</td>
                     <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{a.sector}</td>
-                    <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{a.piso}</td>
-                    <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{a.oficina || '—'}</td>
-                    <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{a.microMarca || '—'}</td>
-                    <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{a.microModelo || '—'}</td>
-                    <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                    <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap hidden xl:table-cell">{a.piso}</td>
+                    <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap hidden xl:table-cell">{a.oficina || '—'}</td>
+                    <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap hidden md:table-cell">{a.microMarca || '—'}</td>
+                    <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap hidden lg:table-cell">{a.microModelo || '—'}</td>
+                    <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap hidden xl:table-cell">
                       {(a.placaMadreMarca || a.placaMadreModelo)
                         ? `${a.placaMadreMarca} ${a.placaMadreModelo}`.trim()
                         : <span className="text-gray-400 font-mono tracking-widest">------</span>}
                     </td>
-                    <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{a.ramTotal || '—'}</td>
-                    <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                    <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap hidden md:table-cell">{a.ramTotal || '—'}</td>
+                    <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap hidden xl:table-cell">
                       {(a.almacenamientoModulos && a.almacenamientoModulos.length > 0)
                         ? a.almacenamientoModulos.map(m => m.marca).filter(Boolean).join(' / ') || '—'
                         : a.discoMarca || '—'}
                     </td>
-                    <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                    <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap hidden xl:table-cell">
                       {(a.almacenamientoModulos && a.almacenamientoModulos.length > 0)
                         ? a.almacenamientoModulos.map(m => m.modelo).filter(Boolean).join(' / ') || '—'
                         : a.discoModelo || '—'}
                     </td>
-                    <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{a.almacenamientoTotal || '—'}</td>
-                    <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                    <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap hidden lg:table-cell">{a.almacenamientoTotal || '—'}</td>
+                    <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap hidden xl:table-cell">
                       {(a.placaVideoMarca || a.placaVideoModelo)
                         ? `${a.placaVideoMarca} ${a.placaVideoModelo}`.trim()
                         : <span className="text-gray-400 font-mono tracking-widest">------</span>}
                     </td>
-                    <td className="px-3 py-2.5 font-mono text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">{a.ip || '—'}</td>
-                    <td className="px-3 py-2.5 font-mono text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">{a.mac || '—'}</td>
-                    <td className="px-3 py-2.5 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">{a.idAD || '—'}</td>
+                    <td className="px-3 py-2.5 font-mono text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap hidden lg:table-cell">{a.ip || '—'}</td>
+                    <td className="px-3 py-2.5 font-mono text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap hidden xl:table-cell">{a.mac || '—'}</td>
+                    <td className="px-3 py-2.5 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap hidden xl:table-cell">{a.idAD || '—'}</td>
                     {/* P AD — mostrar solo valor encriptado */}
-                    <td className="px-3 py-2.5 whitespace-nowrap">
+                    <td className="px-3 py-2.5 whitespace-nowrap hidden xl:table-cell">
                       {a.pAD ? (
                         <span className="inline-flex items-center gap-1 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded font-mono text-xs text-gray-700 dark:text-gray-300 tracking-widest">
                           <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 shrink-0"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -707,10 +707,10 @@ export default function Activos() {
                         <span className="text-sm text-gray-400">—</span>
                       )}
                     </td>
-                    <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{a.sistemaOperativo || '—'}</td>
-                    <td className="px-3 py-2.5 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">{fmtDate(a.fechaCambioPC)}</td>
+                    <td className="px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap hidden lg:table-cell">{a.sistemaOperativo || '—'}</td>
+                    <td className="px-3 py-2.5 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap hidden xl:table-cell">{fmtDate(a.fechaCambioPC)}</td>
                     {/* Último mantenimiento - clickable */}
-                    <td className="px-3 py-2.5 whitespace-nowrap">
+                    <td className="px-3 py-2.5 whitespace-nowrap hidden lg:table-cell">
                       {a.fechaUltimoMantenimiento ? (
                         <button
                           onClick={() => setHistorialActivo(a)}
@@ -733,7 +733,7 @@ export default function Activos() {
                         <button
                           onClick={() => navigate(`/activos/${a.id}`)}
                           title="Ver detalle"
-                          className="p-1.5 rounded-lg hover:bg-[#00a6d6]/10 text-gray-500 hover:text-[#00a6d6] dark:text-gray-400 dark:hover:text-[#00c4f0] transition-colors"
+                          className="p-2 rounded-lg hover:bg-[#00a6d6]/10 text-gray-500 hover:text-[#00a6d6] dark:text-gray-400 dark:hover:text-[#00c4f0] transition-colors"
                         >
                           <Eye size={16} />
                         </button>
@@ -742,14 +742,14 @@ export default function Activos() {
                             <button
                               onClick={() => navigate(`/activos/${a.id}/editar`)}
                               title="Editar"
-                              className="p-1.5 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 text-gray-500 hover:text-amber-600 dark:text-gray-400 dark:hover:text-amber-400 transition-colors"
+                              className="p-2 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 text-gray-500 hover:text-amber-600 dark:text-gray-400 dark:hover:text-amber-400 transition-colors"
                             >
                               <Pencil size={16} />
                             </button>
                             <button
                               onClick={() => setToDelete(a)}
                               title="Eliminar"
-                              className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors"
+                              className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors"
                             >
                               <Trash2 size={16} />
                             </button>

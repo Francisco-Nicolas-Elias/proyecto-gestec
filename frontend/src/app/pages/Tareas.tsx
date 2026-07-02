@@ -123,7 +123,7 @@ export default function Tareas() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Pendientes */}
         <div onDragOver={handleDragOver} onDrop={e => handleDrop(e, 'pendiente')}
-          className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 min-h-[500px]">
+          className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 min-h-[200px] lg:min-h-[500px]">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-gray-900 dark:text-white">Pendientes</h3>
             <span className="text-sm bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded">{tareasPendientes.length}</span>
@@ -140,7 +140,7 @@ export default function Tareas() {
 
         {/* En Curso */}
         <div onDragOver={handleDragOver} onDrop={e => handleDrop(e, 'en_curso')}
-          className="bg-[#e6f7fc] dark:bg-[#004d63]/10 rounded-xl p-4 min-h-[500px]">
+          className="bg-[#e6f7fc] dark:bg-[#004d63]/10 rounded-xl p-4 min-h-[200px] lg:min-h-[500px]">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-[#007a9e] dark:text-[#00c8f0]">En Curso</h3>
             <span className="text-sm bg-[#b3e7f7] dark:bg-[#004d63]/40 text-[#007a9e] dark:text-[#00c8f0] px-2 py-1 rounded">{tareasEnCurso.length}</span>
@@ -157,7 +157,7 @@ export default function Tareas() {
 
         {/* Finalizadas */}
         <div onDragOver={handleDragOver} onDrop={e => handleDrop(e, 'finalizada')}
-          className="bg-green-50 dark:bg-green-900/20 rounded-xl p-4 min-h-[500px]">
+          className="bg-green-50 dark:bg-green-900/20 rounded-xl p-4 min-h-[200px] lg:min-h-[500px]">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-green-900 dark:text-green-300">Finalizadas</h3>
             <span className="text-sm bg-green-200 dark:bg-green-800 text-green-700 dark:text-green-300 px-2 py-1 rounded">{tareasFinalizadas.length}</span>

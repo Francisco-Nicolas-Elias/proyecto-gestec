@@ -644,7 +644,7 @@ export default function TicketDetalle() {
 
         {/* ── Sidebar — Solo Operaciones ── */}
         {isOperations && (
-          <div className="space-y-6">
+          <div className="space-y-6 order-first lg:order-none">
             {/* Cambiar Estado */}
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
               <h3 className="font-semibold mb-3 dark:text-white">Cambiar Estado</h3>

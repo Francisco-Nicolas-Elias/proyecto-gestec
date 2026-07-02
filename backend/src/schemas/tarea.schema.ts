@@ -12,14 +12,14 @@ export const createTareaSchema = z.object({
 export const updateTareaSchema = z.object({
   titulo: z.string().min(1).optional(),
   descripcion: z.string().optional(),
-  estado: z.enum(['pendiente', 'en_progreso', 'completada', 'cancelada']).optional(),
+  estado: z.enum(['pendiente', 'en_curso', 'finalizada']).optional(),
   prioridad: z.enum(['baja', 'media', 'alta', 'urgente']).optional(),
   fechaLimite: z.string().optional().nullable(),
   asignadoIds: z.array(z.string()).optional(),
 }).passthrough();
 
 export const updateTareaEstadoSchema = z.object({
-  estado: z.enum(['pendiente', 'en_progreso', 'completada', 'cancelada']),
+  estado: z.enum(['pendiente', 'en_curso', 'finalizada']),
 });
 
 export const createComentarioTareaSchema = z.object({

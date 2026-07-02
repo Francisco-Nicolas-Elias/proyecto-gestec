@@ -251,7 +251,7 @@ export default function MainLayout() {
           <NotificationBell />
         )}
         
-        <div className="relative z-10 lg:pt-14">
+        <div className="relative lg:pt-14">
           {/* Fecha fija - solo desktop, alineada con la campanita */}
           <div className="hidden lg:flex fixed top-4 left-[17rem] z-40 items-center gap-2 bg-white dark:bg-gray-800 rounded-full shadow-lg border border-gray-200 dark:border-gray-700 px-4 py-2.5">
             <span className="text-sm text-[#00a6d6]">📅</span>
