@@ -3,6 +3,7 @@ import path from 'path';
 import { prisma } from '../lib/prisma';
 import { supabase, BUCKET } from '../lib/supabaseStorage';
 import { AppError } from '../middlewares/error.middleware';
+import { addLogService } from './logs.service';
 
 interface AdjuntoContext {
   ticketId?: string;
@@ -63,26 +64,19 @@ export async function uploadAdjuntoService(
       tipo: mimeToTipo(mimeType),
       url: publicUrl,
       tamano: formatSize(size),
+      subidoPorId: userId,
       ...context,
     },
+    include: { subidoPor: { select: { nombre: true, rol: true } } },
   });
 }
 
-export async function deleteAdjuntoService(id: string, userId: string, userRol: Rol) {
-  const adj = await prisma.adjunto.findUnique({
-    where: { id },
-    include: {
-      ticket: { select: { creadorId: true } },
-      comentarioTicket: { select: { autorId: true } },
-    },
-  });
+export async function deleteAdjuntoService(id: string, userId: string, userRol: Rol, usuarioNombre: string) {
+  const adj = await prisma.adjunto.findUnique({ where: { id } });
   if (!adj) throw new AppError(404, 'Adjunto no encontrado');
 
-  if (userRol === Rol.docente_empleado) {
-    const esOwner =
-      (adj.ticketId && adj.ticket?.creadorId === userId) ||
-      (adj.comentarioTicketId && adj.comentarioTicket?.autorId === userId);
-    if (!esOwner) throw new AppError(403, 'No tenés permiso para eliminar este adjunto');
+  if (userRol === Rol.docente_empleado && adj.subidoPorId !== userId) {
+    throw new AppError(403, 'No podés eliminar archivos subidos por otra persona');
   }
 
   const storageKey = adj.url.split(`/object/public/${BUCKET}/`)[1];
@@ -91,4 +85,7 @@ export async function deleteAdjuntoService(id: string, userId: string, userRol: 
   }
 
   await prisma.adjunto.delete({ where: { id } });
+
+  const modulo = adj.ticketId || adj.comentarioTicketId ? 'Tickets' : 'Tareas';
+  await addLogService(`Adjunto "${adj.nombre}" eliminado`, modulo, usuarioNombre, userRol);
 }

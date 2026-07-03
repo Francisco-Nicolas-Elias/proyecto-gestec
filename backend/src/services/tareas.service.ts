@@ -36,8 +36,14 @@ export async function getTareaByIdService(id: string) {
       asignados: { include: { usuario: { omit: { password: true } } } },
       activo: true,
       historial: { orderBy: { fecha: 'asc' } },
-      comentarios: { include: { autor: { omit: { password: true } }, adjuntos: true }, orderBy: { fecha: 'asc' } },
-      adjuntos: true,
+      comentarios: {
+        include: {
+          autor: { omit: { password: true } },
+          adjuntos: { include: { subidoPor: { select: { nombre: true, rol: true } } } },
+        },
+        orderBy: { fecha: 'asc' },
+      },
+      adjuntos: { include: { subidoPor: { select: { nombre: true, rol: true } } } },
     },
   });
   if (!tarea) throw new AppError(404, 'Tarea no encontrada');
@@ -244,7 +250,10 @@ export async function addComentarioTareaService(tareaId: string, texto: string, 
   const [comentario] = await prisma.$transaction([
     prisma.comentarioTarea.create({
       data: { tareaId, texto, autorId },
-      include: { autor: { omit: { password: true } }, adjuntos: true },
+      include: {
+        autor: { omit: { password: true } },
+        adjuntos: { include: { subidoPor: { select: { nombre: true, rol: true } } } },
+      },
     }),
     prisma.tareaHistorial.create({
       data: { tareaId, accion: `Comentario agregado`, usuario: usuarioNombre },
@@ -253,14 +262,22 @@ export async function addComentarioTareaService(tareaId: string, texto: string, 
   return comentario;
 }
 
-export async function updateComentarioTareaService(comentarioId: string, texto: string) {
+export async function updateComentarioTareaService(comentarioId: string, texto: string, userId: string) {
+  const comentario = await prisma.comentarioTarea.findUnique({ where: { id: comentarioId }, select: { autorId: true } });
+  if (!comentario) throw new AppError(404, 'Comentario no encontrado');
+  if (comentario.autorId !== userId) throw new AppError(403, 'Solo podés editar tus propios comentarios');
+
   return prisma.comentarioTarea.update({
     where: { id: comentarioId },
     data: { texto },
-    include: { autor: { omit: { password: true } }, adjuntos: true },
+    include: {
+      autor: { omit: { password: true } },
+      adjuntos: { include: { subidoPor: { select: { nombre: true, rol: true } } } },
+    },
   });
 }
 
-export async function deleteComentarioTareaService(comentarioId: string) {
+export async function deleteComentarioTareaService(comentarioId: string, usuarioNombre: string, usuarioRol: string) {
   await prisma.comentarioTarea.delete({ where: { id: comentarioId } });
+  await addLogService(`Comentario de tarea eliminado`, 'Tareas', usuarioNombre, usuarioRol);
 }

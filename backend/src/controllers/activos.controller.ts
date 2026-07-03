@@ -8,6 +8,12 @@ export async function getActivos(req: Request, res: Response, next: NextFunction
   } catch (err) { next(err); }
 }
 
+export async function getActivosBasico(req: Request, res: Response, next: NextFunction) {
+  try {
+    res.json(await svc.getActivosBasicoService());
+  } catch (err) { next(err); }
+}
+
 export async function getActivo(req: Request, res: Response, next: NextFunction) {
   try {
     res.json(await svc.getActivoByIdService(req.params.id));

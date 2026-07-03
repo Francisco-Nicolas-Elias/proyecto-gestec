@@ -285,7 +285,7 @@ export default function Dashboard() {
       setAllTickets(tickets);
       setAllTareas(tareas);
       setAllStock(stock);
-      setLogs((await getLogs()).slice(0, 10));
+      if (hasPermission('admin')) setLogs((await getLogs()).slice(0, 10));
     } catch (e) {
       console.error('Error loading dashboard:', e);
     } finally {
@@ -479,34 +479,36 @@ export default function Dashboard() {
       )}
 
       {/* Row 3: Actividad Reciente + Tickets Recientes */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div className={`grid grid-cols-1 ${hasPermission('admin') ? 'lg:grid-cols-2' : ''} gap-5`}>
 
-        <SectionCard>
-          <SectionHeader title="Actividad reciente" action="Ver logs" onAction={() => navigate('/admin?tab=logs')} />
-          <div className="px-5 pb-5 space-y-3">
-            {logs.length === 0 ? (
-              <p className="text-sm text-gray-400 py-4 text-center">Sin actividad registrada</p>
-            ) : logs.map(log => {
-              const Icon     = MODULO_ICON[log.modulo]  || Activity;
-              const colorCls = MODULO_COLOR[log.modulo] || MODULO_COLOR.Sistema;
-              return (
-                <div key={log.id} className="flex items-start gap-3">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${colorCls}`}>
-                    <Icon size={14} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-800 dark:text-gray-200 leading-snug line-clamp-2">{log.accion}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-xs text-gray-400 dark:text-gray-500">{log.usuario}</span>
-                      <span className="text-gray-300 dark:text-gray-600">·</span>
-                      <span className="text-xs text-gray-400 dark:text-gray-500">{fmtRelative(log.fechaHora)}</span>
+        {hasPermission('admin') && (
+          <SectionCard>
+            <SectionHeader title="Actividad reciente" action="Ver logs" onAction={() => navigate('/admin?tab=logs')} />
+            <div className="px-5 pb-5 space-y-3">
+              {logs.length === 0 ? (
+                <p className="text-sm text-gray-400 py-4 text-center">Sin actividad registrada</p>
+              ) : logs.map(log => {
+                const Icon     = MODULO_ICON[log.modulo]  || Activity;
+                const colorCls = MODULO_COLOR[log.modulo] || MODULO_COLOR.Sistema;
+                return (
+                  <div key={log.id} className="flex items-start gap-3">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${colorCls}`}>
+                      <Icon size={14} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-800 dark:text-gray-200 leading-snug line-clamp-2">{log.accion}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs text-gray-400 dark:text-gray-500">{log.usuario}</span>
+                        <span className="text-gray-300 dark:text-gray-600">·</span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500">{fmtRelative(log.fechaHora)}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        </SectionCard>
+                );
+              })}
+            </div>
+          </SectionCard>
+        )}
 
         <SectionCard>
           <SectionHeader title="Tickets recientes" action="Ver todos" onAction={() => navigate('/tickets')} />

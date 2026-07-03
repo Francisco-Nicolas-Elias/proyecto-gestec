@@ -129,3 +129,44 @@ export async function sendTaskAssignedEmail(
     console.error('[email] Error al enviar email de tarea asignada:', err);
   }
 }
+
+export async function sendTicketAssignedEmail(
+  email: string,
+  nombre: string,
+  ticket: { id: string; nro: number; descripcion: string },
+  asignadoPor: string,
+): Promise<void> {
+  const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:5173';
+  const link = `${frontendUrl}/tickets/${ticket.id}`;
+
+  try {
+    await transporter.sendMail({
+      from: `"GESTEC" <${process.env.SMTP_FROM ?? 'noreply@ies21.edu.ar'}>`,
+      to: email,
+      subject: `Te asignaron el ticket #${ticket.nro}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto;">
+          <h2 style="color: #00a6d6;">Hola ${nombre},</h2>
+          <p><strong>${asignadoPor}</strong> te asignó como responsable del ticket #${ticket.nro}:</p>
+          <p style="font-size: 16px; font-weight: bold; color: #333;">"${ticket.descripcion}"</p>
+          <a href="${link}" style="
+            display: inline-block;
+            background: #00a6d6;
+            color: white;
+            padding: 12px 28px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            margin: 16px 0;
+          ">Ver ticket</a>
+          <p style="color: #999; font-size: 12px;">
+            Si el botón no funciona copiá este enlace en tu navegador:<br/>
+            <a href="${link}" style="color: #00a6d6;">${link}</a>
+          </p>
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.error('[email] Error al enviar email de ticket asignado:', err);
+  }
+}

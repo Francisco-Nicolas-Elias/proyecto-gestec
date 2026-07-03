@@ -176,18 +176,6 @@ export default function Login() {
               ¿Olvidaste tu contraseña?
             </button>
           </div>
-
-          {/* Demo Users */}
-          <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-            <p className="text-xs text-gray-500 mb-2">Usuarios de prueba:</p>
-            <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400">
-              <p>• admin@institucion.edu (Administrador)</p>
-              <p>• jperez@institucion.edu (Operaciones)</p>
-              <p>• mgarcia@institucion.edu (Docente/Empleado)</p>
-              <p>• clopez@institucion.edu (Docente/Empleado)</p>
-              <p className="text-gray-500 italic mt-2">Cualquier contraseña es válida</p>
-            </div>
-          </div>
         </div>
       </div>
     </div>

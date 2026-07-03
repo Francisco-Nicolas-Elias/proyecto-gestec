@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { ArrowLeft, Send, Paperclip, Monitor } from 'lucide-react';
-import { createTicket, getActivos, getUbicaciones } from '../services/apiClient';
+import { createTicket, getActivosBasico, getUbicaciones } from '../services/apiClient';
 import MultimediaUpload, { type Adjunto } from '../components/MultimediaUpload';
 import SearchableSelect from '../components/SearchableSelect';
 import DraftBanner from '../components/DraftBanner';
@@ -51,7 +51,7 @@ export default function CrearReporte() {
   const loadData = async () => {
     try {
       const [activosData, ubicacionesData] = await Promise.all([
-        getActivos(),
+        getActivosBasico(),
         getUbicaciones(),
       ]);
       setActivos(activosData);
@@ -105,9 +105,9 @@ export default function CrearReporte() {
       toast.success('Ticket creado correctamente');
       clearAll(); // ← Limpiar draft al guardar con éxito
       navigate(`/tickets/${ticket.id}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating ticket:', error);
-      toast.error('Error al crear el ticket');
+      toast.error(error.message || 'Error al crear el ticket');
     } finally {
       setSaving(false);
     }
@@ -175,7 +175,7 @@ export default function CrearReporte() {
           <SearchableSelect
             options={activosFiltrados.map(a => ({
               value: a.id,
-              label: `${a.codigo} — ${a.marca} ${a.modelo}`,
+              label: a.codigo,
             }))}
             value={formData.activoId}
             onChange={v => setFormData(prev => ({ ...prev, activoId: v }))}

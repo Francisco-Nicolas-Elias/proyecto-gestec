@@ -45,12 +45,12 @@ export async function addComentario(req: Request, res: Response, next: NextFunct
 }
 
 export async function updateComentario(req: Request, res: Response, next: NextFunction) {
-  try { res.json(await svc.updateComentarioTareaService(req.params.comentarioId, req.body.texto)); } catch (err) { next(err); }
+  try { res.json(await svc.updateComentarioTareaService(req.params.comentarioId, req.body.texto, req.user!.id)); } catch (err) { next(err); }
 }
 
 export async function deleteComentario(req: Request, res: Response, next: NextFunction) {
   try {
-    await svc.deleteComentarioTareaService(req.params.comentarioId);
+    await svc.deleteComentarioTareaService(req.params.comentarioId, req.user!.nombre, req.user!.rol);
     res.status(204).send();
   } catch (err) { next(err); }
 }

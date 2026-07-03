@@ -2,17 +2,18 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import {
   ArrowLeft, Send, User, MapPin, Calendar, AlertCircle,
-  Paperclip, Pencil, Trash2, Check, X, Monitor,
+  Paperclip, Pencil, Trash2, Check, X, Monitor, ChevronDown,
 } from 'lucide-react';
 import {
-  getTicketById, updateTicketStatus, addComentario, getUsuarios,
+  getTicketById, updateTicketStatus, addComentario, updateComentarioTicket, deleteComentarioTicket, getUsuariosStaff,
   updateTicketAdjuntos, updateTicket, deleteTicket,
-  getUbicaciones, getActivos,
+  getUbicaciones, getActivosBasico,
 } from '../services/apiClient';
 import { type Adjunto } from '../components/MultimediaUpload';
 import MultimediaUpload from '../components/MultimediaUpload';
 import SearchableSelect from '../components/SearchableSelect';
 import { useAuth } from '../components/AuthContext';
+import { getRolAvatarClasses } from '../components/rolColor';
 import StatusBadge from '../components/StatusBadge';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { toast } from 'sonner@2.0.3';
@@ -34,6 +35,11 @@ export default function TicketDetalle() {
   const [comentario, setComentario] = useState('');
   const [esInterno, setEsInterno] = useState(false);
   const [enviandoComentario, setEnviandoComentario] = useState(false);
+  const [confirmDeleteCommentId, setConfirmDeleteCommentId] = useState<string | null>(null);
+  const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingCommentText, setEditingCommentText] = useState('');
+  const [savingCommentEdit, setSavingCommentEdit] = useState(false);
 
   // Prioridad inline
   const [savingPrioridad, setSavingPrioridad] = useState(false);
@@ -60,6 +66,9 @@ export default function TicketDetalle() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [eliminando, setEliminando] = useState(false);
 
+  // Asignación (múltiples responsables)
+  const [showAsignadosDropdown, setShowAsignadosDropdown] = useState(false);
+
   const isOperations = hasPermission('tickets_gestion');
 
   // Solo admins y operadores pueden modificar la prioridad
@@ -68,8 +77,10 @@ export default function TicketDetalle() {
   // Activos filtrados por la ubicación elegida en el formulario de edición
   const activosFiltradosEdit = activosEdit.filter(a => a.sector === editForm.ubicacion);
 
-  // Permiso para editar/eliminar: creador del ticket o administrador
-  const canEditDelete = usuario?.email === ticket?.creadorEmail || usuario?.rol === 'administrador';
+  // Editar: el creador del ticket o el equipo de operaciones/admin
+  const canEdit = usuario?.email === ticket?.creadorEmail || isOperations;
+  // Eliminar: exclusivo de operaciones/admin — el creador nunca puede eliminar
+  const canDelete = isOperations;
 
   useEffect(() => {
     if (id) loadTicketData();
@@ -78,15 +89,15 @@ export default function TicketDetalle() {
   // Cargar usuarios asignables cuando el rol ya está disponible
   useEffect(() => {
     if (!id || !isOperations) return;
-    getUsuarios()
-      .then((data) => setUsuarios(data.filter((u: any) => u.rol === 'operaciones' || u.rol === 'administrador')))
+    getUsuariosStaff()
+      .then(setUsuarios)
       .catch(() => {});
   }, [id, isOperations]);
 
   // Cargar catálogos cuando se activa el modo edición
   useEffect(() => {
     if (!editMode) return;
-    Promise.all([getUbicaciones(), getActivos()])
+    Promise.all([getUbicaciones(), getActivosBasico()])
       .then(([ubs, acts]) => {
         setUbicacionesEdit(ubs);
         setActivosEdit(acts);
@@ -127,9 +138,9 @@ export default function TicketDetalle() {
         const updated = await import('../services/apiClient').then(m => m.getTicketById(id!));
         if (updated) setAdjuntos(updated.adjuntos || []);
       }
-    } catch {
+    } catch (error: any) {
       setAdjuntos(prev);
-      toast.error('Error al actualizar los archivos adjuntos');
+      toast.error(error.message || 'Error al actualizar los archivos adjuntos');
     } finally {
       setSavingAdjuntos(false);
     }
@@ -230,12 +241,15 @@ export default function TicketDetalle() {
     }
   };
 
-  const handleAsignar = async (asignadoId: string) => {
+  const handleToggleAsignado = async (usuarioId: string) => {
+    const actuales: string[] = ticket.asignadosIds ?? [];
+    const nuevos = actuales.includes(usuarioId)
+      ? actuales.filter((uid: string) => uid !== usuarioId)
+      : [...actuales, usuarioId];
     try {
-      const asignado = usuarios.find((u: any) => u.id === asignadoId);
-      const updated = await updateTicketStatus(id!, ticket.estado, asignado?.nombre);
+      const updated = await updateTicketStatus(id!, ticket.estado, nuevos);
       setTicket({ ...updated, comentarios: ticket.comentarios });
-      toast.success(asignado ? `Asignado a ${asignado.nombre}` : 'Asignación removida');
+      toast.success('Asignación actualizada');
     } catch {
       toast.error('Error al asignar el ticket');
     }
@@ -256,6 +270,40 @@ export default function TicketDetalle() {
       toast.error('Error al agregar el comentario');
     } finally {
       setEnviandoComentario(false);
+    }
+  };
+
+  const handleEliminarComentario = async (comentarioId: string) => {
+    setDeletingCommentId(comentarioId);
+    try {
+      await deleteComentarioTicket(id!, comentarioId);
+      await loadTicketData();
+      toast.success('Comentario eliminado');
+    } catch (error: any) {
+      toast.error(error.message || 'Error al eliminar el comentario');
+    } finally {
+      setDeletingCommentId(null);
+      setConfirmDeleteCommentId(null);
+    }
+  };
+
+  const handleIniciarEdicionComentario = (c: any) => {
+    setEditingCommentId(c.id);
+    setEditingCommentText(c.texto);
+  };
+
+  const handleGuardarComentarioEditado = async (comentarioId: string) => {
+    if (!editingCommentText.trim()) return;
+    setSavingCommentEdit(true);
+    try {
+      await updateComentarioTicket(id!, comentarioId, editingCommentText.trim());
+      await loadTicketData();
+      setEditingCommentId(null);
+      toast.success('Comentario actualizado');
+    } catch (error: any) {
+      toast.error(error.message || 'Error al editar el comentario');
+    } finally {
+      setSavingCommentEdit(false);
     }
   };
 
@@ -297,23 +345,27 @@ export default function TicketDetalle() {
           )}
         </div>
 
-        {/* Botones editar / eliminar (solo para creador o admin) */}
-        {canEditDelete && !confirmDelete && !editMode && (
+        {/* Botones editar / eliminar */}
+        {(canEdit || canDelete) && !confirmDelete && !editMode && (
           <div className="flex items-center gap-1 shrink-0">
-            <button
-              onClick={handleStartEdit}
-              title="Editar ticket"
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-500 dark:text-gray-400"
-            >
-              <Pencil size={17} />
-            </button>
-            <button
-              onClick={() => setConfirmDelete(true)}
-              title="Eliminar ticket"
-              className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400"
-            >
-              <Trash2 size={17} />
-            </button>
+            {canEdit && (
+              <button
+                onClick={handleStartEdit}
+                title="Editar ticket"
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-500 dark:text-gray-400"
+              >
+                <Pencil size={17} />
+              </button>
+            )}
+            {canDelete && (
+              <button
+                onClick={() => setConfirmDelete(true)}
+                title="Eliminar ticket"
+                className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400"
+              >
+                <Trash2 size={17} />
+              </button>
+            )}
           </div>
         )}
         {editMode && (
@@ -390,7 +442,7 @@ export default function TicketDetalle() {
                 <SearchableSelect
                   options={activosFiltradosEdit.map(a => ({
                     value: a.id,
-                    label: `${a.codigo} — ${a.marca} ${a.modelo}`,
+                    label: a.codigo,
                   }))}
                   value={editForm.activoId}
                   onChange={v => {
@@ -550,6 +602,8 @@ export default function TicketDetalle() {
               adjuntos={adjuntos}
               onChange={handleAdjuntosChange}
               maxFiles={8}
+              currentUserName={usuario?.nombre}
+              canManageAll={isOperations}
             />
           </div>
 
@@ -557,11 +611,12 @@ export default function TicketDetalle() {
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
             <h3 className="font-semibold mb-4 dark:text-white">Historial</h3>
 
-            <div className="space-y-4">
+            {/* Comentario inicial + comentarios — scroll interno si hay más de 4 en total */}
+            <div className={ticket.comentarios.length >= 3 ? 'space-y-4 max-h-[340px] overflow-y-auto pr-1.5' : 'space-y-4'}>
               {/* Comentario inicial */}
               <div className="flex gap-3">
-                <div className="w-8 h-8 rounded-full bg-[#00a6d6]/20 flex items-center justify-center flex-shrink-0">
-                  <span className="text-sm font-medium text-[#00a6d6]">
+                <div className={`w-8 h-8 rounded-full ${getRolAvatarClasses(ticket.creadorRol).bg} flex items-center justify-center flex-shrink-0`}>
+                  <span className={`text-sm font-medium ${getRolAvatarClasses(ticket.creadorRol).text}`}>
                     {ticket.creador.charAt(0).toUpperCase()}
                   </span>
                 </div>
@@ -576,34 +631,102 @@ export default function TicketDetalle() {
                 </div>
               </div>
 
-              {/* Comentarios */}
               {ticket.comentarios.map((c: any) => (
-                <div key={c.id} className="flex gap-3">
-                  <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
-                    <span className="text-sm font-medium text-purple-600 dark:text-purple-400">
-                      {c.autor.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="flex-1">
-                    <div className={`rounded-lg p-4 ${c.esInterno
-                      ? 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800'
-                      : 'bg-gray-50 dark:bg-gray-700'}`}>
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-sm dark:text-white">{c.autor}</span>
-                          {c.esInterno && (
-                            <span className="text-xs bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200 px-2 py-0.5 rounded">
-                              Interno
-                            </span>
-                          )}
+                  <div key={c.id} className="flex gap-3">
+                    <div className={`w-8 h-8 rounded-full ${getRolAvatarClasses(c.autorRol).bg} flex items-center justify-center flex-shrink-0`}>
+                      <span className={`text-sm font-medium ${getRolAvatarClasses(c.autorRol).text}`}>
+                        {c.autor.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="flex-1">
+                      <div className={`rounded-lg p-4 ${c.esInterno
+                        ? 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800'
+                        : 'bg-gray-50 dark:bg-gray-700'}`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-sm dark:text-white">{c.autor}</span>
+                            {c.esInterno && (
+                              <span className="text-xs bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200 px-2 py-0.5 rounded">
+                                Interno
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-gray-500 dark:text-gray-400">{formatDate(c.fecha)}</span>
+                            {c.autor === usuario?.nombre && editingCommentId !== c.id && confirmDeleteCommentId !== c.id && (
+                              <button
+                                onClick={() => handleIniciarEdicionComentario(c)}
+                                title="Editar comentario"
+                                className="p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                              >
+                                <Pencil size={13} />
+                              </button>
+                            )}
+                            {(c.autor === usuario?.nombre || isOperations) && editingCommentId !== c.id && confirmDeleteCommentId !== c.id && (
+                              <button
+                                onClick={() => setConfirmDeleteCommentId(c.id)}
+                                title="Eliminar comentario"
+                                className="p-1 rounded text-gray-400 hover:text-red-500 hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            )}
+                          </div>
                         </div>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">{formatDate(c.fecha)}</span>
+
+                        {editingCommentId === c.id ? (
+                          <div className="space-y-2">
+                            <textarea
+                              value={editingCommentText}
+                              onChange={(e) => setEditingCommentText(e.target.value)}
+                              rows={3}
+                              className="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg border border-gray-200 dark:border-gray-600 resize-none focus:outline-none focus:ring-2 focus:ring-[#00a6d6]"
+                            />
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => setEditingCommentId(null)}
+                                className="px-2.5 py-1 text-xs border border-gray-200 dark:border-gray-600 rounded-md text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                              >
+                                Cancelar
+                              </button>
+                              <button
+                                onClick={() => handleGuardarComentarioEditado(c.id)}
+                                disabled={!editingCommentText.trim() || savingCommentEdit}
+                                className="flex items-center gap-1.5 px-2.5 py-1 bg-[#00a6d6] hover:bg-[#0095c0] disabled:opacity-40 text-white rounded-md text-xs transition-colors"
+                              >
+                                <Check size={11} />
+                                {savingCommentEdit ? 'Guardando...' : 'Guardar'}
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-700 dark:text-gray-300">{c.texto}</p>
+                        )}
+
+                        {confirmDeleteCommentId === c.id && (
+                          <div className="mt-2 flex items-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg p-2">
+                            <span className="text-xs text-red-700 dark:text-red-300">¿Eliminar este comentario?</span>
+                            <div className="flex-1" />
+                            <button
+                              onClick={() => setConfirmDeleteCommentId(null)}
+                              disabled={deletingCommentId !== null}
+                              className="px-2 py-1 text-xs border border-red-200 dark:border-red-700 rounded text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50"
+                            >
+                              Cancelar
+                            </button>
+                            <button
+                              onClick={() => handleEliminarComentario(c.id)}
+                              disabled={deletingCommentId !== null}
+                              className="px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded transition-colors disabled:opacity-50"
+                            >
+                              {deletingCommentId === c.id ? 'Eliminando...' : 'Sí, eliminar'}
+                            </button>
+                          </div>
+                        )}
                       </div>
-                      <p className="text-sm text-gray-700 dark:text-gray-300">{c.texto}</p>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
             </div>
 
             {/* Nuevo comentario */}
@@ -624,7 +747,7 @@ export default function TicketDetalle() {
                       onChange={(e) => setEsInterno(e.target.checked)}
                       className="rounded"
                     />
-                    <span>Comentario interno (no visible para el usuario)</span>
+                    <span>Comentario interno (no visible para el docente/empleado)</span>
                   </label>
                 )}
                 <div className={!isOperations ? 'w-full' : ''}>
@@ -693,25 +816,69 @@ export default function TicketDetalle() {
               </div>
             </div>
 
-            {/* Asignar Técnico */}
+            {/* Asignar Responsables */}
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-              <h3 className="font-semibold mb-3 dark:text-white">Asignar a</h3>
-              <SearchableSelect
-                options={[
-                  { value: '', label: 'Sin asignar' },
-                  ...usuarios.map((u: any) => ({ value: u.id, label: u.nombre })),
-                ]}
-                value={usuarios.find((u: any) => u.nombre === ticket.asignado)?.id || ''}
-                onChange={handleAsignar}
-                placeholder="Sin asignar"
-                noClear
-              />
-              {ticket.asignado && (
-                <div className="mt-3 p-3 bg-[#00a6d6]/10 dark:bg-[#00a6d6]/10 rounded-lg">
-                  <p className="text-xs text-[#00a6d6] font-medium">Asignado actualmente</p>
-                  <p className="text-sm mt-1 dark:text-white">{ticket.asignado}</p>
+              <h3 className="font-semibold mb-3 dark:text-white">Responsables</h3>
+              <div className="relative">
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setShowAsignadosDropdown(v => !v)}
+                  onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setShowAsignadosDropdown(v => !v)}
+                  className="w-full flex items-center justify-between px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:border-[#00a6d6] transition-colors cursor-pointer select-none"
+                >
+                  <span className="flex flex-wrap gap-1.5 flex-1 text-left">
+                    {!ticket.asignados || ticket.asignados.length === 0 ? (
+                      <span className="text-gray-400 dark:text-gray-500">Sin asignar</span>
+                    ) : (
+                      ticket.asignados.map((n: string) => {
+                        const u = usuarios.find((u: any) => u.nombre === n);
+                        return (
+                          <span key={n} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#00a6d6]/10 text-[#00a6d6] dark:text-[#00c4f0] text-xs">
+                            {n}
+                            {u && (
+                              <button type="button" onClick={e => { e.stopPropagation(); handleToggleAsignado(u.id); }}
+                                className="hover:text-red-500 transition-colors">×</button>
+                            )}
+                          </span>
+                        );
+                      })
+                    )}
+                  </span>
+                  <ChevronDown size={14} className="text-gray-400 ml-2 shrink-0" />
                 </div>
-              )}
+
+                {showAsignadosDropdown && (
+                  <div className="absolute z-20 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden">
+                    {usuarios.length === 0 ? (
+                      <p className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">Cargando...</p>
+                    ) : (
+                      usuarios.map((u: any) => {
+                        const selected = (ticket.asignadosIds ?? []).includes(u.id);
+                        return (
+                          <button key={u.id} type="button"
+                            onClick={() => handleToggleAsignado(u.id)}
+                            className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${selected ? 'bg-[#00a6d6]/5 dark:bg-[#00a6d6]/10' : ''}`}>
+                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${selected ? 'bg-[#00a6d6] border-[#00a6d6]' : 'border-gray-300 dark:border-gray-600'}`}>
+                              {selected && <Check size={11} className="text-white" />}
+                            </div>
+                            <div>
+                              <p className={`font-medium ${selected ? 'text-[#00a6d6] dark:text-[#00c4f0]' : 'text-gray-900 dark:text-white'}`}>{u.nombre}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{u.rol.replace('_', ' ')}</p>
+                            </div>
+                          </button>
+                        );
+                      })
+                    )}
+                    <div className="border-t border-gray-100 dark:border-gray-700 px-3 py-2">
+                      <button type="button" onClick={() => setShowAsignadosDropdown(false)}
+                        className="text-xs text-[#00a6d6] hover:underline">
+                        Cerrar
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Acciones Rápidas */}

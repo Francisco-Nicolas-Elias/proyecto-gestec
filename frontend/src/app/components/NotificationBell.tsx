@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Bell, X, ClipboardList, History, CheckCheck, MapPin } from 'lucide-react';
+import { Bell, X, ClipboardList, History, CheckCheck, MapPin, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { useAuth } from './AuthContext';
 import Modal from './Modal';
@@ -126,7 +126,7 @@ export default function NotificationBell() {
     setTareaNotifs(updated);
     setUnreadCount(notifications.length + updated.length);
     setIsOpen(false);
-    navigate('/tareas');
+    navigate(notif.ticketId ? `/tickets/${notif.ticketId}` : '/tareas');
     try { await marcarNotificacionLeida(notif.id); } catch (error) { console.error('Error marcando notificación como leída:', error); }
   };
 
@@ -183,7 +183,8 @@ export default function NotificationBell() {
   };
 
   const handleAllNotifClick = async (notif: AllNotifItem) => {
-    if (notif.ticketId) {
+    // Ticket nuevo sintético (no persistido) — usa el flujo de "descartado" local, no el de leída
+    if (notif.tipo === 'ticket_nuevo' && notif.ticketId) {
       dismissedIds.current.add(notif.ticketId);
       saveDismissed(dismissedIds.current);
       setNotifications((prev) => {
@@ -206,6 +207,7 @@ export default function NotificationBell() {
     }
     setShowAllModal(false);
     if (notif.tareaId) navigate('/tareas');
+    else if (notif.ticketId) navigate(`/tickets/${notif.ticketId}`);
   };
 
   if (!shouldShowNotifications) {
@@ -327,7 +329,11 @@ export default function NotificationBell() {
                         <div className="flex-shrink-0 w-2 h-2 bg-[#00a6d6] rounded-full mt-2"></div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5 text-gray-900 dark:text-white">
-                            <ClipboardList size={14} className="flex-shrink-0 text-[#00a6d6]" />
+                            {notif.ticketId ? (
+                              <AlertCircle size={14} className="flex-shrink-0 text-[#00a6d6]" />
+                            ) : (
+                              <ClipboardList size={14} className="flex-shrink-0 text-[#00a6d6]" />
+                            )}
                             <p className="font-medium text-sm truncate">{notif.mensaje}</p>
                           </div>
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">

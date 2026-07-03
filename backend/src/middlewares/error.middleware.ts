@@ -43,6 +43,10 @@ export function errorHandler(
       res.status(404).json({ error: 'Registro no encontrado' });
       return;
     }
+    if (err.code === 'P2003') {
+      res.status(409).json({ error: 'No se puede eliminar: el registro tiene datos asociados (tickets, tareas, historial, etc.). Si es un usuario, bloqueálo en vez de eliminarlo.' });
+      return;
+    }
   }
 
   // Error genérico — no exponer detalles en producción

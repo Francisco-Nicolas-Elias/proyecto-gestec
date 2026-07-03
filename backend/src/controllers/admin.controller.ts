@@ -6,6 +6,9 @@ import { getLogsService, clearLogsService } from '../services/logs.service';
 export async function getUsuarios(req: Request, res: Response, next: NextFunction) {
   try { res.json(await svc.getUsuariosService()); } catch (err) { next(err); }
 }
+export async function getUsuariosStaff(req: Request, res: Response, next: NextFunction) {
+  try { res.json(await svc.getUsuariosStaffService()); } catch (err) { next(err); }
+}
 export async function createUsuario(req: Request, res: Response, next: NextFunction) {
   try { res.status(201).json(await svc.createUsuarioService(req.body, req.user!.nombre)); } catch (err) { next(err); }
 }

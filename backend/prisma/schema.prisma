@@ -145,7 +145,7 @@ model Usuario {
   bloqueado           Boolean   @default(false)
 
   ticketsCreados    Ticket[]           @relation("TicketCreador")
-  ticketsAsignados  Ticket[]           @relation("TicketAsignado")
+  ticketsAsignados  TicketAsignado[]
   tareasCreadas     Tarea[]            @relation("TareaCreador")
   tareasFinalizadas Tarea[]            @relation("TareaFinalizador")
   tareasAsignadas   TareaAsignado[]
@@ -154,6 +154,7 @@ model Usuario {
   stockMovimientos  StockMovimiento[]
   logs              LogEntry[]
   notificaciones    Notificacion[]
+  adjuntosSubidos   Adjunto[]
 
   @@map("usuarios")
 }
@@ -318,16 +319,26 @@ model Ticket {
   descripcion        String
   prioridad          PrioridadTicket?
   estado             EstadoTicket     @default(nuevo)
-  asignadoId         String?
-  asignado           Usuario?         @relation("TicketAsignado", fields: [asignadoId], references: [id])
   tipo               String
   fechaCreacion      DateTime         @default(now())
   fechaActualizacion DateTime         @updatedAt
 
-  comentarios ComentarioTicket[]
-  adjuntos    Adjunto[]          @relation("AdjuntosTicket")
+  asignados      TicketAsignado[]
+  comentarios    ComentarioTicket[]
+  adjuntos       Adjunto[]          @relation("AdjuntosTicket")
+  notificaciones Notificacion[]
 
   @@map("tickets")
+}
+
+model TicketAsignado {
+  ticketId  String
+  ticket    Ticket  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id])
+
+  @@id([ticketId, usuarioId])
+  @@map("tickets_asignados")
 }
 
 model ComentarioTicket {
@@ -429,6 +440,9 @@ model Adjunto {
   comentarioTareaId  String?
   comentarioTarea    ComentarioTarea?  @relation("AdjuntosComentarioTarea", fields: [comentarioTareaId], references: [id], onDelete: Cascade)
 
+  subidoPorId String?
+  subidoPor   Usuario? @relation(fields: [subidoPorId], references: [id])
+
   @@map("adjuntos")
 }
 
@@ -517,6 +531,8 @@ model Notificacion {
   mensaje   String
   tareaId   String?
   tarea     Tarea?   @relation(fields: [tareaId], references: [id], onDelete: Cascade)
+  ticketId  String?
+  ticket    Ticket?  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   leida     Boolean  @default(false)
   fecha     DateTime @default(now())
 

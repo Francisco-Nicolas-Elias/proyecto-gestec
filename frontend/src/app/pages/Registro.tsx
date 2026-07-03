@@ -37,6 +37,7 @@ export default function Registro() {
     if (!val) { setPasswordError(''); return; }
     if (val.length < 8) { setPasswordError('Mínimo 8 caracteres'); return; }
     if (!/[A-Z]/.test(val)) { setPasswordError('Debe contener al menos una mayúscula'); return; }
+    if (!/[0-9]/.test(val)) { setPasswordError('Debe contener al menos un número'); return; }
     if (!/[^A-Za-z0-9]/.test(val)) { setPasswordError('Debe contener al menos un carácter especial'); return; }
     setPasswordError('');
   };
@@ -55,7 +56,7 @@ export default function Registro() {
       setEmailError(`Solo se permiten emails ${DOMINIO}`);
       return;
     }
-    if (password.length < 8 || !/[A-Z]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+    if (password.length < 8 || !/[A-Z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
       validatePassword(password);
       return;
     }
@@ -190,6 +191,9 @@ export default function Registro() {
                     </button>
                   </div>
                   {passwordError && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{passwordError}</p>}
+                  <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                    Debe tener al menos 8 caracteres, una mayúscula, un número y un carácter especial.
+                  </p>
                 </div>
 
                 <div>

@@ -22,7 +22,10 @@ export async function uploadAdjunto(
   if (context?.comentarioTicketId) formData.append('comentarioTicketId', context.comentarioTicketId);
   if (context?.comentarioTareaId) formData.append('comentarioTareaId', context.comentarioTareaId);
   const raw = await http.uploadFile<any>('/adjuntos', formData);
-  return { id: raw.id, nombre: raw.nombre, tipo: raw.tipo, url: raw.url, tamano: raw.tamano };
+  return {
+    id: raw.id, nombre: raw.nombre, tipo: raw.tipo, url: raw.url, tamano: raw.tamano,
+    subidoPor: raw.subidoPor?.nombre ?? '', subidoPorRol: raw.subidoPor?.rol ?? '',
+  };
 }
 
 export async function deleteAdjunto(id: string): Promise<void> {
@@ -37,10 +40,14 @@ function mapComentario(c: any): any {
   return {
     id: c.id,
     autor: c.autor?.nombre ?? c.autor ?? '',
+    autorRol: c.autor?.rol ?? c.autorRol ?? '',
     fecha: c.fecha,
     texto: c.texto,
     esInterno: c.esInterno ?? false,
-    adjuntos: (c.adjuntos ?? []).map((a: any) => ({ id: a.id, nombre: a.nombre, tipo: a.tipo, url: a.url, tamano: a.tamano })),
+    adjuntos: (c.adjuntos ?? []).map((a: any) => ({
+      id: a.id, nombre: a.nombre, tipo: a.tipo, url: a.url, tamano: a.tamano,
+      subidoPor: a.subidoPor?.nombre ?? '', subidoPorRol: a.subidoPor?.rol ?? '',
+    })),
   };
 }
 
@@ -148,11 +155,14 @@ function mapTicket(t: any): any {
     ...t,
     creador: t.creador?.nombre ?? t.creador ?? '',
     creadorEmail: t.creador?.email ?? t.creadorEmail ?? '',
-    asignado: t.asignado?.nombre ?? t.asignado,
+    creadorRol: t.creador?.rol ?? t.creadorRol ?? '',
+    asignados: (t.asignados ?? []).map((a: any) => a.usuario?.nombre ?? a),
+    asignadosIds: (t.asignados ?? []).map((a: any) => a.usuario?.id ?? a.usuarioId ?? a),
     activo: t.activo?.nroPc ?? (typeof t.activo === 'string' ? t.activo : undefined),
     comentarios: (t.comentarios ?? []).map(mapComentario),
     adjuntos: (t.adjuntos ?? []).map((a: any) => ({
       id: a.id, nombre: a.nombre, tipo: a.tipo, url: a.url, tamano: a.tamano,
+      subidoPor: a.subidoPor?.nombre ?? '', subidoPorRol: a.subidoPor?.rol ?? '',
     })),
   };
 }
@@ -190,6 +200,10 @@ function mapTarea(t: any): any {
     comentarios: (t.comentarios ?? []).map(mapComentario),
     historial: (t.historial ?? []).map((h: any) => ({ fecha: h.fecha, accion: h.accion, usuario: h.usuario })),
     fechaLimite: t.fechaLimite ? toDateStr(t.fechaLimite) : undefined,
+    adjuntos: (t.adjuntos ?? []).map((a: any) => ({
+      id: a.id, nombre: a.nombre, tipo: a.tipo, url: a.url, tamano: a.tamano,
+      subidoPor: a.subidoPor?.nombre ?? '', subidoPorRol: a.subidoPor?.rol ?? '',
+    })),
   };
 }
 
@@ -427,6 +441,25 @@ export const getActivoById = async (id: string): Promise<Activo | null> => {
   return http.get<any>(`/activos/${id}`).then(mapActivo);
 };
 
+export interface ActivoBasico {
+  id: string;
+  codigo: string;
+  marca: string;
+  modelo: string;
+  sector: string;
+}
+
+// Listado liviano para selectores (ej. crear ticket) — accesible a cualquier rol autenticado
+export const getActivosBasico = async (): Promise<ActivoBasico[]> => {
+  return http.get<any[]>('/activos/basico').then(arr => arr.map(a => ({
+    id: a.id,
+    codigo: a.nroPc,
+    marca: a.microMarca ?? '',
+    modelo: a.microModelo ?? '',
+    sector: a.ubicacion?.sector ?? '',
+  })));
+};
+
 export const createActivo = async (activo: Partial<Activo>): Promise<Activo> => {
   const payload = await activoPayload(activo);
   const result = await http.post<any>('/activos', payload).then(mapActivo);
@@ -490,13 +523,15 @@ export interface Ticket {
   titulo?: string;
   creador: string;
   creadorEmail: string;
+  creadorRol?: string;
   activo?: string;
   activoId?: string;
   ubicacion: string;
   descripcion: string;
   prioridad: 'baja' | 'media' | 'alta' | 'urgente' | null;
   estado: 'nuevo' | 'en_progreso' | 'resuelto';
-  asignado?: string;
+  asignados?: string[];
+  asignadosIds?: string[];
   fechaCreacion: string;
   fechaActualizacion: string;
   tipo: string;
@@ -507,6 +542,7 @@ export interface Ticket {
 export interface Comentario {
   id: string;
   autor: string;
+  autorRol?: string;
   fecha: string;
   texto: string;
   esInterno: boolean;
@@ -519,6 +555,8 @@ export interface Adjunto {
   tipo: 'imagen' | 'video' | 'audio';
   url: string;
   tamano: string;
+  subidoPor?: string;
+  subidoPorRol?: string;
 }
 
 export const getTickets = async (filters?: any): Promise<Ticket[]> => {
@@ -554,9 +592,12 @@ export const createTicket = async (ticket: Partial<Ticket>): Promise<Ticket> => 
   return http.get<any>(`/tickets/${created.id}`).then(mapTicket);
 };
 
-export const updateTicketStatus = async (id: string, estado: Ticket['estado'], asignado?: string): Promise<Ticket> => {
+export const updateTicketStatus = async (id: string, estado: Ticket['estado'], asignadosIds?: string[]): Promise<Ticket> => {
   cacheInvalidate('tickets');
-  return http.put<any>(`/tickets/${id}`, { estado, asignado }).then(mapTicket);
+  const payload: any = { estado };
+  // Solo tocar la asignación si se pasó explícitamente (evita desasignar al solo cambiar el estado)
+  if (asignadosIds !== undefined) payload.asignadosIds = asignadosIds;
+  return http.put<any>(`/tickets/${id}`, payload).then(mapTicket);
 };
 
 export const updateTicketAdjuntos = async (
@@ -589,6 +630,14 @@ export const deleteTicket = async (id: string): Promise<void> => {
 
 export const addComentario = async (ticketId: string, texto: string, esInterno: boolean): Promise<Comentario> => {
   return http.post<any>(`/tickets/${ticketId}/comentarios`, { texto, esInterno }).then(mapComentario);
+};
+
+export const updateComentarioTicket = async (ticketId: string, comentarioId: string, texto: string): Promise<Comentario> => {
+  return http.put<any>(`/tickets/${ticketId}/comentarios/${comentarioId}`, { texto }).then(mapComentario);
+};
+
+export const deleteComentarioTicket = async (ticketId: string, comentarioId: string): Promise<void> => {
+  return http.del(`/tickets/${ticketId}/comentarios/${comentarioId}`);
 };
 
 // ============ STOCK ============
@@ -892,6 +941,22 @@ export const updateTarea = async (id: string, cambios: Partial<Tarea>): Promise<
   return tareaPayload(cambios).then(p => http.put<any>(`/tareas/${id}`, p)).then(mapTarea);
 };
 
+export const updateTareaAdjuntos = async (
+  id: string,
+  nuevos: Adjunto[],
+  previos: Adjunto[],
+): Promise<void> => {
+  const eliminados = previos.filter(p => !nuevos.some(n => n.id === p.id));
+  const agregados = nuevos.filter(n => n.url.startsWith('data:') || n.url.startsWith('blob:'));
+  await Promise.all([
+    ...eliminados.map(a => deleteAdjunto(a.id)),
+    ...agregados.map(async (adj) => {
+      const blob = await fetch(adj.url).then(r => r.blob());
+      await uploadAdjunto(blob, adj.nombre, { tareaId: id });
+    }),
+  ]);
+};
+
 export const deleteTarea = async (id: string): Promise<void> => {
   cacheInvalidate('tareas');
   return http.del(`/tareas/${id}`);
@@ -928,6 +993,12 @@ export const updateInfoOperaciones = async (data: InfoOperaciones): Promise<Info
 // ============ ADMINISTRACIÓN ============
 export const getUsuarios = async (): Promise<Usuario[]> => {
   return http.get<Usuario[]>('/admin/usuarios');
+};
+
+// Listado liviano de staff (operaciones/admin) para selectores de asignación —
+// accesible también para operaciones, no solo administrador.
+export const getUsuariosStaff = async (): Promise<Pick<Usuario, 'id' | 'nombre' | 'rol'>[]> => {
+  return http.get<Pick<Usuario, 'id' | 'nombre' | 'rol'>[]>('/admin/usuarios/staff');
 };
 
 export const updateUsuario = async (id: string, data: Partial<Usuario>): Promise<Usuario> => {
@@ -1012,6 +1083,7 @@ export interface Notificacion {
   tipo: string;
   mensaje: string;
   tareaId?: string | null;
+  ticketId?: string | null;
   leida: boolean;
   fecha: string;
 }

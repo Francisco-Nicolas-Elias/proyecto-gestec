@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router';
 import { Users, MapPin, Pencil, Trash2, Shield, Check, Cpu, Truck, Star, Plus, X, ScrollText, Search, Download, AlertTriangle, RefreshCw, Phone, Building2, Ban, ShieldCheck } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -59,8 +60,13 @@ const normalize = (s: string) => (s ?? '').toLowerCase().trim().replace(/\s+/g, 
 
 export default function Admin() {
   const { hasPermission, usuario, loading: authLoading } = useAuth();
+  const [searchParams] = useSearchParams();
+  const tabValidos: AdminTab[] = ['usuarios', 'ubicaciones', 'roles', 'componentes', 'marcas', 'proveedores', 'areas', 'logs'];
+  const tabInicial = searchParams.get('tab') as AdminTab | null;
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<AdminTab>('usuarios');
+  const [activeTab, setActiveTab] = useState<AdminTab>(
+    tabInicial && tabValidos.includes(tabInicial) ? tabInicial : 'usuarios',
+  );
   const [saving, setSaving] = useState(false);
 
   // ── Usuarios ──────────────────────────────────────────────────────────────
@@ -238,8 +244,8 @@ export default function Admin() {
       );
       setShowDeleteModal(false);
       setUserToDelete(null);
-    } catch {
-      toast.error('Error al eliminar el usuario');
+    } catch (error: any) {
+      toast.error(error.message || 'Error al eliminar el usuario');
     } finally {
       setSaving(false);
     }

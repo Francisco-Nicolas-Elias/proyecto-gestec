@@ -28,8 +28,16 @@ export default function ResetPassword() {
       setError('Las contraseñas no coinciden');
       return;
     }
+    if (password.length < 8) {
+      setError('La contraseña debe tener al menos 8 caracteres');
+      return;
+    }
     if (!/[A-Z]/.test(password)) {
       setError('La contraseña debe contener al menos una mayúscula');
+      return;
+    }
+    if (!/[0-9]/.test(password)) {
+      setError('La contraseña debe contener al menos un número');
       return;
     }
     if (!/[^A-Za-z0-9]/.test(password)) {
@@ -121,7 +129,7 @@ export default function ResetPassword() {
             <>
               <h2 className="text-xl font-semibold mb-2 dark:text-white">Nueva contraseña</h2>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-                Ingresá tu nueva contraseña. Debe tener al menos 8 caracteres, una mayúscula y un carácter especial.
+                Ingresá tu nueva contraseña.
               </p>
 
               {error && (
@@ -156,6 +164,9 @@ export default function ResetPassword() {
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
+                  <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                    Debe tener al menos 8 caracteres, una mayúscula, un número y un carácter especial.
+                  </p>
                 </div>
 
                 <div>

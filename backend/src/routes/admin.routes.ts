@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticate } from '../middlewares/auth.middleware';
-import { isAdmin, isAnyUser } from '../middlewares/roles.middleware';
+import { isAdmin, isAnyUser, isOperaciones } from '../middlewares/roles.middleware';
 import { validate } from '../middlewares/validate.middleware';
 import { createUsuarioSchema, updateUsuarioSchema } from '../schemas/usuario.schema';
 import * as ctrl from '../controllers/admin.controller';
@@ -8,6 +8,9 @@ import * as ctrl from '../controllers/admin.controller';
 const router = Router();
 
 router.use(authenticate);
+
+// Listado liviano de staff para selectores de asignación — operaciones y admin
+router.get('/usuarios/staff', isOperaciones, ctrl.getUsuariosStaff);
 
 // Usuarios y logs — solo admin
 router.get('/usuarios', isAdmin, ctrl.getUsuarios);

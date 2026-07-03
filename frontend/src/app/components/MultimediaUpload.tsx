@@ -7,6 +7,8 @@ export interface Adjunto {
   tipo: 'imagen' | 'video' | 'audio';
   url: string;
   tamano: string;
+  subidoPor?: string;
+  subidoPorRol?: string;
 }
 
 interface Props {
@@ -14,6 +16,10 @@ interface Props {
   onChange: (adjuntos: Adjunto[]) => void;
   maxFiles?: number;
   readOnly?: boolean;
+  /** Nombre del usuario logueado — para permitir borrar solo lo propio */
+  currentUserName?: string;
+  /** true si el usuario (operaciones/admin) puede borrar adjuntos de cualquiera */
+  canManageAll?: boolean;
 }
 
 function formatSize(bytes: number): string {
@@ -31,6 +37,8 @@ export default function MultimediaUpload({
   onChange,
   maxFiles = 5,
   readOnly = false,
+  currentUserName,
+  canManageAll = false,
 }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -353,10 +361,15 @@ export default function MultimediaUpload({
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 capitalize">
                   {adj.tipo}{adj.tipo === 'audio' && duraciones[adj.id] ? ` · ${duraciones[adj.id]}` : ''} · {adj.tamano}
                 </p>
+                {adj.subidoPor && (
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">
+                    Subido por {adj.subidoPor}
+                  </p>
+                )}
               </div>
 
-              {/* Eliminar */}
-              {!readOnly && (
+              {/* Eliminar — solo quien lo subió, o operaciones/admin */}
+              {!readOnly && (canManageAll || !adj.subidoPor || adj.subidoPor === currentUserName) && (
                 pendingRemoveId === adj.id ? (
                   <div className="flex items-center gap-1 shrink-0">
                     <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">¿Eliminar?</span>

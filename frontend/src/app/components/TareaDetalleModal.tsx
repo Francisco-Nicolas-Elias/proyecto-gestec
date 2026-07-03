@@ -7,15 +7,17 @@ import StatusBadge from './StatusBadge';
 import MultimediaUpload, { type Adjunto } from './MultimediaUpload';
 import SearchableSelect from './SearchableSelect';
 import {
-  addComentarioTarea, updateTarea, deleteTarea,
-  getUbicaciones, getUsuarios,
+  addComentarioTarea, updateTarea, updateTareaAdjuntos, deleteTarea,
+  getUbicaciones, getUsuariosStaff,
   updateComentarioTarea, deleteComentarioTarea, getCurrentUser, getTareaById,
 } from '../services/apiClient';
 import { toast } from 'sonner@2.0.3';
+import { getRolAvatarSolidClasses } from './rolColor';
 
 interface Comentario {
   id: string;
   autor: string;
+  autorRol?: string;
   fecha: string;
   texto: string;
   adjuntos?: Adjunto[];
@@ -106,9 +108,7 @@ export default function TareaDetalleModal({
   useEffect(() => {
     if (!editMode) return;
     getUbicaciones().then(setUbicaciones).catch(() => {});
-    getUsuarios()
-      .then(users => setUsuariosAsignables(users.filter(u => u.rol === 'administrador' || u.rol === 'operaciones')))
-      .catch(() => {});
+    getUsuariosStaff().then(setUsuariosAsignables).catch(() => {});
   }, [editMode]);
 
   // Fetch completo al abrir el modal (la lista del Kanban no incluye comentarios ni adjuntos)
@@ -252,7 +252,8 @@ export default function TareaDetalleModal({
     }
     setGuardando(true);
     try {
-      const actualizada = await updateTarea(datosTarea.id, {
+      await updateTareaAdjuntos(datosTarea.id, formData.adjuntos, datosTarea.adjuntos || []);
+      await updateTarea(datosTarea.id, {
         titulo: formData.titulo.trim(),
         descripcion: formData.descripcion.trim(),
         prioridad: formData.prioridad,
@@ -260,8 +261,9 @@ export default function TareaDetalleModal({
         fechaLimite: formData.fechaLimite || undefined,
         ubicacion: formData.ubicacion || undefined,
         asignados: formData.asignados,
-        adjuntos: formData.adjuntos,
       });
+      const actualizada = await getTareaById(datosTarea.id);
+      if (!actualizada) throw new Error('No se pudo recargar la tarea actualizada');
       setDatosTarea({ ...actualizada, comentarios });
       onTareaActualizada({ ...actualizada, comentarios });
       setEditMode(false);
@@ -532,6 +534,8 @@ export default function TareaDetalleModal({
                     adjuntos={formData.adjuntos}
                     onChange={adj => setFormData(p => ({ ...p, adjuntos: adj }))}
                     maxFiles={5}
+                    currentUserName={usuarioActual?.nombre}
+                    canManageAll={usuarioActual?.rol === 'administrador' || usuarioActual?.rol === 'operaciones'}
                   />
                 </div>
 
@@ -728,14 +732,26 @@ export default function TareaDetalleModal({
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <div
-                          className="w-7 h-7 rounded-full bg-gradient-to-br from-cyan-400 to-cyan-600 flex items-center justify-center text-white shrink-0"
+                          className={`w-7 h-7 rounded-full ${getRolAvatarSolidClasses(c.autorRol)} flex items-center justify-center text-white shrink-0`}
                           style={{ fontSize: '11px', fontWeight: 700 }}
                         >
                           {c.autor.charAt(0).toUpperCase()}
                         </div>
                         <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{c.autor}</span>
                       </div>
-                      <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">{formatDate(c.fecha, true)}</span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className="text-xs text-gray-400 dark:text-gray-500">{formatDate(c.fecha, true)}</span>
+                        {editingCommentId !== c.id && confirmDeleteCommentId !== c.id &&
+                          (c.autor === usuarioActual?.nombre || usuarioActual?.rol === 'administrador' || usuarioActual?.rol === 'operaciones') && (
+                            <button
+                              onClick={() => setConfirmDeleteCommentId(c.id)}
+                              title="Eliminar comentario"
+                              className="p-1 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          )}
+                      </div>
                     </div>
 
                     {/* Texto o input de edición */}
@@ -782,8 +798,8 @@ export default function TareaDetalleModal({
                       </>
                     )}
 
-                    {/* Acciones (editar/eliminar, solo propios) */}
-                    {c.autor === usuarioActual?.nombre && editingCommentId !== c.id && (
+                    {/* Acción: editar, solo el autor */}
+                    {editingCommentId !== c.id && c.autor === usuarioActual?.nombre && (
                       <div className="flex items-center gap-1 pt-1.5 border-t border-gray-100 dark:border-gray-700">
                         <button
                           onClick={() => handleIniciarEdicionComentario(c)}
@@ -791,13 +807,6 @@ export default function TareaDetalleModal({
                           className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                         >
                           <Pencil size={13} />
-                        </button>
-                        <button
-                          onClick={() => setConfirmDeleteCommentId(c.id)}
-                          title="Eliminar comentario"
-                          className="p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-gray-400 hover:text-red-500"
-                        >
-                          <Trash2 size={13} />
                         </button>
                       </div>
                     )}

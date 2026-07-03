@@ -50,7 +50,7 @@ export default function SearchableSelect({
   // Ordenar alfabéticamente por label (a menos que noSort=true)
   const sorted = noSort
     ? normalized
-    : [...normalized].sort((a, b) => a.label.localeCompare(b.label, 'es', { sensitivity: 'base' }));
+    : [...normalized].sort((a, b) => a.label.localeCompare(b.label, 'es', { sensitivity: 'base', numeric: true }));
 
   const filtered = query.trim()
     ? sorted.filter(o => o.label.toLowerCase().includes(query.toLowerCase()))

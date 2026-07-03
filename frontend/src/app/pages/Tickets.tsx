@@ -150,10 +150,10 @@ export default function Tickets() {
       render: (value: string) => <StatusBadge status={value} type="ticket" />,
     },
     {
-      key: 'asignado',
+      key: 'asignados',
       label: 'Asignado',
       className: 'hidden xl:table-cell',
-      render: (value: string) => value || <span className="text-gray-400">Sin asignar</span>,
+      render: (value: string[]) => (value && value.length > 0) ? value.join(', ') : <span className="text-gray-400">Sin asignar</span>,
     },
     {
       key: 'fechaCreacion',

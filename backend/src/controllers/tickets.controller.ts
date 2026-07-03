@@ -22,7 +22,7 @@ export async function createTicket(req: Request, res: Response, next: NextFuncti
 
 export async function updateTicket(req: Request, res: Response, next: NextFunction) {
   try {
-    res.json(await svc.updateTicketService(req.params.id, req.body, req.user!.nombre, req.user!.rol));
+    res.json(await svc.updateTicketService(req.params.id, req.body, req.user!.id, req.user!.nombre, req.user!.rol));
   } catch (err) { next(err); }
 }
 
@@ -39,5 +39,18 @@ export async function addComentario(req: Request, res: Response, next: NextFunct
     res.status(201).json(
       await svc.addComentarioTicketService(req.params.id, texto, !!esInterno, req.user!.id, req.user!.rol),
     );
+  } catch (err) { next(err); }
+}
+
+export async function updateComentario(req: Request, res: Response, next: NextFunction) {
+  try {
+    res.json(await svc.updateComentarioTicketService(req.params.comentarioId, req.body.texto, req.user!.id));
+  } catch (err) { next(err); }
+}
+
+export async function deleteComentario(req: Request, res: Response, next: NextFunction) {
+  try {
+    await svc.deleteComentarioTicketService(req.params.comentarioId, req.user!.id, req.user!.rol, req.user!.nombre);
+    res.status(204).send();
   } catch (err) { next(err); }
 }

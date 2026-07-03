@@ -32,6 +32,20 @@ export async function getActivosService(filters?: {
   });
 }
 
+// Listado liviano para selectores (ej. crear ticket) — accesible a cualquier rol autenticado
+export async function getActivosBasicoService() {
+  return prisma.activo.findMany({
+    select: {
+      id: true,
+      nroPc: true,
+      microMarca: true,
+      microModelo: true,
+      ubicacion: { select: { sector: true } },
+    },
+    orderBy: { nroPc: 'asc' },
+  });
+}
+
 export async function getActivoByIdService(id: string) {
   const activo = await prisma.activo.findUnique({
     where: { id },

@@ -1,5 +1,5 @@
 import { prisma } from '../lib/prisma';
-import { sendTaskAssignedEmail } from '../lib/email';
+import { sendTaskAssignedEmail, sendTicketAssignedEmail } from '../lib/email';
 
 export async function getNotificacionesService(usuarioId: string) {
   return prisma.notificacion.findMany({
@@ -39,5 +39,24 @@ export async function notificarTareaAsignadaService(
       },
     });
     await sendTaskAssignedEmail(u.email, u.nombre, tarea, asignadoPor);
+  }
+}
+
+/** Crea la notificación in-app y dispara el email para cada usuario recién asignado a un ticket. */
+export async function notificarTicketAsignadoService(
+  usuarios: { id: string; nombre: string; email: string }[],
+  ticket: { id: string; nro: number; descripcion: string },
+  asignadoPor: string,
+) {
+  for (const u of usuarios) {
+    await prisma.notificacion.create({
+      data: {
+        usuarioId: u.id,
+        tipo: 'ticket_asignado',
+        mensaje: `${asignadoPor} te asignó el ticket #${ticket.nro}`,
+        ticketId: ticket.id,
+      },
+    });
+    await sendTicketAssignedEmail(u.email, u.nombre, ticket, asignadoPor);
   }
 }

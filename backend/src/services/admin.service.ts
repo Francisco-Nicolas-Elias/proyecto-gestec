@@ -10,6 +10,16 @@ export async function getUsuariosService() {
   return prisma.usuario.findMany({ omit: { password: true }, orderBy: { nombre: 'asc' } });
 }
 
+// Listado liviano de staff (operaciones/admin) para selectores de asignación —
+// accesible también para operaciones, no solo para administrador.
+export async function getUsuariosStaffService() {
+  return prisma.usuario.findMany({
+    where: { rol: { in: [Rol.administrador, Rol.operaciones] }, bloqueado: false },
+    select: { id: true, nombre: true, rol: true },
+    orderBy: { nombre: 'asc' },
+  });
+}
+
 export async function createUsuarioService(
   data: { nombre: string; email: string; password: string; rol: Rol; area?: string },
   adminNombre: string,

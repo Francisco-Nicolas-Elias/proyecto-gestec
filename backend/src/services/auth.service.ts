@@ -43,7 +43,12 @@ export async function registroService(nombre: string, email: string, password: s
   if (emailExistenteUsuario) throw new AppError(409, 'El email ya está registrado');
 
   const emailExistentePendiente = await prisma.registroPendiente.findUnique({ where: { email } });
-  if (emailExistentePendiente) throw new AppError(409, 'Ya existe un registro pendiente de verificación para ese email');
+  if (emailExistentePendiente) {
+    if (emailExistentePendiente.expiresAt >= new Date()) {
+      throw new AppError(409, 'Ya existe un registro pendiente de verificación para ese email');
+    }
+    await prisma.registroPendiente.delete({ where: { email } });
+  }
 
   const passwordHash = await bcrypt.hash(password, 12);
   const token = crypto.randomUUID();

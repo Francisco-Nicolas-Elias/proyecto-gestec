@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../components/AuthContext';
 import { ArrowLeft, Plus, Check, ChevronDown, Paperclip } from 'lucide-react';
-import { createTarea, getActivos, getUbicaciones, getUsuarios } from '../services/apiClient';
+import { createTarea, getActivos, getUbicaciones, getUsuariosStaff } from '../services/apiClient';
 import MultimediaUpload, { type Adjunto } from '../components/MultimediaUpload';
 import SearchableSelect from '../components/SearchableSelect';
 import ClearableInput from '../components/ClearableInput';
@@ -48,15 +48,11 @@ export default function NuevaTareaForm() {
   }, [authLoading]);
 
   useEffect(() => {
-    Promise.all([getActivos(), getUbicaciones(), getUsuarios()]).then(
+    Promise.all([getActivos(), getUbicaciones(), getUsuariosStaff()]).then(
       ([activosData, ubicacionesData, usuariosData]) => {
         setActivos(activosData);
         setUbicaciones(ubicacionesData);
-        setUsuarios(
-          usuariosData.filter(
-            (u: any) => u.rol === 'administrador' || u.rol === 'operaciones',
-          ),
-        );
+        setUsuarios(usuariosData);
       },
     );
   }, []);
