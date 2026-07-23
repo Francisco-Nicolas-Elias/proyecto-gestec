@@ -14,7 +14,37 @@ export async function loginService(email: string, password: string) {
   if (usuario.bloqueado) throw new AppError(403, 'Tu cuenta está bloqueada. Contactá al administrador.');
 
   const valid = await bcrypt.compare(password, usuario.password);
-  if (!valid) throw new AppError(401, 'La contraseña es incorrecta');
+
+  if (!valid) {
+    const intentos = usuario.intentosFallidos + 1;
+
+    if (intentos >= 10) {
+      await prisma.usuario.update({ where: { id: usuario.id }, data: { intentosFallidos: intentos, bloqueado: true } });
+      await addLogService(
+        `Cuenta bloqueada automáticamente por ${intentos} intentos fallidos de inicio de sesión`,
+        'Administracion',
+        usuario.nombre,
+        usuario.rol,
+        usuario.id,
+      );
+      throw new AppError(403, 'Tu cuenta fue bloqueada por intentos fallidos. Contactá al administrador para desbloquearla.');
+    }
+
+    await prisma.usuario.update({ where: { id: usuario.id }, data: { intentosFallidos: intentos } });
+
+    const restantes = 10 - intentos;
+    if (restantes <= 3) {
+      const plural = restantes === 1 ? '' : 's';
+      const frase = restantes === 1 ? 'Este es tu último intento' : `Quedan ${restantes} intento${plural}`;
+      throw new AppError(401, `La contraseña es incorrecta. ${frase}. Si se bloquea la cuenta, debés contactarte con el administrador.`);
+    }
+
+    throw new AppError(401, 'La contraseña es incorrecta');
+  }
+
+  if (usuario.intentosFallidos > 0) {
+    await prisma.usuario.update({ where: { id: usuario.id }, data: { intentosFallidos: 0 } });
+  }
 
   const secret = process.env.JWT_SECRET;
   if (!secret) throw new Error('JWT_SECRET no configurado');

@@ -67,7 +67,7 @@ export async function toggleBloqueoUsuarioService(id: string, adminId: string, a
   const nuevo = !usuario.bloqueado;
   const actualizado = await prisma.usuario.update({
     where: { id },
-    data: { bloqueado: nuevo },
+    data: { bloqueado: nuevo, ...(nuevo ? {} : { intentosFallidos: 0 }) },
     omit: { password: true },
   });
   const accion = nuevo ? 'bloqueado' : 'desbloqueado';

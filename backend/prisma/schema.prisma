@@ -143,6 +143,7 @@ model Usuario {
   resetPasswordToken  String?   @unique
   resetPasswordExpiry DateTime?
   bloqueado           Boolean   @default(false)
+  intentosFallidos    Int       @default(0)
 
   ticketsCreados    Ticket[]           @relation("TicketCreador")
   ticketsAsignados  TicketAsignado[]

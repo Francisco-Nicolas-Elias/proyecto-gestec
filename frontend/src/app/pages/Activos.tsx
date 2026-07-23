@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import {
   Plus, Search, Eye, Pencil, Trash2, Filter, X, Monitor,
   ChevronUp, ChevronDown as ChevronDownIcon, Calendar, FileDown,
@@ -34,6 +34,7 @@ const PAGE_SIZE = 30;
 
 export default function Activos() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { hasPermission, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [activos, setActivos] = useState<Activo[]>([]);
@@ -41,8 +42,8 @@ export default function Activos() {
   const [sectores, setSectores] = useState<string[]>([]);
   const [search, setSearch] = useState('');
   const [filterSector, setFilterSector] = useState('');
-  const [filterEstado, setFilterEstado] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
+  const [filterEstado, setFilterEstado] = useState(() => searchParams.get('estado') ?? '');
+  const [showFilters, setShowFilters] = useState(!!searchParams.get('estado'));
   const [sortKey, setSortKey] = useState<SortKey>('nroPc');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [toDelete, setToDelete] = useState<Activo | null>(null);
@@ -464,8 +465,11 @@ export default function Activos() {
   const exportarEquiposExcel = () => {
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
-    const fmtFecha = (v: string | null | undefined) =>
-      v ? new Date(v).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+    const fmtFecha = (v: string | null | undefined) => {
+      if (!v) return '';
+      const [y, m, day] = v.split('-');
+      return `${day}/${m}/${y}`;
+    };
     const rows = filtered.map(a => ({
       'N° PC':        a.nroPc || '',
       'Usuario':      a.usuario || '',
