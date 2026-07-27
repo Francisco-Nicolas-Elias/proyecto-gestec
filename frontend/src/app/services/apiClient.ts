@@ -1027,20 +1027,35 @@ export interface UbicacionEntry {
 export const getPisoForSector = (sector: string): string =>
   SECTOR_PISO_MAP[sector] ?? '';
 
+// Fetch cacheado compartido — evita pegarle a /admin/ubicaciones por separado
+// desde getUbicacionesStruct/getUbicaciones/getSectores en cada montaje de página
+const fetchUbicacionesRaw = async (): Promise<UbicacionEntry[]> => {
+  const hit = cacheGet<UbicacionEntry[]>('ubicaciones');
+  if (hit) return hit;
+  const result = await http.get<UbicacionEntry[]>('/admin/ubicaciones');
+  cacheSet('ubicaciones', result);
+  return result;
+};
+
 export const getUbicacionesStruct = async (): Promise<UbicacionEntry[]> => {
-  return http.get<UbicacionEntry[]>('/admin/ubicaciones');
+  return fetchUbicacionesRaw();
 };
 
 export const createUbicacionEntry = async (data: Omit<UbicacionEntry, 'id'>): Promise<UbicacionEntry> => {
-  return http.post<UbicacionEntry>('/admin/ubicaciones', data);
+  const result = await http.post<UbicacionEntry>('/admin/ubicaciones', data);
+  cacheInvalidate('ubicaciones');
+  return result;
 };
 
 export const updateUbicacionEntry = async (id: string, data: Omit<UbicacionEntry, 'id'>): Promise<UbicacionEntry> => {
-  return http.put<UbicacionEntry>(`/admin/ubicaciones/${id}`, data);
+  const result = await http.put<UbicacionEntry>(`/admin/ubicaciones/${id}`, data);
+  cacheInvalidate('ubicaciones');
+  return result;
 };
 
 export const deleteUbicacionEntry = async (id: string): Promise<void> => {
-  return http.del(`/admin/ubicaciones/${id}`);
+  await http.del(`/admin/ubicaciones/${id}`);
+  cacheInvalidate('ubicaciones');
 };
 
 // Catálogos estáticos
@@ -1049,7 +1064,7 @@ export const getTiposActivo = async (): Promise<string[]> => {
 };
 
 export const getUbicaciones = async (): Promise<string[]> => {
-  return http.get<UbicacionEntry[]>('/admin/ubicaciones').then(arr =>
+  return fetchUbicacionesRaw().then(arr =>
     arr.map(u => u.sector).sort((a, b) => a.localeCompare(b, 'es'))
   );
 };
@@ -1062,7 +1077,7 @@ export const getEstados = async (): Promise<{ value: string; label: string }[]> 
 };
 
 export const getSectores = async (): Promise<string[]> => {
-  return http.get<UbicacionEntry[]>('/admin/ubicaciones').then(arr =>
+  return fetchUbicacionesRaw().then(arr =>
     arr.map(u => u.sector).sort((a, b) => a.localeCompare(b))
   );
 };
