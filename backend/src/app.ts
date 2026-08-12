@@ -1,11 +1,13 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import { router } from './routes';
 import { errorHandler } from './middlewares/error.middleware';
 
 const app = express();
 
+app.use(helmet());
 app.use(
   cors({
     origin: process.env.FRONTEND_URL || (process.env.NODE_ENV !== 'production' ? 'http://localhost:5173' : ''),

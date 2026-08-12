@@ -50,7 +50,7 @@ export async function updateComentario(req: Request, res: Response, next: NextFu
 
 export async function deleteComentario(req: Request, res: Response, next: NextFunction) {
   try {
-    await svc.deleteComentarioTareaService(req.params.comentarioId, req.user!.nombre, req.user!.rol);
+    await svc.deleteComentarioTareaService(req.params.comentarioId, req.user!.id, req.user!.rol, req.user!.nombre);
     res.status(204).send();
   } catch (err) { next(err); }
 }

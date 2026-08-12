@@ -135,7 +135,7 @@ export default function TicketDetalle() {
       const agregando = nuevosAdjuntos.length > prev.length;
       toast.success(agregando ? 'Archivo agregado' : 'Archivo eliminado');
       if (agregando) {
-        const updated = await import('../services/apiClient').then(m => m.getTicketById(id!));
+        const updated = await getTicketById(id!);
         if (updated) setAdjuntos(updated.adjuntos || []);
       }
     } catch (error: any) {

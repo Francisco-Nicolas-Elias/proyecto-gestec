@@ -13,6 +13,7 @@ import {
 import { getLogs } from '../services/logsService';
 import StatusBadge from '../components/StatusBadge';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { toast } from 'sonner@2.0.3';
 
 // ── Pure helpers (module-level, never recreated) ───────────────────────────────
 
@@ -274,23 +275,38 @@ export default function Dashboard() {
 
 
   const loadDashboardData = async () => {
-    try {
-      const [activos, tickets, tareas, stock] = await Promise.all([
-        hasPermission('activos') ? getActivos() : Promise.resolve([]),
-        getTickets(),
-        hasPermission('tareas') ? getTareas() : Promise.resolve([]),
-        hasPermission('stock')  ? getStock()  : Promise.resolve([]),
-      ]);
-      setAllActivos(activos);
-      setAllTickets(tickets);
-      setAllTareas(tareas);
-      setAllStock(stock);
-      if (hasPermission('admin')) setLogs((await getLogs()).slice(0, 10));
-    } catch (e) {
-      console.error('Error loading dashboard:', e);
-    } finally {
-      setLoading(false);
+    const results = await Promise.allSettled([
+      hasPermission('activos') ? getActivos() : Promise.resolve([]),
+      getTickets(),
+      hasPermission('tareas') ? getTareas() : Promise.resolve([]),
+      hasPermission('stock')  ? getStock()  : Promise.resolve([]),
+    ]);
+    const [activosR, ticketsR, tareasR, stockR] = results;
+    const labels = ['Equipos', 'Tickets', 'Tareas', 'Stock'];
+    const failed = results
+      .map((r, i) => (r.status === 'rejected' ? labels[i] : null))
+      .filter((l): l is string => l !== null);
+
+    if (activosR.status === 'fulfilled') setAllActivos(activosR.value);
+    if (ticketsR.status === 'fulfilled') setAllTickets(ticketsR.value);
+    if (tareasR.status === 'fulfilled') setAllTareas(tareasR.value);
+    if (stockR.status === 'fulfilled') setAllStock(stockR.value);
+
+    if (failed.length > 0) {
+      console.error('Error loading dashboard sections:', failed);
+      toast.error(`No se pudo cargar: ${failed.join(', ')}`);
     }
+
+    if (hasPermission('admin')) {
+      try {
+        setLogs((await getLogs()).slice(0, 10));
+      } catch (e) {
+        console.error('Error loading logs:', e);
+        toast.error('No se pudieron cargar los logs recientes');
+      }
+    }
+
+    setLoading(false);
   };
 
   useEffect(() => {

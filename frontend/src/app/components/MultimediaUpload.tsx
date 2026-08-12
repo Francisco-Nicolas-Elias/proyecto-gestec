@@ -1,5 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Image, Video, Mic, Play, Pause, X, Upload, Loader2, FileAudio, ZoomIn, ZoomOut } from 'lucide-react';
+import { toast } from 'sonner@2.0.3';
+
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB, igual al límite del backend
 
 export interface Adjunto {
   id: string;
@@ -125,6 +128,13 @@ export default function MultimediaUpload({
     if (!files.length) return;
     const slots = maxFiles - adjuntos.length;
     if (slots <= 0) return;
+
+    const tooLarge = files.find(f => f.size > MAX_FILE_SIZE);
+    if (tooLarge) {
+      toast.error(`"${tooLarge.name}" supera el límite de 50MB`);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
 
     setUploading(true);
     try {

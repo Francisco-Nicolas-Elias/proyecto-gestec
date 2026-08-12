@@ -44,6 +44,7 @@ export default function NotificationBell() {
   const [loadingAllNotifs, setLoadingAllNotifs] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const dismissedIds = useRef<Set<string>>(getDismissed());
+  const prevNewTicketsCountRef = useRef(0);
 
   // Solo mostrar para administradores y operaciones
   const shouldShowNotifications = auth?.usuario?.rol === 'administrador' || auth?.usuario?.rol === 'operaciones';
@@ -81,7 +82,7 @@ export default function NotificationBell() {
       const newTickets = todosNuevos.filter((t: any) => !dismissedIds.current.has(t.id));
 
       // Verificar si hay nuevos tickets desde la última carga
-      const previousCount = notifications.length;
+      const previousCount = prevNewTicketsCountRef.current;
       const currentCount = newTickets.length;
 
       if (currentCount > previousCount && previousCount > 0) {
@@ -93,6 +94,7 @@ export default function NotificationBell() {
           usuarioNombre: auth?.usuario?.nombre || '',
         });
       }
+      prevNewTicketsCountRef.current = currentCount;
 
       setNotifications(newTickets);
       setTareaNotifs(notifs.filter((n) => !n.leida));

@@ -52,7 +52,7 @@ export async function loginService(email: string, password: string) {
   const token = jwt.sign(
     { sub: usuario.id, email: usuario.email, rol: usuario.rol, nombre: usuario.nombre },
     secret,
-    { expiresIn: (process.env.JWT_EXPIRES_IN ?? '8h') as any },
+    { expiresIn: (process.env.JWT_EXPIRES_IN ?? '8h') as jwt.SignOptions['expiresIn'] },
   );
 
   const { password: _, ...usuarioSinPassword } = usuario;

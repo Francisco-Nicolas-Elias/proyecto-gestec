@@ -3,6 +3,8 @@ import { authenticate } from '../middlewares/auth.middleware';
 import { isOperaciones, isAnyUser } from '../middlewares/roles.middleware';
 import { validate } from '../middlewares/validate.middleware';
 import { createActivoSchema, updateActivoSchema } from '../schemas/activo.schema';
+import { createIntervencionSchema } from '../schemas/intervencion.schema';
+import { createMantenimientoSchema } from '../schemas/mantenimiento.schema';
 import * as ctrl from '../controllers/activos.controller';
 
 const router = Router();
@@ -20,7 +22,7 @@ router.delete('/:id', isOperaciones, ctrl.deleteActivo);
 
 router.get('/:id/historial-componentes', isOperaciones, ctrl.getHistorialComponentes);
 router.get('/:id/intervenciones', isOperaciones, ctrl.getIntervenciones);
-router.post('/:id/intervenciones', isOperaciones, ctrl.createIntervencion);
-router.post('/:id/mantenimiento', isOperaciones, ctrl.addMantenimiento);
+router.post('/:id/intervenciones', isOperaciones, validate(createIntervencionSchema), ctrl.createIntervencion);
+router.post('/:id/mantenimiento', isOperaciones, validate(createMantenimientoSchema), ctrl.addMantenimiento);
 
 export default router;

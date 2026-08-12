@@ -554,7 +554,7 @@ export default function Stock() {
             <Clock size={15} />
           </button>
           {/* Editar */}
-          {hasPermission('admin') && (
+          {hasPermission('stock') && (
             <button
               onClick={() => setComponenteToEdit(row)}
               title="Editar componente"
@@ -564,7 +564,7 @@ export default function Stock() {
             </button>
           )}
           {/* Eliminar */}
-          {hasPermission('admin') && (
+          {hasPermission('stock') && (
             <button
               onClick={() => setComponenteToDelete(row)}
               title="Eliminar componente"

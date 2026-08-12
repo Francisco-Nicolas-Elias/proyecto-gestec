@@ -277,7 +277,17 @@ export async function updateComentarioTareaService(comentarioId: string, texto: 
   });
 }
 
-export async function deleteComentarioTareaService(comentarioId: string, usuarioNombre: string, usuarioRol: string) {
+export async function deleteComentarioTareaService(
+  comentarioId: string,
+  usuarioId: string,
+  usuarioRol: string,
+  usuarioNombre: string,
+) {
+  const comentario = await prisma.comentarioTarea.findUnique({ where: { id: comentarioId }, select: { autorId: true } });
+  if (!comentario) throw new AppError(404, 'Comentario no encontrado');
+  if (usuarioRol !== 'administrador' && comentario.autorId !== usuarioId) {
+    throw new AppError(403, 'No podés eliminar comentarios ajenos');
+  }
   await prisma.comentarioTarea.delete({ where: { id: comentarioId } });
   await addLogService(`Comentario de tarea eliminado`, 'Tareas', usuarioNombre, usuarioRol);
 }

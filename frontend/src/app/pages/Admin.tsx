@@ -26,7 +26,6 @@ import { useFormPersistence } from '../services/useFormPersistence';
 // ── Valores iniciales de formularios (fuera del componente para referencia estable) ──
 const INIT_USUARIO = { nombre: '', email: '', rol: 'docente_empleado' as 'administrador' | 'operaciones' | 'docente_empleado', area: '' };
 const INIT_UBICACION = { sector: '', piso: '' };
-const INIT_ROL = { nombre: '', descripcion: '', permisos: [] as string[] };
 const INIT_PROVEEDOR = { nombre: '', contacto: '', telefono: '' };
 
 // ── Piso options ───────────────────────────────────────────────────────────
@@ -93,17 +92,12 @@ export default function Admin() {
   const [ubicacionesSearch, setUbicacionesSearch] = useState('');
   const [ubicacionesPisoFiltro, setUbicacionesPisoFiltro] = useState('');
 
-  // ── Roles ─────────────────────────────────────────────────────────────────
-  const [roles, setRoles] = useState([
+  // ── Roles (solo lectura — definidos por el sistema) ─────────────────────────
+  const [roles] = useState([
     { id: '1', nombre: 'Administrador', descripcion: 'Acceso total al sistema', permisos: ['activos', 'activos_editar', 'tickets_crear', 'tickets_gestionar', 'stock', 'tareas', 'admin'] },
     { id: '2', nombre: 'Operaciones', descripcion: 'Gestión de activos, tickets, stock y tareas', permisos: ['activos', 'activos_editar', 'tickets_crear', 'tickets_gestionar', 'stock', 'tareas'] },
     { id: '3', nombre: 'Docente/Empleado', descripcion: 'Solo puede crear y ver sus propios tickets', permisos: ['tickets_crear'] },
   ]);
-  const [showRolModal, setShowRolModal] = useState(false);
-  const [editingRol, setEditingRol] = useState<any | null>(null);
-  const [showDeleteRolModal, setShowDeleteRolModal] = useState(false);
-  const [rolToDelete, setRolToDelete] = useState<any | null>(null);
-  const [rolFormData, setRolFormData, clearRolFormDataPersistence] = useFormPersistence('gestec:admin:rol:new', INIT_ROL);
 
   // ── Tipos de Componente ───────────────────────────────────────────────────
   const [tiposComponente, setTiposComponente] = useState<TipoComponente[]>([]);
@@ -344,92 +338,6 @@ export default function Admin() {
     } finally {
       setSaving(false);
     }
-  };
-
-  // Inicializar formulario de Rol (solo en edición: siempre carga del rol a editar)
-  useEffect(() => {
-    if (!showRolModal) return;
-    if (editingRol) {
-      setRolFormData({
-        nombre: editingRol.nombre,
-        descripcion: editingRol.descripcion,
-        permisos: [...editingRol.permisos],
-      });
-    }
-    // En modo "nuevo", NO reseteamos: el hook restaura el draft desde sessionStorage
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showRolModal]);
-
-  // ── Roles handlers ────────────────────────────────────────────────────────
-  const openNuevoRol = () => {
-    setEditingRol(null);
-    setShowRolModal(true);
-  };
-
-  const handleEditRol = (rol: any) => {
-    setEditingRol(rol);
-    setShowRolModal(true);
-  };
-
-  // cancel=true → el usuario hizo clic en Cancelar (limpiar draft si es "nuevo")
-  // cancel=false → el usuario cerró con X (mantener draft)
-  const closeRolModal = (cancel = false) => {
-    if (cancel && !editingRol) clearRolFormDataPersistence();
-    setShowRolModal(false);
-    setEditingRol(null);
-  };
-
-  const handleSubmitRol = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!rolFormData.nombre.trim()) {
-      toast.error('El nombre del rol es obligatorio');
-      return;
-    }
-    try {
-      if (editingRol) {
-        setRoles(prev =>
-          prev.map(r => r.id === editingRol.id ? { ...r, ...rolFormData } : r)
-        );
-        toast.success('Rol actualizado correctamente');
-        addLog(
-          `Rol "${rolFormData.nombre}" actualizado`,
-          'Administración', usuario?.nombre ?? 'Sistema', usuario?.rol ?? '',
-        );
-      } else {
-        const newRol = { id: Date.now().toString(), ...rolFormData };
-        setRoles(prev => [...prev, newRol]);
-        toast.success('Rol creado correctamente');
-        addLog(
-          `Rol "${rolFormData.nombre}" creado`,
-          'Administración', usuario?.nombre ?? 'Sistema', usuario?.rol ?? '',
-        );
-      }
-      if (!editingRol) clearRolFormDataPersistence(); // ← Limpiar draft al guardar nuevo rol
-      closeRolModal();
-    } catch {
-      toast.error('Error al guardar el rol');
-    }
-  };
-
-  const togglePermiso = (key: string) => {
-    setRolFormData(prev => ({
-      ...prev,
-      permisos: prev.permisos.includes(key)
-        ? prev.permisos.filter(p => p !== key)
-        : [...prev.permisos, key],
-    }));
-  };
-
-  const confirmDeleteRol = () => {
-    if (!rolToDelete) return;
-    setRoles(prev => prev.filter(r => r.id !== rolToDelete.id));
-    toast.success('Rol eliminado correctamente');
-    addLog(
-      `Rol "${rolToDelete.nombre}" eliminado`,
-      'Administración', usuario?.nombre ?? 'Sistema', usuario?.rol ?? '',
-    );
-    setShowDeleteRolModal(false);
-    setRolToDelete(null);
   };
 
   // ── Usuarios table columns ─────────────────────────────────────────────────
@@ -1586,83 +1494,6 @@ export default function Admin() {
             <button onClick={confirmDeleteUbicacion} disabled={saving}
               className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg disabled:opacity-50 transition-colors text-sm">
               {saving ? 'Eliminando...' : 'Eliminar'}
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Modal Rol */}
-      <Modal
-        isOpen={showRolModal}
-        onClose={closeRolModal}
-        title={editingRol ? 'Editar Rol' : 'Nuevo Rol'}
-        size="md"
-      >
-        <form onSubmit={handleSubmitRol} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Nombre del Rol <span className="text-red-500">*</span>
-            </label>
-            <ClearableInput
-              type="text" required
-              value={rolFormData.nombre}
-              onChange={e => setRolFormData(p => ({ ...p, nombre: e.target.value }))}
-              className={ic} placeholder="Ej: Supervisor"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descripción</label>
-            <ClearableInput
-              type="text"
-              value={rolFormData.descripcion}
-              onChange={e => setRolFormData(p => ({ ...p, descripcion: e.target.value }))}
-              className={ic} placeholder="Descripción del rol y sus responsabilidades"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Permisos</label>
-            <div className="grid grid-cols-1 gap-2">
-              {PERMISOS_DISPONIBLES.map(p => (
-                <label key={p.key} className="flex items-center gap-3 p-2.5 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={rolFormData.permisos.includes(p.key)}
-                    onChange={() => togglePermiso(p.key)}
-                    className="w-4 h-4 text-[#00a6d6] rounded border-gray-300 focus:ring-[#00a6d6]"
-                  />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">{p.label}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <button type="button" onClick={() => closeRolModal(true)}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors dark:text-white text-sm">
-              Cancelar
-            </button>
-            <button type="submit"
-              className="bg-[#00a6d6] hover:bg-[#0095c0] text-white px-6 py-2 rounded-lg transition-colors text-sm">
-              {editingRol ? 'Actualizar Rol' : 'Crear Rol'}
-            </button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* Modal Eliminar Rol */}
-      <Modal isOpen={showDeleteRolModal} onClose={() => setShowDeleteRolModal(false)} title="Eliminar Rol" size="md">
-        <div className="space-y-4">
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            ¿Estás seguro de que querés eliminar el rol <strong className="text-gray-900 dark:text-white">{rolToDelete?.nombre}</strong>?
-            Los usuarios con este rol podrían perder sus permisos.
-          </p>
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <button onClick={() => setShowDeleteRolModal(false)}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors dark:text-white text-sm">
-              Cancelar
-            </button>
-            <button onClick={confirmDeleteRol}
-              className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition-colors text-sm">
-              Eliminar Rol
             </button>
           </div>
         </div>

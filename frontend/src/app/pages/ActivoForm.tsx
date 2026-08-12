@@ -14,6 +14,7 @@ import ClearableInput from '../components/ClearableInput';
 import { toast } from 'sonner@2.0.3';
 import { useFormPersistence, hasPersistedData } from '../services/useFormPersistence';
 import DraftBanner from '../components/DraftBanner';
+import { useAuth } from '../components/AuthContext';
 
 const inputClass = 'w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500';
 const readonlyClass = 'w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-600 text-gray-900 dark:text-white rounded-lg cursor-default';
@@ -119,9 +120,14 @@ function Field({
 export default function ActivoForm() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { hasPermission, loading: authLoading } = useAuth();
   const isEdit = Boolean(id);
 
   const storageKey = isEdit ? `gestec:activo:edit:${id}` : 'gestec:activo:new';
+
+  useEffect(() => {
+    if (!authLoading && !hasPermission('activos')) navigate('/activos', { replace: true });
+  }, [authLoading]);
 
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);

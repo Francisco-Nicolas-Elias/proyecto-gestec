@@ -48,7 +48,12 @@ export async function uploadFile<T>(path: string, formData: FormData): Promise<T
   const token = localStorage.getItem('gestec_token');
   const headers: Record<string, string> = {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(`${BASE_URL}${path}`, { method: 'POST', headers, body: formData });
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}${path}`, { method: 'POST', headers, body: formData });
+  } catch {
+    throw new Error('Sin conexión con el servidor. Verificá tu red e intentá nuevamente.');
+  }
   if (res.status === 401) {
     if (localStorage.getItem('gestec_token') === token) {
       localStorage.removeItem('gestec_token');

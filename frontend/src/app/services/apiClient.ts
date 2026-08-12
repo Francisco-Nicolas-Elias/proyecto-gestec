@@ -629,14 +629,17 @@ export const deleteTicket = async (id: string): Promise<void> => {
 };
 
 export const addComentario = async (ticketId: string, texto: string, esInterno: boolean): Promise<Comentario> => {
+  cacheInvalidate('tickets');
   return http.post<any>(`/tickets/${ticketId}/comentarios`, { texto, esInterno }).then(mapComentario);
 };
 
 export const updateComentarioTicket = async (ticketId: string, comentarioId: string, texto: string): Promise<Comentario> => {
+  cacheInvalidate('tickets');
   return http.put<any>(`/tickets/${ticketId}/comentarios/${comentarioId}`, { texto }).then(mapComentario);
 };
 
 export const deleteComentarioTicket = async (ticketId: string, comentarioId: string): Promise<void> => {
+  cacheInvalidate('tickets');
   return http.del(`/tickets/${ticketId}/comentarios/${comentarioId}`);
 };
 
@@ -770,17 +773,17 @@ export const buscarActivoPorNroPc = async (nroPc: string): Promise<{ id: string;
 };
 
 export const createComponente = async (data: Omit<Componente, 'id'>): Promise<Componente> => {
-  cacheInvalidate('componentes', 'stock');
+  cacheInvalidate('componentes', 'stock', 'activos');
   return componentePayload(data).then(p => http.post<any>('/componentes', p)).then(mapComponente);
 };
 
 export const updateComponente = async (id: string, data: Partial<Omit<Componente, 'id'>>): Promise<Componente> => {
-  cacheInvalidate('componentes', 'stock');
+  cacheInvalidate('componentes', 'stock', 'activos');
   return componentePayload(data).then(p => http.put<any>(`/componentes/${id}`, p)).then(mapComponente);
 };
 
 export const deleteComponente = async (id: string): Promise<void> => {
-  cacheInvalidate('componentes', 'stock');
+  cacheInvalidate('componentes', 'stock', 'activos');
   return http.del(`/componentes/${id}`);
 };
 
@@ -894,6 +897,7 @@ export const getTareaById = async (id: string): Promise<Tarea | null> => {
 };
 
 export const createTarea = async (tarea: Partial<Tarea>): Promise<Tarea> => {
+  cacheInvalidate('tareas');
   const localAdjuntos = tarea.adjuntos;
   const payload = await tareaPayload(tarea);
   const created = await http.post<any>('/tareas', payload).then(mapTarea);
@@ -917,6 +921,7 @@ export const updateTaskStatus = async (id: string, estado: Tarea['estado'], asig
 };
 
 export const addComentarioTarea = async (tareaId: string, texto: string, adjuntos?: Adjunto[]): Promise<Comentario> => {
+  cacheInvalidate('tareas');
   const comentario = await http.post<any>(`/tareas/${tareaId}/comentarios`, { texto }).then(mapComentario);
   if (adjuntos?.length) {
     const uploaded = await Promise.all(adjuntos.map(async (adj) => {
@@ -929,10 +934,12 @@ export const addComentarioTarea = async (tareaId: string, texto: string, adjunto
 };
 
 export const updateComentarioTarea = async (tareaId: string, comentarioId: string, nuevoTexto: string): Promise<Comentario> => {
+  cacheInvalidate('tareas');
   return http.put<any>(`/tareas/${tareaId}/comentarios/${comentarioId}`, { texto: nuevoTexto }).then(mapComentario);
 };
 
 export const deleteComentarioTarea = async (tareaId: string, comentarioId: string): Promise<void> => {
+  cacheInvalidate('tareas');
   return http.del(`/tareas/${tareaId}/comentarios/${comentarioId}`);
 };
 

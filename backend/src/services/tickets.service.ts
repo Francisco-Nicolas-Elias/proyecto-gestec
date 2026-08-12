@@ -59,12 +59,22 @@ export async function createTicketService(
   usuarioRol: string,
 ) {
   const { asignadosIds, ...rest } = data;
+
+  let asignadosValidos: string[] = [];
+  if (asignadosIds?.length) {
+    const staff = await prisma.usuario.findMany({
+      where: { id: { in: asignadosIds }, rol: { in: [Rol.administrador, Rol.operaciones] } },
+      select: { id: true },
+    });
+    asignadosValidos = staff.map((u) => u.id);
+  }
+
   const ticket = await prisma.ticket.create({
     data: {
       ...rest,
       creadorId,
       estado: EstadoTicket.nuevo,
-      asignados: { create: (asignadosIds ?? []).map((usuarioId) => ({ usuarioId })) },
+      asignados: { create: asignadosValidos.map((usuarioId) => ({ usuarioId })) },
     },
     include: { creador: { omit: { password: true } }, ...TICKET_ASIGNADOS_INCLUDE },
   });

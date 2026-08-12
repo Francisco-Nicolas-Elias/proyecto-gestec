@@ -30,7 +30,12 @@ const INIT_REPUESTOS: Repuesto[] = [];
 export default function RegistrarIntervencion() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { usuario } = useAuth();
+  const { usuario, hasPermission, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && !hasPermission('activos')) navigate('/activos', { replace: true });
+  }, [authLoading]);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activo, setActivo] = useState<any>(null);
