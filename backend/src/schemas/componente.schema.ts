@@ -11,7 +11,7 @@ const componenteBase = z.object({
   activoId: z.string().optional().nullable(),
   responsable: z.string().optional(),
   codigoExcel: z.string().optional().nullable(),
-}).passthrough();
+});
 
 export const createComponenteSchema = componenteBase;
 export const updateComponenteSchema = componenteBase.partial();

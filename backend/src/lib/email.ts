@@ -1,5 +1,14 @@
 import nodemailer from 'nodemailer';
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 const smtpPort = Number(process.env.SMTP_PORT ?? 2525);
 
 const transporter = nodemailer.createTransport({
@@ -15,6 +24,7 @@ const transporter = nodemailer.createTransport({
 export async function sendVerificationEmail(email: string, nombre: string, token: string): Promise<void> {
   const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:5173';
   const link = `${frontendUrl}/verificar-email?token=${token}`;
+  const nombreSafe = escapeHtml(nombre);
 
   try {
     await transporter.sendMail({
@@ -23,7 +33,7 @@ export async function sendVerificationEmail(email: string, nombre: string, token
       subject: 'Verificá tu cuenta en GESTEC',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto;">
-          <h2 style="color: #00a6d6;">Bienvenido/a a GESTEC, ${nombre}</h2>
+          <h2 style="color: #00a6d6;">Bienvenido/a a GESTEC, ${nombreSafe}</h2>
           <p>Para activar tu cuenta hacé clic en el siguiente botón:</p>
           <a href="${link}" style="
             display: inline-block;
@@ -53,6 +63,7 @@ export async function sendVerificationEmail(email: string, nombre: string, token
 export async function sendPasswordResetEmail(email: string, nombre: string, token: string): Promise<void> {
   const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:5173';
   const link = `${frontendUrl}/reset-password?token=${token}`;
+  const nombreSafe = escapeHtml(nombre);
 
   try {
     await transporter.sendMail({
@@ -61,7 +72,7 @@ export async function sendPasswordResetEmail(email: string, nombre: string, toke
       subject: 'Restablecer contraseña — GESTEC',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto;">
-          <h2 style="color: #00a6d6;">Hola ${nombre},</h2>
+          <h2 style="color: #00a6d6;">Hola ${nombreSafe},</h2>
           <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta en GESTEC.</p>
           <p>Hacé clic en el siguiente botón para crear una nueva contraseña:</p>
           <a href="${link}" style="
@@ -97,6 +108,9 @@ export async function sendTaskAssignedEmail(
 ): Promise<void> {
   const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:5173';
   const link = `${frontendUrl}/tareas`;
+  const nombreSafe = escapeHtml(nombre);
+  const asignadoPorSafe = escapeHtml(asignadoPor);
+  const tituloSafe = escapeHtml(tarea.titulo);
 
   try {
     await transporter.sendMail({
@@ -105,9 +119,9 @@ export async function sendTaskAssignedEmail(
       subject: `Te asignaron una tarea: ${tarea.titulo}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto;">
-          <h2 style="color: #00a6d6;">Hola ${nombre},</h2>
-          <p><strong>${asignadoPor}</strong> te asignó como responsable de la tarea:</p>
-          <p style="font-size: 16px; font-weight: bold; color: #333;">"${tarea.titulo}"</p>
+          <h2 style="color: #00a6d6;">Hola ${nombreSafe},</h2>
+          <p><strong>${asignadoPorSafe}</strong> te asignó como responsable de la tarea:</p>
+          <p style="font-size: 16px; font-weight: bold; color: #333;">"${tituloSafe}"</p>
           <a href="${link}" style="
             display: inline-block;
             background: #00a6d6;
@@ -138,6 +152,9 @@ export async function sendTicketAssignedEmail(
 ): Promise<void> {
   const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:5173';
   const link = `${frontendUrl}/tickets/${ticket.id}`;
+  const nombreSafe = escapeHtml(nombre);
+  const asignadoPorSafe = escapeHtml(asignadoPor);
+  const descripcionSafe = escapeHtml(ticket.descripcion);
 
   try {
     await transporter.sendMail({
@@ -146,9 +163,9 @@ export async function sendTicketAssignedEmail(
       subject: `Te asignaron el ticket #${ticket.nro}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto;">
-          <h2 style="color: #00a6d6;">Hola ${nombre},</h2>
-          <p><strong>${asignadoPor}</strong> te asignó como responsable del ticket #${ticket.nro}:</p>
-          <p style="font-size: 16px; font-weight: bold; color: #333;">"${ticket.descripcion}"</p>
+          <h2 style="color: #00a6d6;">Hola ${nombreSafe},</h2>
+          <p><strong>${asignadoPorSafe}</strong> te asignó como responsable del ticket #${ticket.nro}:</p>
+          <p style="font-size: 16px; font-weight: bold; color: #333;">"${descripcionSafe}"</p>
           <a href="${link}" style="
             display: inline-block;
             background: #00a6d6;
