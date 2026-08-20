@@ -42,6 +42,8 @@ Reemplazar el bloque actual (que distingue usuario inexistente vs password incor
 export async function loginService(email: string, password: string) {
   const usuario = await prisma.usuario.findUnique({ where: { email } });
 
+  if (usuario?.bloqueado) throw new AppError(403, 'Tu cuenta está bloqueada. Contactá al administrador.');
+
   const valid = usuario ? await bcrypt.compare(password, usuario.password) : false;
 
   if (!usuario || !valid) {
@@ -60,8 +62,6 @@ export async function loginService(email: string, password: string) {
     throw new AppError(401, 'Email o contraseña incorrectos');
   }
 
-  if (usuario.bloqueado) throw new AppError(403, 'Tu cuenta está bloqueada. Contactá al administrador.');
-
   if (usuario.intentosFallidos > 0) {
     await prisma.usuario.update({ where: { id: usuario.id }, data: { intentosFallidos: 0 } });
   }
@@ -71,8 +71,8 @@ export async function loginService(email: string, password: string) {
 ```
 
 Decisiones clave de este bloque:
-- El chequeo de `bloqueado` se mueve **después** de validar la contraseña, para no revelar "esta cuenta existe y está bloqueada" con solo probar un email (evita otro vector de enumeración). Con password correcta y cuenta bloqueada, ahí sí se informa el bloqueo (el usuario ya demostró conocer la credencial).
-- `usuario ? await bcrypt.compare(...) : false` evita hacer una query condicional rara mantiene el timing lo más parecido posible entre "no existe" y "existe pero password mal" (bcrypt.compare sigue corriendo en ambos casos reales; no se hace timing-safe perfecto pero no empeora lo que había).
+- El chequeo de `bloqueado` va **antes** de validar la contraseña: cualquier intento de login a una cuenta bloqueada (password correcta o no) devuelve directamente 403. Esta fue la implementación original en la primera versión de este change; se cambió brevemente a chequear `bloqueado` *después* de la contraseña para cerrar un vector de enumeración adicional, pero eso rompía la UX para el caso real más común — un usuario que se olvidó la contraseña y falla 10+ veces nunca se enteraba de que su cuenta estaba bloqueada (su única salida era "recuperar contraseña" a ciegas). Ante ese trade-off, se decidió explícitamente priorizar la UX: se acepta que alguien pueda probar un email al azar y enterarse de si esa cuenta existe y está bloqueada (sin obtener ninguna credencial ni acceso), a cambio de que el usuario real siempre sepa por qué no puede entrar.
+- `usuario ? await bcrypt.compare(...) : false` evita hacer una query condicional rara y mantiene el timing lo más parecido posible entre "no existe" y "existe pero password mal" (bcrypt.compare sigue corriendo en ambos casos reales; no se hace timing-safe perfecto pero no empeora lo que había).
 - El incremento de `intentosFallidos` y el bloqueo automático a los 10 intentos se mantienen intactos, solo dejan de reflejarse en el mensaje de respuesta.
 
 ## Frontend

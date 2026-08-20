@@ -9,6 +9,8 @@ import { addLogService } from './logs.service';
 export async function loginService(email: string, password: string) {
   const usuario = await prisma.usuario.findUnique({ where: { email } });
 
+  if (usuario?.bloqueado) throw new AppError(403, 'Tu cuenta está bloqueada. Contactá al administrador.');
+
   const valid = usuario ? await bcrypt.compare(password, usuario.password) : false;
 
   if (!usuario || !valid) {
@@ -31,8 +33,6 @@ export async function loginService(email: string, password: string) {
 
     throw new AppError(401, 'Email o contraseña incorrectos');
   }
-
-  if (usuario.bloqueado) throw new AppError(403, 'Tu cuenta está bloqueada. Contactá al administrador.');
 
   if (usuario.intentosFallidos > 0) {
     await prisma.usuario.update({ where: { id: usuario.id }, data: { intentosFallidos: 0 } });

@@ -44,7 +44,7 @@ El sistema MUST responder con el mismo mensaje de error y el mismo status code (
 
 El sistema MUST NOT informar en la respuesta cuántos intentos fallidos lleva la cuenta ni cuántos restan antes del bloqueo.
 
-El mensaje de "cuenta bloqueada" (403) se mantiene sin cambios — solo se muestra a quien ya conoce que la cuenta existe y su contraseña, tras exceder el límite de intentos.
+El sistema MUST responder con el mensaje de "cuenta bloqueada" (403) para cualquier intento de login sobre una cuenta con `bloqueado = true`, independientemente de si la contraseña enviada es correcta o no. Esto es una decisión explícita de UX: prioriza que el usuario real que olvidó su contraseña sepa por qué no puede entrar, aceptando que alguien pueda probar un email al azar y enterarse de si esa cuenta existe y está bloqueada (sin obtener ninguna credencial ni acceso).
 
 #### Scenario: Login con email inexistente
 
