@@ -1,14 +1,13 @@
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api';
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = localStorage.getItem('gestec_token');
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
 
   let res: Response;
   try {
     res = await fetch(`${BASE_URL}${path}`, {
       ...options,
+      credentials: 'include',
       headers: { ...headers, ...(options.headers as Record<string, string>) },
     });
   } catch {
@@ -16,17 +15,19 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
 
   if (res.status === 401) {
-    // Solo cerrar sesión si había un token activo (sesión expirada).
-    // Si no había token, es un request sin autenticación (ej: login con credenciales
-    // incorrectas) — en ese caso lanzar el mensaje real del backend sin redirigir.
-    if (token && localStorage.getItem('gestec_token') === token) {
-      localStorage.removeItem('gestec_token');
-      localStorage.removeItem('usuario');
-      window.location.href = '/login';
-      throw new Error('Sesión expirada');
-    }
     const body = await res.json().catch(() => ({}));
-    throw new Error((body as any).error ?? (body as any).message ?? 'Error 401');
+    const msg = (body as any).error ?? (body as any).message ?? 'Error 401';
+
+    // Login fallido (credenciales incorrectas) y el chequeo de sesión al montar la app
+    // (/auth/me sin cookie válida, esperado si todavía no se inició sesión) son 401
+    // normales que el propio caller maneja — no deben disparar el redirect automático.
+    if (path === '/auth/login' || path === '/auth/me') {
+      throw new Error(msg);
+    }
+
+    localStorage.removeItem('usuario');
+    window.location.href = '/login';
+    throw new Error('Sesión expirada');
   }
 
   if (!res.ok) {
@@ -45,21 +46,15 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 export async function uploadFile<T>(path: string, formData: FormData): Promise<T> {
-  const token = localStorage.getItem('gestec_token');
-  const headers: Record<string, string> = {};
-  if (token) headers['Authorization'] = `Bearer ${token}`;
   let res: Response;
   try {
-    res = await fetch(`${BASE_URL}${path}`, { method: 'POST', headers, body: formData });
+    res = await fetch(`${BASE_URL}${path}`, { method: 'POST', credentials: 'include', body: formData });
   } catch {
     throw new Error('Sin conexión con el servidor. Verificá tu red e intentá nuevamente.');
   }
   if (res.status === 401) {
-    if (localStorage.getItem('gestec_token') === token) {
-      localStorage.removeItem('gestec_token');
-      localStorage.removeItem('usuario');
-      window.location.href = '/login';
-    }
+    localStorage.removeItem('usuario');
+    window.location.href = '/login';
     throw new Error('Sesión expirada');
   }
   if (!res.ok) {

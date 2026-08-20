@@ -295,15 +295,19 @@ export const verificarEmail = async (token: string): Promise<{ message: string }
   http.get<{ message: string }>(`/auth/verificar/${token}`);
 
 export const login = async (email: string, password: string): Promise<Usuario> => {
-  const data = await http.post<{ token: string; usuario: Usuario }>('/auth/login', { email, password });
-  localStorage.setItem('gestec_token', data.token);
+  const data = await http.post<{ usuario: Usuario }>('/auth/login', { email, password });
   localStorage.setItem('usuario', JSON.stringify(data.usuario));
   return data.usuario;
 };
 
 export const logout = async (): Promise<void> => {
-  localStorage.removeItem('gestec_token');
-  localStorage.removeItem('usuario');
+  try {
+    await http.post('/auth/logout', {});
+  } catch {
+    // Best-effort: si falla la llamada al backend, igual se limpia la sesión localmente.
+  } finally {
+    localStorage.removeItem('usuario');
+  }
 };
 
 export const getCurrentUser = (): Usuario | null => {

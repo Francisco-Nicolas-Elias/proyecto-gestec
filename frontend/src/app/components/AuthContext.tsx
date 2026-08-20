@@ -22,25 +22,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // RIESGO XSS: el token JWT se almacena en localStorage, accesible por cualquier
-    // script de la página. Migrar a httpOnly cookies requeriría cambios en toda la
-    // arquitectura de auth (backend + frontend).
-    const token = localStorage.getItem('gestec_token');
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
     http
       .get<Usuario>('/auth/me')
       .then((user) => setUsuario(user))
       .catch(() => {
-        // No limpiar si mientras tanto se completó un login nuevo (token reemplazado):
-        // de lo contrario se borraría la sesión recién creada por una verificación vieja.
-        if (localStorage.getItem('gestec_token') === token) {
-          localStorage.removeItem('gestec_token');
-          localStorage.removeItem('usuario');
-        }
+        localStorage.removeItem('usuario');
       })
       .finally(() => setLoading(false));
   }, []);

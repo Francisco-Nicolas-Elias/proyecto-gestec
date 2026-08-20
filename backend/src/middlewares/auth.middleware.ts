@@ -9,14 +9,12 @@ interface JwtPayload {
 }
 
 export function authenticate(req: Request, res: Response, next: NextFunction): void {
-  const authHeader = req.headers.authorization;
+  const token = req.cookies?.gestec_token;
 
-  if (!authHeader?.startsWith('Bearer ')) {
+  if (!token) {
     res.status(401).json({ error: 'Token no proporcionado' });
     return;
   }
-
-  const token = authHeader.slice(7);
 
   try {
     const secret = process.env.JWT_SECRET;

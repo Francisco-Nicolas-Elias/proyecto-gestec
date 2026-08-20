@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { login, me, registro, verificarEmail, solicitarRecuperacion, resetPassword } from '../controllers/auth.controller';
+import { login, logout, me, registro, verificarEmail, solicitarRecuperacion, resetPassword } from '../controllers/auth.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 import { validate } from '../middlewares/validate.middleware';
 import { loginRateLimiter } from '../middlewares/rateLimit.middleware';
@@ -36,6 +36,7 @@ const resetSchema = z.object({
 });
 
 router.post('/login', loginRateLimiter, validate(loginSchema), login);
+router.post('/logout', logout);
 router.get('/me', authenticate, me);
 router.post('/registro', validate(registroSchema), registro);
 router.get('/verificar/:token', verificarEmail);
