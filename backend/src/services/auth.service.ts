@@ -9,38 +9,30 @@ import { addLogService } from './logs.service';
 export async function loginService(email: string, password: string) {
   const usuario = await prisma.usuario.findUnique({ where: { email } });
 
-  if (!usuario) throw new AppError(401, 'El correo electrónico no está registrado');
+  const valid = usuario ? await bcrypt.compare(password, usuario.password) : false;
+
+  if (!usuario || !valid) {
+    if (usuario) {
+      const intentos = usuario.intentosFallidos + 1;
+
+      if (intentos >= 10) {
+        await prisma.usuario.update({ where: { id: usuario.id }, data: { intentosFallidos: intentos, bloqueado: true } });
+        await addLogService(
+          `Cuenta bloqueada automáticamente por ${intentos} intentos fallidos de inicio de sesión`,
+          'Administracion',
+          usuario.nombre,
+          usuario.rol,
+          usuario.id,
+        );
+      } else {
+        await prisma.usuario.update({ where: { id: usuario.id }, data: { intentosFallidos: intentos } });
+      }
+    }
+
+    throw new AppError(401, 'Email o contraseña incorrectos');
+  }
 
   if (usuario.bloqueado) throw new AppError(403, 'Tu cuenta está bloqueada. Contactá al administrador.');
-
-  const valid = await bcrypt.compare(password, usuario.password);
-
-  if (!valid) {
-    const intentos = usuario.intentosFallidos + 1;
-
-    if (intentos >= 10) {
-      await prisma.usuario.update({ where: { id: usuario.id }, data: { intentosFallidos: intentos, bloqueado: true } });
-      await addLogService(
-        `Cuenta bloqueada automáticamente por ${intentos} intentos fallidos de inicio de sesión`,
-        'Administracion',
-        usuario.nombre,
-        usuario.rol,
-        usuario.id,
-      );
-      throw new AppError(403, 'Tu cuenta fue bloqueada por intentos fallidos. Contactá al administrador para desbloquearla.');
-    }
-
-    await prisma.usuario.update({ where: { id: usuario.id }, data: { intentosFallidos: intentos } });
-
-    const restantes = 10 - intentos;
-    if (restantes <= 3) {
-      const plural = restantes === 1 ? '' : 's';
-      const frase = restantes === 1 ? 'Este es tu último intento' : `Quedan ${restantes} intento${plural}`;
-      throw new AppError(401, `La contraseña es incorrecta. ${frase}. Si se bloquea la cuenta, debés contactarte con el administrador.`);
-    }
-
-    throw new AppError(401, 'La contraseña es incorrecta');
-  }
 
   if (usuario.intentosFallidos > 0) {
     await prisma.usuario.update({ where: { id: usuario.id }, data: { intentosFallidos: 0 } });

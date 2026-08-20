@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { login, me, registro, verificarEmail, solicitarRecuperacion, resetPassword } from '../controllers/auth.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 import { validate } from '../middlewares/validate.middleware';
+import { loginRateLimiter } from '../middlewares/rateLimit.middleware';
 import { z } from 'zod';
 
 const loginSchema = z.object({
@@ -34,7 +35,7 @@ const resetSchema = z.object({
     .refine((v) => /[^A-Za-z0-9]/.test(v), 'La contraseña debe contener al menos un carácter especial'),
 });
 
-router.post('/login', validate(loginSchema), login);
+router.post('/login', loginRateLimiter, validate(loginSchema), login);
 router.get('/me', authenticate, me);
 router.post('/registro', validate(registroSchema), registro);
 router.get('/verificar/:token', verificarEmail);
