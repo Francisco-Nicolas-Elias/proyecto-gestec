@@ -59,13 +59,18 @@ const normalize = (s: string) => (s ?? '').toLowerCase().trim().replace(/\s+/g, 
 
 export default function Admin() {
   const { hasPermission, usuario, loading: authLoading } = useAuth();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const tabValidos: AdminTab[] = ['usuarios', 'ubicaciones', 'roles', 'componentes', 'marcas', 'proveedores', 'areas', 'logs'];
   const tabInicial = searchParams.get('tab') as AdminTab | null;
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<AdminTab>(
     tabInicial && tabValidos.includes(tabInicial) ? tabInicial : 'usuarios',
   );
+
+  // Mantener el tab activo en la URL para que sobreviva a un refresh de la página
+  useEffect(() => {
+    setSearchParams({ tab: activeTab }, { replace: true });
+  }, [activeTab]);
   const [saving, setSaving] = useState(false);
 
   // ── Usuarios ──────────────────────────────────────────────────────────────
