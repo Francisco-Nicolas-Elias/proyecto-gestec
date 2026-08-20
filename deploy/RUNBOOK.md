@@ -86,7 +86,40 @@ pm2 save
 pm2 startup   # seguir la instrucción que imprime para que sobreviva a reinicios del servidor
 ```
 
-## 9. Verificación final
+## 9. Backup automático de la base de datos
+
+El plan gratuito de Supabase no incluye backups automáticos — este paso arma uno casero: dump diario, copia local + copia en Google Drive, con 7 días de retención en ambos destinos.
+
+```bash
+# Instalar cliente de PostgreSQL (para pg_dump)
+sudo apt install postgresql-client
+
+# Instalar rclone
+curl https://rclone.org/install.sh | sudo bash
+
+# Configurar el remote de Google Drive (paso interactivo — requiere
+# autenticarse con una cuenta de Google real del equipo; rclone abre un link
+# para autorizar. Al pedir el nombre del remote, usar "gdrive")
+rclone config
+
+# Crear carpeta de backups y dar permisos de ejecución al script
+sudo mkdir -p /var/backups/gestec
+chmod +x /var/www/gestec/deploy/backup-db.sh
+
+# Revisar deploy/backup-db.sh: ajustar ENV_FILE y RCLONE_REMOTE si difieren
+# de /var/www/gestec/backend/.env y "gdrive:gestec-backups"
+
+# Probar una corrida manual antes de dejarlo en cron
+/var/www/gestec/deploy/backup-db.sh
+cat /var/log/gestec-backup.log
+
+# Agregar al crontab (corre todos los días a las 3am)
+crontab -e
+# agregar la linea:
+# 0 3 * * * /var/www/gestec/deploy/backup-db.sh
+```
+
+## 10. Verificación final
 
 ```bash
 curl -I https://TU_DOMINIO_AQUI
@@ -95,3 +128,4 @@ curl -I https://TU_DOMINIO_AQUI
 - Confirmar que responde con el certificado SSL válido (sin warning de "no seguro").
 - Probar login real desde una red distinta a la de la institución (datos móviles), para confirmar que el acceso público funciona de punta a punta.
 - Confirmar en `pm2 logs gestec-backend` que no hay errores al recibir tráfico real.
+- Confirmar en `/var/log/gestec-backup.log` que la corrida de prueba del backup quedó registrada como exitosa.
