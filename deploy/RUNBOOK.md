@@ -97,9 +97,10 @@ sudo apt install postgresql-client
 # Instalar rclone
 curl https://rclone.org/install.sh | sudo bash
 
-# Configurar el remote de Google Drive (paso interactivo — requiere
-# autenticarse con una cuenta de Google real del equipo; rclone abre un link
-# para autorizar. Al pedir el nombre del remote, usar "gdrive")
+# Configurar el remote de Google Drive (paso interactivo — autenticarse
+# con la cuenta fahumada@ies21.edu.ar; rclone abre un link para autorizar.
+# Al pedir el nombre del remote, usar "gdrive". La carpeta "gestec-backup-ies"
+# se crea sola dentro del Drive en el primer backup, no hace falta crearla a mano)
 rclone config
 
 # Crear carpeta de backups y dar permisos de ejecución al script
@@ -107,7 +108,7 @@ sudo mkdir -p /var/backups/gestec
 chmod +x /var/www/gestec/deploy/backup-db.sh
 
 # Revisar deploy/backup-db.sh: ajustar ENV_FILE y RCLONE_REMOTE si difieren
-# de /var/www/gestec/backend/.env y "gdrive:gestec-backups"
+# de /var/www/gestec/backend/.env y "gdrive:gestec-backup-ies"
 
 # Probar una corrida manual antes de dejarlo en cron
 /var/www/gestec/deploy/backup-db.sh

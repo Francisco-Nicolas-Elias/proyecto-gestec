@@ -6,7 +6,7 @@ set -euo pipefail
 # --- Configuración (ajustar al servidor real) ---
 BACKUP_DIR="/var/backups/gestec"
 RETENTION_DAYS=7
-RCLONE_REMOTE="gdrive:gestec-backups"      # nombre del remote configurado con `rclone config`
+RCLONE_REMOTE="gdrive:gestec-backup-ies"   # nombre del remote configurado con `rclone config`
 ENV_FILE="/var/www/gestec/backend/.env"    # ruta real del repo en el servidor
 LOG_FILE="/var/log/gestec-backup.log"
 
