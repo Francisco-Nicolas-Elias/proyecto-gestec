@@ -2,6 +2,9 @@ packages:
   - 'frontend'
   - 'backend'
 
+overrides:
+  dompurify: '>=3.4.13'
+
 allowBuilds:
   '@prisma/client': true
   '@prisma/engines': true
