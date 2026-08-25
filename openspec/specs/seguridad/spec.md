@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Define el comportamiento requerido para los controles de seguridad del backend: validación de tipo de archivo en adjuntos, escape de HTML en el contenido de emails salientes, whitelist estricta de campos mutables en los endpoints de Activo, Componente y Tarea, y — a partir del pase del sistema a acceso público (no LAN-only) — rate limiting por IP y no-enumeración de usuarios en `POST /api/auth/login`. Incluye además el comportamiento correcto de reasignación de responsables al cambiar el estado de una tarea (bug funcional encontrado en el mismo archivo que se corrige).
+Define el comportamiento requerido para los controles de seguridad del backend: validación de tipo de archivo en adjuntos, escape de HTML en el contenido de emails salientes, whitelist estricta de campos mutables en los endpoints de Activo, Componente y Tarea, y — a partir del pase del sistema a acceso público (no LAN-only) — rate limiting por IP y no-enumeración de usuarios en `POST /api/auth/login`, extendido luego a los endpoints de registro y recuperación de contraseña. Incluye además el comportamiento correcto de reasignación de responsables al cambiar el estado de una tarea (bug funcional encontrado en el mismo archivo que se corrige), y el requisito de mantener las dependencias de runtime sin vulnerabilidades conocidas activas.
 
 ---
 
@@ -161,3 +161,69 @@ El sistema MUST responder con el mensaje de "cuenta bloqueada" (403) para cualqu
 - GIVEN una cuenta con `bloqueado = true`
 - WHEN se intenta login con esa cuenta (password correcta o incorrecta)
 - THEN el sistema MUST responder 403 "Tu cuenta está bloqueada. Contactá al administrador."
+
+---
+
+### Requirement: Rate limiting en endpoints de registro y recuperación de contraseña
+
+El sistema MUST limitar la cantidad de requests por dirección IP a `POST /api/auth/registro`, `POST /api/auth/recuperar-password`, `POST /api/auth/reset-password` y `GET /api/auth/verificar/:token` a 10 cada 15 minutos.
+
+Este límite es independiente del rate limiting ya existente en `POST /api/auth/login` (20 cada 10 minutos) — cada endpoint tiene su propio contador.
+
+Al superar el límite, el sistema MUST responder con status 429 antes de ejecutar cualquier lógica de negocio del endpoint (no debe llegar a crear registros pendientes, enviar emails, ni consultar tokens).
+
+#### Scenario: Ráfaga de registros desde la misma IP
+
+- GIVEN una IP que realizó 10 requests a `POST /api/auth/registro` en los últimos 15 minutos
+- WHEN esa misma IP realiza un request adicional a cualquiera de los 4 endpoints
+- THEN el sistema MUST responder 429 sin ejecutar la lógica del endpoint
+
+#### Scenario: Uso normal de una IP compartida (NAT institucional)
+
+- GIVEN varios usuarios distintos registrándose o recuperando su contraseña desde la misma IP pública de la institución
+- WHEN cada uno hace 1-2 requests en un rango de 15 minutos
+- THEN ninguno MUST ser bloqueado por el límite (10 requests es suficientemente generoso para uso normal simultáneo)
+
+#### Scenario: Verificación de email no bloqueada por el propio flujo de registro
+
+- GIVEN un usuario que se registró exitosamente y hace clic en el link de verificación de su email
+- WHEN el frontend llama `GET /api/auth/verificar/:token`
+- THEN esa request MUST contarse en el límite propio de `/verificar/:token`, no en el de `/registro`, y MUST ser aceptada en el uso normal
+
+---
+
+### Requirement: Dependencias de runtime sin vulnerabilidades conocidas activas
+
+Las dependencias que llegan al runtime de producción (`react-router`, `multer`, `nodemailer`, `jspdf`) MUST estar en una versión sin vulnerabilidades conocidas activas reportadas por `pnpm audit` al momento de este change.
+
+Un bump de versión MUST preservar el comportamiento funcional existente de cada superficie que la dependencia soporta (routing del frontend, subida de adjuntos, envío de emails, exportación a PDF) — este requirement no introduce ni remueve funcionalidad, solo actualiza la versión.
+
+#### Scenario: `pnpm audit` sin hallazgos de runtime tras el bump
+
+- GIVEN las 4 dependencias actualizadas a una versión parcheada
+- WHEN se corre `pnpm audit` sobre el workspace
+- THEN el reporte MUST NOT incluir vulnerabilidades para `react-router`, `multer`, `nodemailer` ni `dompurify`/`jspdf`
+
+#### Scenario: Navegación del frontend sin regresiones tras el bump de react-router
+
+- GIVEN el frontend con `react-router` actualizado
+- WHEN un usuario navega por todas las rutas del menú, alterna dark mode, refresca la página en cualquier pestaña (incluyendo Admin con su tab persistido en la URL) y hace login/logout
+- THEN el comportamiento MUST ser idéntico al que tenía antes del bump
+
+#### Scenario: Subida de adjuntos sin regresiones tras el bump de multer
+
+- GIVEN el backend con `multer` actualizado
+- WHEN un usuario sube un adjunto a un ticket, tarea o intervención
+- THEN el archivo MUST subirse y quedar accesible igual que antes del bump
+
+#### Scenario: Envío de emails sin regresiones tras el bump de nodemailer
+
+- GIVEN el backend con `nodemailer` actualizado
+- WHEN el sistema envía un email de recuperación de contraseña o verificación de registro
+- THEN el email MUST llegar con el mismo contenido y formato que antes del bump
+
+#### Scenario: Exportación a PDF sin regresiones tras el bump de jspdf
+
+- GIVEN el frontend con `jspdf` actualizado
+- WHEN un usuario exporta un PDF desde Activos, ActivoDetalle, Stock o Admin
+- THEN el PDF generado MUST tener el mismo contenido y formato que antes del bump

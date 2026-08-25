@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { login, logout, me, registro, verificarEmail, solicitarRecuperacion, resetPassword } from '../controllers/auth.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 import { validate } from '../middlewares/validate.middleware';
-import { loginRateLimiter } from '../middlewares/rateLimit.middleware';
+import { loginRateLimiter, authActionsRateLimiter } from '../middlewares/rateLimit.middleware';
 import { z } from 'zod';
 
 const loginSchema = z.object({
@@ -38,9 +38,9 @@ const resetSchema = z.object({
 router.post('/login', loginRateLimiter, validate(loginSchema), login);
 router.post('/logout', logout);
 router.get('/me', authenticate, me);
-router.post('/registro', validate(registroSchema), registro);
-router.get('/verificar/:token', verificarEmail);
-router.post('/recuperar-password', validate(recuperarSchema), solicitarRecuperacion);
-router.post('/reset-password', validate(resetSchema), resetPassword);
+router.post('/registro', authActionsRateLimiter, validate(registroSchema), registro);
+router.get('/verificar/:token', authActionsRateLimiter, verificarEmail);
+router.post('/recuperar-password', authActionsRateLimiter, validate(recuperarSchema), solicitarRecuperacion);
+router.post('/reset-password', authActionsRateLimiter, validate(resetSchema), resetPassword);
 
 export default router;
