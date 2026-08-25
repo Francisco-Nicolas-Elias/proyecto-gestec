@@ -47,6 +47,8 @@ export default function MultimediaUpload({
   const [uploading, setUploading] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [lightboxNombre, setLightboxNombre] = useState<string>('');
+  const [videoModalUrl, setVideoModalUrl] = useState<string | null>(null);
+  const [videoModalNombre, setVideoModalNombre] = useState<string>('');
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
@@ -321,6 +323,37 @@ export default function MultimediaUpload({
         </div>
       )}
 
+      {/* Modal de reproducción de video */}
+      {videoModalUrl && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-sm p-6"
+          onClick={() => setVideoModalUrl(null)}
+        >
+          <div
+            className="relative max-w-5xl max-h-[90vh] w-full flex flex-col items-center gap-3"
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setVideoModalUrl(null)}
+              className="absolute -top-3 -right-3 z-10 p-1.5 rounded-full bg-white/15 hover:bg-white/30 text-white transition-colors shadow-lg"
+              aria-label="Cerrar reproductor"
+            >
+              <X size={20} />
+            </button>
+            <video
+              src={videoModalUrl}
+              controls
+              autoPlay
+              className="max-w-full max-h-[85vh] rounded-lg shadow-2xl"
+            />
+            {videoModalNombre && (
+              <p className="text-white/70 text-sm truncate max-w-xs">{videoModalNombre}</p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Lista de adjuntos */}
       {adjuntos.length > 0 && (
         <div className="space-y-2">
@@ -344,9 +377,14 @@ export default function MultimediaUpload({
                 </button>
               )}
               {adj.tipo === 'video' && (
-                <div className="w-12 h-10 rounded-md bg-gray-800 shrink-0 flex items-center justify-center">
-                  <Video size={18} className="text-gray-300" />
-                </div>
+                <button
+                  type="button"
+                  onClick={() => { setVideoModalUrl(adj.url); setVideoModalNombre(adj.nombre); }}
+                  className="relative w-12 h-10 rounded-md bg-gray-800 shrink-0 flex items-center justify-center hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                  title="Reproducir video"
+                >
+                  <Play size={16} className="text-gray-200" />
+                </button>
               )}
               {adj.tipo === 'audio' && (
                 <button
