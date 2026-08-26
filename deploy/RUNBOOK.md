@@ -98,8 +98,8 @@ sudo apt install postgresql-client
 curl https://rclone.org/install.sh | sudo bash
 
 # Configurar el remote de Google Drive (paso interactivo — autenticarse
-# con la cuenta fahumada@ies21.edu.ar; rclone abre un link para autorizar.
-# Al pedir el nombre del remote, usar "gdrive". La carpeta "gestec-backup-ies"
+# con la cuenta institucional designada para backups; rclone abre un link
+# para autorizar. Al pedir el nombre del remote, usar "gdrive". La carpeta "gestec-backup-ies"
 # se crea sola dentro del Drive en el primer backup, no hace falta crearla a mano)
 rclone config
 
