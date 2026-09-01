@@ -269,19 +269,7 @@ model HistorialEquipo {
   tecnico  String
   cambios  String[]
 
-  repuestos RepuestoHistorial[]
-
   @@map("historial_equipo")
-}
-
-model RepuestoHistorial {
-  id          String          @id @default(cuid())
-  historialId String
-  historial   HistorialEquipo @relation(fields: [historialId], references: [id], onDelete: Cascade)
-  item        String
-  cantidad    Int
-
-  @@map("repuestos_historial")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

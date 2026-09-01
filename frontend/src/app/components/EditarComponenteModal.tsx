@@ -8,9 +8,12 @@ import {
   getTiposComponente,
   getMarcas,
   getProveedores,
+  getActivosBasico,
   updateComponente,
   buscarComponentePorSerie,
+  TIPOS_GESTIONADOS_DESDE_EQUIPO,
   type Componente,
+  type ActivoBasico,
 } from '../services/apiClient';
 import { toast } from 'sonner@2.0.3';
 
@@ -29,6 +32,7 @@ export default function EditarComponenteModal({
   const [tiposComponente, setTiposComponente] = useState<string[]>([]);
   const [marcas, setMarcas] = useState<string[]>([]);
   const [proveedores, setProveedores] = useState<string[]>([]);
+  const [activos, setActivos] = useState<ActivoBasico[]>([]);
   const [loadingCatalogos, setLoadingCatalogos] = useState(true);
 
   const [form, setForm] = useState({
@@ -39,6 +43,7 @@ export default function EditarComponenteModal({
     modelo: '',
     proveedor: '',
     capacidad: '',
+    activoId: '',
   });
 
   const [saving, setSaving] = useState(false);
@@ -52,11 +57,12 @@ export default function EditarComponenteModal({
     setSerieChecking(false);
     setLoadingCatalogos(true);
 
-    Promise.all([getTiposComponente(), getMarcas(), getProveedores()])
-      .then(([tipos, mks, provs]) => {
+    Promise.all([getTiposComponente(), getMarcas(), getProveedores(), getActivosBasico()])
+      .then(([tipos, mks, provs, acts]) => {
         setTiposComponente(tipos.map(t => t.nombre));
         setMarcas(mks.map(m => m.nombre));
         setProveedores(provs.map(p => p.nombre));
+        setActivos(acts);
       })
       .finally(() => setLoadingCatalogos(false));
 
@@ -68,6 +74,7 @@ export default function EditarComponenteModal({
       marca: componente.marca,
       modelo: componente.modelo,
       proveedor: componente.proveedor,
+      activoId: componente.activoId ?? '',
       capacidad: componente.capacidad ?? '',
     });
   }, [isOpen, componente]);
@@ -89,6 +96,8 @@ export default function EditarComponenteModal({
     return () => { clearTimeout(timer); setSerieChecking(false); };
   }, [form.numeroSerie, componente]);
 
+  const esGestionadoDesdeEquipo = TIPOS_GESTIONADOS_DESDE_EQUIPO.has(form.tipoComponente);
+
   const isFormValid =
     form.idManual.trim() !== '' &&
     serieConflicto === null &&
@@ -107,8 +116,9 @@ export default function EditarComponenteModal({
         ...(form.modelo.trim() ? { modelo: form.modelo.trim() } : {}),
         ...(form.proveedor ? { proveedor: form.proveedor } : {}),
         ...(usuario?.nombre ? { responsable: usuario.nombre } : {}),
+        ...(!esGestionadoDesdeEquipo ? { activoId: form.activoId || null } : {}),
         capacidad: form.capacidad.trim() || undefined,
-      });
+      } as any);
       toast.success(`Componente "${actualizado.idManual}" actualizado correctamente`);
       onUpdated(actualizado);
       onClose();
@@ -224,12 +234,32 @@ export default function EditarComponenteModal({
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Ubicación
                   </label>
-                  <div className="flex items-center px-3 py-2 text-sm bg-gray-50 dark:bg-gray-700/60 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300">
-                    {componente?.ubicacion || '—'}
-                  </div>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                    Solo editable desde el formulario del equipo.
-                  </p>
+                  {esGestionadoDesdeEquipo ? (
+                    <>
+                      <div className="flex items-center px-3 py-2 text-sm bg-gray-50 dark:bg-gray-700/60 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300">
+                        {componente?.ubicacion || '—'}
+                      </div>
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                        Solo editable desde el formulario del equipo.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <SearchableSelect
+                        options={[
+                          { value: '', label: 'Depósito IT' },
+                          ...activos.map(a => ({ value: a.id, label: `${a.codigo} — ${a.sector}` })),
+                        ]}
+                        value={form.activoId}
+                        onChange={v => setForm(f => ({ ...f, activoId: v }))}
+                        placeholder="Depósito IT"
+                        noClear
+                      />
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                        Este tipo no tiene sección propia en Equipos — se vincula/desvincula desde acá.
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
 

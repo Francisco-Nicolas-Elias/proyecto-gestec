@@ -482,6 +482,7 @@ export default function Activos() {
       'Alm. Modelo':  (a.almacenamientoModulos?.length > 0 ? a.almacenamientoModulos.map((m: any) => m.modelo).filter(Boolean).join(' / ') : a.discoModelo) || '',
       'Alm. Total':   a.almacenamientoTotal || '',
       'GPU':          [a.placaVideoMarca, a.placaVideoModelo].filter(Boolean).join(' ') || '',
+      'Fuente':       [a.fuenteMarca, a.fuenteModelo].filter(Boolean).join(' ') || '',
       'IP':           a.ip || '',
       'MAC':          a.mac || '',
       'ID AD':        a.idAD || '',
@@ -632,6 +633,7 @@ export default function Activos() {
                 <Th col="discoModelo" label="Alm. Modelo" className="hidden xl:table-cell" />
                 <Th col="almacenamientoTotal" label="Alm. Total" className="hidden lg:table-cell" />
                 <Th col="placaVideoMarca" label="GPU"      className="hidden xl:table-cell" />
+                <Th col="fuenteMarca" label="Fuente"       className="hidden xl:table-cell" />
                 <Th col="ip"        label="IP"             className="hidden lg:table-cell" />
                 <Th col="mac"       label="MAC"            className="hidden xl:table-cell" />
                 <Th col="idAD"      label="ID AD"          className="hidden xl:table-cell" />
@@ -648,7 +650,7 @@ export default function Activos() {
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={21} className="px-4 py-16 text-center">
+                  <td colSpan={22} className="px-4 py-16 text-center">
                     <Monitor size={40} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
                     <p className="text-sm text-gray-500 dark:text-gray-400">No se encontraron equipos</p>
                     {hasActiveFilters && (
@@ -694,6 +696,16 @@ export default function Activos() {
                       {(a.placaVideoMarca || a.placaVideoModelo)
                         ? `${a.placaVideoMarca} ${a.placaVideoModelo}`.trim()
                         : <span className="text-gray-400 font-mono tracking-widest">------</span>}
+                    </td>
+                    <td className="px-3 py-2.5 whitespace-nowrap hidden xl:table-cell">
+                      {(a.fuenteMarca || a.fuenteModelo) ? (
+                        <>
+                          <p className="text-sm text-gray-700 dark:text-gray-300">{a.fuenteMarca || '—'}</p>
+                          {a.fuenteModelo && <p className="text-xs text-gray-400 dark:text-gray-500">{a.fuenteModelo}</p>}
+                        </>
+                      ) : (
+                        <span className="text-sm text-gray-400">—</span>
+                      )}
                     </td>
                     <td className="px-3 py-2.5 font-mono text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap hidden lg:table-cell">{a.ip || '—'}</td>
                     <td className="px-3 py-2.5 font-mono text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap hidden xl:table-cell">{a.mac || '—'}</td>

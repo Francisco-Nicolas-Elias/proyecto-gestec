@@ -73,6 +73,16 @@ const TIPOS_STORAGE     = ['SSD', 'HDD', 'M.2', 'M2', 'SSHD', 'Disco'];
 const TIPOS_PROCESADOR  = ['Procesador', 'CPU', 'Micro'];
 const TIPOS_PLACA_VIDEO = ['Placa de video', 'GPU', 'Placa de Video'];
 const TIPOS_PLACA_MADRE = ['Placa Madre', 'Placa madre', 'Motherboard'];
+const TIPOS_FUENTE      = ['Fuente de alimentación', 'Fuente'];
+
+// Tipos que ya se cargan/editan con N° de serie exacto desde los campos del formulario
+// de Equipos (RAM, Almacenamiento, Procesador, Placa Madre, Placa de Video, Impresora, Fuente).
+// Cualquier otro tipo (teclado, mouse, auricular, monitor, etc.) no tiene forma de
+// vincularse/desvincularse de un equipo desde Equipos — se gestiona desde Stock.
+export const TIPOS_GESTIONADOS_DESDE_EQUIPO = new Set([
+  ...TIPOS_RAM, ...TIPOS_STORAGE, ...TIPOS_PROCESADOR, ...TIPOS_PLACA_VIDEO, ...TIPOS_PLACA_MADRE, ...TIPOS_FUENTE,
+  'Impresora',
+]);
 
 function mapActivo(a: any): any {
   const ub = a.ubicacion ?? {};
@@ -102,6 +112,17 @@ function mapActivo(a: any): any {
   const procesador = comps.find(c => TIPOS_PROCESADOR.includes(tipoNombre(c)));
   const placaVideo  = comps.find(c => TIPOS_PLACA_VIDEO.includes(tipoNombre(c)));
   const placaMadre  = comps.find(c => TIPOS_PLACA_MADRE.includes(tipoNombre(c)));
+  const fuente      = comps.find(c => TIPOS_FUENTE.includes(tipoNombre(c)));
+
+  // Componentes instalados en este equipo que no tienen una sección dedicada en el
+  // formulario (teclado, mouse, auricular, monitor, etc.) — se muestran solo a título
+  // informativo; se gestionan (vinculan/desvinculan) desde Stock.
+  const otrosComponentes = comps
+    .filter(c => !TIPOS_GESTIONADOS_DESDE_EQUIPO.has(tipoNombre(c)))
+    .map(c => ({
+      id: c.id, tipo: tipoNombre(c), nroSerie: c.numeroSerie,
+      marca: c.marca?.nombre ?? c.marca ?? '', modelo: c.modelo,
+    }));
 
   return {
     ...a,
@@ -122,15 +143,18 @@ function mapActivo(a: any): any {
     placaMadreModelo:    placaMadre?.modelo        ?? '',
     placaMadreMarca:     placaMadre?.marca?.nombre  ?? placaMadre?.marca ?? '',
     placaMadreNroSerie:  placaMadre?.numeroSerie    ?? '',
+    fuenteModelo:    fuente?.modelo        ?? '',
+    fuenteMarca:     fuente?.marca?.nombre  ?? fuente?.marca ?? '',
+    fuenteNroSerie:  fuente?.numeroSerie    ?? '',
     ramModulos,
     almacenamientoModulos,
+    otrosComponentes,
     ramTotal: sumarCapacidad(ramModulos) || a.ramTotal || '',
     almacenamientoTotal: sumarCapacidad(almacenamientoModulos) || a.almacenamientoTotal || '',
     marca: procesador?.marca?.nombre ?? a.microMarca ?? '',
     modelo: procesador?.modelo ?? a.microModelo ?? '',
     historial: (a.historial ?? []).map((h: any) => ({
       id: h.id, fecha: toDateStr(h.fecha), tecnico: h.tecnico, cambios: h.cambios ?? [],
-      repuestos: (h.repuestos ?? []).map((r: any) => ({ item: r.item, cantidad: r.cantidad })),
     })),
   };
 }
@@ -227,6 +251,7 @@ async function activoPayload(a: any): Promise<any> {
     responsable, tags, historial, ramModulos, almacenamientoModulos,
     placaVideoNroSerie: _pvn, placaVideoMarca: _pvm, placaVideoModelo: _pvmo, placaVideoCapacidad: _pvca,
     placaMadreNroSerie: _pmn, placaMadreMarca: _pmm, placaMadreModelo: _pmmo,
+    fuenteNroSerie: _fn, fuenteMarca: _fm, fuenteModelo: _fmo,
     ...rest } = a;
   let ubicacionId = rest.ubicacionId;
   if (!ubicacionId && sector) {
@@ -322,7 +347,6 @@ export interface HistorialEquipoEntry {
   fecha: string;
   tecnico: string;
   cambios: string[];
-  repuestos: { item: string; cantidad: number }[];
 }
 
 export interface ModuloRAM {
@@ -342,6 +366,14 @@ export interface ModuloAlmacenamiento {
   capacidad: string;
 }
 
+export interface OtroComponente {
+  id: string;
+  tipo: string;
+  nroSerie: string;
+  marca: string;
+  modelo: string;
+}
+
 export interface Activo {
   id: string;
   sector: string;
@@ -356,6 +388,7 @@ export interface Activo {
   ramTotal: string;
   almacenamientoModulos: ModuloAlmacenamiento[];
   almacenamientoTotal: string;
+  otrosComponentes: OtroComponente[];
   discoModelo: string;
   discoMarca: string;
   discoNroSerie: string;
@@ -367,6 +400,9 @@ export interface Activo {
   placaMadreModelo: string;
   placaMadreMarca: string;
   placaMadreNroSerie: string;
+  fuenteModelo: string;
+  fuenteMarca: string;
+  fuenteNroSerie: string;
   ip: string;
   mac: string;
   idAD: string;
@@ -410,12 +446,6 @@ export const SECTOR_PISO_MAP: Record<string, string> = {
   'Aula 202': '2° Piso',
   'Depósito IT': 'Subsuelo',
 };
-
-export interface RepuestoUtilizado {
-  item: string;
-  cantidad: number;
-  tipoComponenteId?: string;
-}
 
 export const getActivos = async (filters?: any): Promise<Activo[]> => {
   if (!filters) {
@@ -465,7 +495,7 @@ export const createActivo = async (activo: Partial<Activo>): Promise<Activo> => 
 
 export const updateActivo = async (
   id: string,
-  data: Partial<Activo> & { cambios?: string[]; repuestos?: RepuestoUtilizado[] },
+  data: Partial<Activo> & { cambios?: string[] },
 ): Promise<Activo> => {
   const payload = await activoPayload(data);
   const result = await http.put<any>(`/activos/${id}`, payload).then(mapActivo);

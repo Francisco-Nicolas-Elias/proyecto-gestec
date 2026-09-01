@@ -76,8 +76,10 @@ export async function updateComponenteService(
       await tx.historialMovimientoComponente.create({
         data: {
           componenteId: id,
-          activoId: esInstalacion ? (data.activoId as string) : undefined,
-          activoCodigo: c.activo?.nroPc,
+          // El registro queda asociado al equipo relevante para la acción: destino si se instala,
+          // origen (de dónde salió) si se remueve — así el equipo ve ambos movimientos en su historial.
+          activoId: esInstalacion ? (data.activoId as string) : (prev.activoId ?? undefined),
+          activoCodigo: esInstalacion ? c.activo?.nroPc : prev.activo?.nroPc,
           accion: esInstalacion ? AccionComponente.instalado : AccionComponente.removido,
           ubicacionOrigen: prev.activoId ? `${prev.activo?.nroPc} — ${prev.activo?.usuarioAsignado}` : 'Depósito IT',
           ubicacionDestino: esInstalacion ? `${c.activo?.nroPc}` : 'Depósito IT',

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import {
   ArrowLeft, Pencil, Trash2, Monitor, HardDrive, Cpu, Wifi,
-  MapPin, User, Calendar, Settings, Printer, X, FileText, FileDown, Lock, CircuitBoard,
+  MapPin, User, Calendar, Settings, Printer, X, FileText, FileDown, Lock, CircuitBoard, Package, Zap,
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -187,13 +187,11 @@ export default function ActivoDetalle() {
           { header: 'Fecha',    dataKey: 'fecha'     },
           { header: 'Técnico',  dataKey: 'tecnico'   },
           { header: 'Cambios',  dataKey: 'cambios'   },
-          { header: 'Repuestos', dataKey: 'repuestos' },
         ],
         body: historial.map((h: HistorialEquipoEntry) => ({
           fecha:     fmtDate(h.fecha),
           tecnico:   h.tecnico || '—',
           cambios:   h.cambios.length ? h.cambios.join('\n') : '—',
-          repuestos: h.repuestos.length ? h.repuestos.map(r => `${r.item} x${r.cantidad}`).join('\n') : '—',
         })),
         theme: 'grid',
         headStyles: {
@@ -209,7 +207,6 @@ export default function ActivoDetalle() {
           fecha:     { cellWidth: 22 },
           tecnico:   { cellWidth: 30 },
           cambios:   { cellWidth: 'auto' as any },
-          repuestos: { cellWidth: 40 },
         },
         didDrawPage: (data: any) => {
           const pc = doc.getNumberOfPages();
@@ -272,7 +269,7 @@ export default function ActivoDetalle() {
   const tabs: { id: Tab; label: string }[] = [
     { id: 'hardware', label: 'Detalles Técnicos' },
     { id: 'historial', label: `Historial (${activo.historial.length})` },
-    { id: 'componentes', label: `Componentes (${historialComponentes.length})` },
+    { id: 'componentes', label: `Historial Componentes (${historialComponentes.length})` },
     { id: 'tickets', label: `Tickets (${tickets.length})` },
   ];
 
@@ -406,6 +403,13 @@ export default function ActivoDetalle() {
                   <Row label="N° de Serie" value={activo.placaMadreNroSerie} />
                 </Card>
 
+                {/* Fuente */}
+                <Card title="Fuente" icon={Zap}>
+                  <Row label="Marca" value={activo.fuenteMarca} />
+                  <Row label="Modelo" value={activo.fuenteModelo} />
+                  <Row label="N° de Serie" value={activo.fuenteNroSerie} />
+                </Card>
+
                 {/* Almacenamiento */}
                 <Card title="Almacenamiento" icon={HardDrive}>
                   {(activo.almacenamientoModulos && activo.almacenamientoModulos.length > 0) ? (
@@ -516,6 +520,26 @@ export default function ActivoDetalle() {
                 <Row label="N° de Serie" value={activo.impresoraNroSerie} />
               </Card>
 
+              {/* Otros periféricos — sin sección propia, gestionados desde Stock */}
+              <Card title="Otros Periféricos" icon={Package}>
+                {activo.otrosComponentes.length === 0 ? (
+                  <p className="text-sm text-gray-400 dark:text-gray-500 py-2.5 text-center">Sin periféricos vinculados</p>
+                ) : (
+                  activo.otrosComponentes.map(c => (
+                    <div key={c.id} className="py-2.5 border-b border-gray-100 dark:border-gray-700 last:border-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">{c.tipo}</span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500 font-mono">{c.nroSerie}</span>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{[c.marca, c.modelo].filter(Boolean).join(' ') || '—'}</p>
+                    </div>
+                  ))
+                )}
+                <p className="text-xs text-gray-400 dark:text-gray-500 pt-2">
+                  Se vinculan/desvinculan desde Stock — Editar Componente.
+                </p>
+              </Card>
+
               {/* Gestión */}
               <Card title="Gestión" icon={Calendar}>
                 <Row label="Cambio de PC" value={fmtDate(activo.fechaCambioPC)} />
@@ -583,15 +607,6 @@ export default function ActivoDetalle() {
                               <li key={ci} className="text-sm text-gray-700 dark:text-gray-300">{c}</li>
                             ))}
                           </ul>
-                        )}
-                        {h.repuestos.length > 0 && (
-                          <div className="mt-2 flex flex-wrap gap-1.5">
-                            {h.repuestos.map((r, ri) => (
-                              <span key={ri} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300">
-                                {r.item} × {r.cantidad}
-                              </span>
-                            ))}
-                          </div>
                         )}
                       </div>
                     </div>

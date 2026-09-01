@@ -1,4 +1,4 @@
-import { Prisma, EstadoActivo, AccionComponente } from '@prisma/client';
+import { Prisma, EstadoActivo } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../middlewares/error.middleware';
 import { addLogService } from './logs.service';
@@ -52,7 +52,7 @@ export async function getActivoByIdService(id: string) {
     include: {
       ubicacion: true,
       componentes: { include: { tipoComponente: true, marca: true } },
-      historial: { include: { repuestos: true }, orderBy: { fecha: 'desc' } },
+      historial: { orderBy: { fecha: 'desc' } },
     },
   });
   if (!activo) throw new AppError(404, 'Activo no encontrado');
@@ -77,14 +77,11 @@ export async function createActivoService(data: Prisma.ActivoUncheckedCreateInpu
 
 export async function updateActivoService(
   id: string,
-  data: Prisma.ActivoUncheckedUpdateInput & {
-    cambios?: string[];
-    repuestos?: { item: string; cantidad: number; tipoComponenteId?: string }[];
-  },
+  data: Prisma.ActivoUncheckedUpdateInput & { cambios?: string[] },
   usuarioNombre: string,
   usuarioRol: string,
 ) {
-  const { cambios, repuestos, ...activoData } = data;
+  const { cambios, ...activoData } = data;
 
   const activo = await prisma.$transaction(async (tx) => {
     const updated = await tx.activo.update({
@@ -93,44 +90,10 @@ export async function updateActivoService(
       include: { ubicacion: true },
     });
 
-    if ((cambios?.length ?? 0) > 0 || (repuestos?.length ?? 0) > 0) {
+    if ((cambios?.length ?? 0) > 0) {
       await tx.historialEquipo.create({
-        data: {
-          activoId: id,
-          tecnico: usuarioNombre,
-          cambios: cambios ?? [],
-          repuestos: { create: (repuestos ?? []).map(({ item, cantidad }) => ({ item, cantidad })) },
-        },
+        data: { activoId: id, tecnico: usuarioNombre, cambios: cambios ?? [] },
       });
-    }
-
-    // Consumir del depósito real: toma N componentes disponibles (sin equipo asignado) del
-    // tipo elegido y los vincula a este equipo — es la misma acción que "instalar" un componente.
-    for (const rep of (repuestos ?? []).filter((r) => r.tipoComponenteId)) {
-      const disponibles = await tx.componente.findMany({
-        where: { tipoComponenteId: rep.tipoComponenteId!, activoId: null },
-        take: rep.cantidad,
-        orderBy: { fechaIngreso: 'asc' },
-      });
-      if (disponibles.length < rep.cantidad) {
-        throw new AppError(400, `Stock insuficiente para "${rep.item}" (disponible: ${disponibles.length}, solicitado: ${rep.cantidad})`);
-      }
-      for (const comp of disponibles) {
-        await tx.componente.update({ where: { id: comp.id }, data: { activoId: id } });
-        await tx.historialMovimientoComponente.create({
-          data: {
-            componenteId: comp.id,
-            activoId: id,
-            activoCodigo: updated.nroPc,
-            accion: AccionComponente.instalado,
-            ubicacionOrigen: 'Depósito IT',
-            ubicacionDestino: updated.nroPc,
-            fecha: new Date(),
-            responsable: usuarioNombre,
-            observaciones: 'Repuesto usado en edición de equipo',
-          },
-        });
-      }
     }
 
     return updated;

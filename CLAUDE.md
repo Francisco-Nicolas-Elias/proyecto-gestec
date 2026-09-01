@@ -120,7 +120,7 @@ types/        ← augmentación de Express.Request con req.user
 | Recurso | Rutas |
 |---------|-------|
 | Auth | `POST /api/auth/login` · `GET /api/auth/me` |
-| Activos | `GET/POST /api/activos` · `GET/PUT/DELETE /api/activos/:id` (el `PUT` acepta `cambios`/`repuestos` opcionales — genera historial automático) |
+| Activos | `GET/POST /api/activos` · `GET/PUT/DELETE /api/activos/:id` (el `PUT` acepta `cambios` opcional — genera historial automático) |
 | Componentes | `GET/POST /api/componentes` · `GET/PUT/DELETE /api/componentes/:id` · `GET /api/componentes/serie/:serie` · `GET /api/componentes/:id/historial` |
 | Tickets | `GET/POST /api/tickets` · `GET/PUT/DELETE /api/tickets/:id` · `POST /api/tickets/:id/comentarios` |
 | Tareas | `GET/POST /api/tareas` · `GET/PUT/DELETE /api/tareas/:id` · `PATCH /api/tareas/:id/estado` · CRUD de comentarios |
@@ -162,7 +162,7 @@ Schema: `backend/prisma/schema.prisma`
 | `Activo` | Equipo de IT. FK a `Ubicacion`. |
 | `Componente` | Hardware serializado. `activoId = null` → en Depósito IT. |
 | `HistorialMovimientoComponente` | Trazabilidad de movimientos de cada componente. |
-| `HistorialEquipo` + `RepuestoHistorial` | Historial automático del equipo — se genera al editar (diff de campos) desde `PUT /api/activos/:id`. Si se cargan repuestos, consume componentes reales disponibles en depósito del tipo elegido (no hay flujo separado de "Intervención"/"Mantenimiento"). ACID con `$transaction`. |
+| `HistorialEquipo` | Historial automático del equipo — se genera al editar (diff de campos) desde `PUT /api/activos/:id` (no hay flujo separado de "Intervención"/"Mantenimiento"). |
 | `TipoComponente` · `Marca` · `Proveedor` | Catálogo editable desde Admin. |
 | `Ticket` + `ComentarioTicket` | Tickets de soporte. `docente_empleado` solo ve los propios. |
 | `Tarea` + `TareaAsignado` + `TareaHistorial` + `ComentarioTarea` | Kanban del equipo IT. |
@@ -174,7 +174,8 @@ Schema: `backend/prisma/schema.prisma`
 ### Convenciones
 
 - `Componente.activoId = null` → en depósito; `≠ null` → instalado en un activo.
-- `HistorialEquipo` con repuestos usa `prisma.$transaction`.
+- Componentes de tipos sin sección propia en Equipos (teclado, mouse, auricular, etc. — ver `TIPOS_GESTIONADOS_DESDE_EQUIPO` en `apiClient.ts`) se vinculan/desvinculan desde Stock → Editar Componente, no desde Equipos.
+- Editar un equipo (`updateActivoService`) usa `prisma.$transaction` para actualizar el activo y crear su `HistorialEquipo` de forma atómica.
 - `addLogService()` en todo service que mute datos.
 - `AppError(statusCode, message)` para errores de negocio controlados.
 

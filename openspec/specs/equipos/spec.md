@@ -2,13 +2,13 @@
 
 ## Purpose
 
-Define el ciclo de vida de edición de un Equipo (Activo) y su historial de cambios: cómo se registran las modificaciones realizadas sobre un equipo (datos, componentes, repuestos usados) y cómo se descuenta stock cuando se usan repuestos, reemplazando los antiguos flujos separados de "Intervención" y "Mantenimiento" por un único historial automático generado al editar.
+Define el ciclo de vida de edición de un Equipo (Activo) y su historial de cambios: cómo se registran las modificaciones realizadas sobre un equipo (datos, componentes), reemplazando los antiguos flujos separados de "Intervención" y "Mantenimiento" por un único historial automático generado al editar.
 
 ## Requirements
 
 ### Requirement: Editar Equipo como único punto de registro de cambios
 
-El sistema NO MUST ofrecer flujos separados de "Intervención" ni "Mantenimiento" para registrar trabajo técnico sobre un equipo. Toda modificación (datos del equipo, componentes instalados, repuestos utilizados) SHALL registrarse exclusivamente a través de `PUT /api/activos/:id` (Editar Equipo).
+El sistema MUST NOT ofrecer flujos separados de "Intervención" ni "Mantenimiento" para registrar trabajo técnico sobre un equipo. Toda modificación (datos del equipo, componentes instalados) SHALL registrarse exclusivamente a través de `PUT /api/activos/:id` (Editar Equipo).
 
 #### Scenario: Los botones de Intervención y Mantenimiento no existen
 
@@ -23,7 +23,7 @@ El sistema NO MUST ofrecer flujos separados de "Intervención" ni "Mantenimiento
 
 ### Requirement: Historial automático con diff de campos al editar
 
-Al guardar una edición de equipo que efectivamente modifica algún dato (campos simples, componentes instalados o repuestos utilizados), el sistema MUST crear una entrada de historial (`HistorialEquipo`) asociada a ese equipo, con la fecha, el técnico (usuario autenticado que edita) y una lista de descripciones legibles de cada cambio individual.
+Al guardar una edición de equipo que efectivamente modifica algún dato (campos simples o componentes instalados), el sistema MUST crear una entrada de historial (`HistorialEquipo`) asociada a ese equipo, con la fecha, el técnico (usuario autenticado que edita) y una lista de descripciones legibles de cada cambio individual.
 
 #### Scenario: Editar un campo simple genera una entrada de historial con el detalle del cambio
 
@@ -44,7 +44,7 @@ Al guardar una edición de equipo que efectivamente modifica algún dato (campos
 #### Scenario: Guardar sin ningún cambio real no genera entrada de historial
 
 - GIVEN un equipo cargado en el formulario de edición
-- WHEN un usuario abre "Editar", no modifica ningún campo ni componente ni repuesto, y guarda
+- WHEN un usuario abre "Editar", no modifica ningún campo ni componente, y guarda
 - THEN el sistema MUST NOT crear una entrada de historial vacía
 
 #### Scenario: Historial visible en el detalle del equipo, ordenado por fecha
@@ -53,28 +53,27 @@ Al guardar una edición de equipo que efectivamente modifica algún dato (campos
 - WHEN un usuario abre el detalle del equipo
 - THEN el sistema MUST mostrar las 3 entradas ordenadas de más reciente a más antigua, cada una con fecha, técnico y la lista de cambios
 
-### Requirement: Repuestos utilizados dentro de Editar Equipo con descuento de stock
+### Requirement: Componentes sin sección propia se gestionan desde Stock
 
-El formulario de Editar Equipo (no el de Crear Equipo) SHALL incluir una sección opcional de "Repuestos utilizados", donde el usuario puede seleccionar ítems del stock y una cantidad. Al guardar, si hay repuestos cargados, el sistema MUST descontar la cantidad indicada del stock correspondiente y MUST registrar esos repuestos en la misma entrada de historial generada por el guardado, todo dentro de una única transacción.
+Los componentes cuyo tipo no tiene una sección dedicada en Editar Equipo (ej. teclado, mouse, auricular, monitor) SHALL gestionarse (vincular o desvincular de un equipo) desde Stock → Editar Componente, seleccionando el equipo destino o "Depósito IT". El detalle del equipo SHALL mostrar estos componentes en una sección informativa ("Otros Periféricos").
 
-#### Scenario: Registrar un repuesto usado descuenta stock y queda en el historial
+#### Scenario: Editar la ubicación de un periférico desde Stock
 
-- GIVEN un ítem de stock "Memoria RAM" con cantidad 10 en depósito
-- WHEN un usuario edita un equipo, agrega en "Repuestos utilizados" ese ítem con cantidad 1, y guarda
-- THEN el sistema MUST descontar 1 unidad del stock de "Memoria RAM" (quedando en 9)
-- AND la entrada de historial de ese guardado MUST incluir el repuesto usado (ítem y cantidad)
+- GIVEN un componente de tipo "Mouse" sin equipo asignado (en depósito)
+- WHEN un usuario lo edita desde Stock y selecciona un equipo como ubicación
+- THEN el sistema MUST vincular el componente a ese equipo (`activoId` actualizado) y registrar el movimiento en su historial de componente
 
-#### Scenario: Repuesto con stock insuficiente no se descuenta y no rompe el guardado del equipo
+#### Scenario: Tipos con sección propia siguen siendo de solo lectura en Stock
 
-- GIVEN un ítem de stock con cantidad 0
-- WHEN un usuario intenta registrar ese repuesto con cantidad 1 al editar un equipo
-- THEN el sistema MUST rechazar la operación de guardado completa con un error descriptivo (no MUST dejar el stock en negativo ni guardar el equipo a medias)
+- GIVEN un componente de tipo "RAM" (con sección dedicada en Editar Equipo)
+- WHEN un usuario abre Editar Componente en Stock
+- THEN el campo Ubicación MUST mostrarse de solo lectura, indicando que se edita desde el formulario del equipo
 
-#### Scenario: Crear Equipo no ofrece repuestos utilizados
+#### Scenario: Otros periféricos visibles en el detalle del equipo
 
-- GIVEN un usuario creando un equipo nuevo (no editando uno existente)
-- WHEN se renderiza el formulario
-- THEN el sistema MUST NOT mostrar la sección "Repuestos utilizados" (no aplica: un equipo recién creado no tuvo intervención técnica previa)
+- GIVEN un equipo con un "Teclado" y un "Mouse" vinculados
+- WHEN un usuario abre el detalle del equipo
+- THEN el sistema MUST mostrar ambos en una sección "Otros Periféricos" con su tipo y N° de serie
 
 ### Requirement: Reemplazo del export PDF de historial
 
@@ -82,9 +81,9 @@ El export a PDF del detalle de un equipo SHALL mostrar el nuevo historial unific
 
 #### Scenario: Exportar PDF de un equipo con historial
 
-- GIVEN un equipo con 2 entradas de historial (una con repuestos, otra sin)
+- GIVEN un equipo con 2 entradas de historial
 - WHEN un usuario exporta el PDF del equipo
-- THEN el PDF MUST incluir ambas entradas con su fecha, técnico, cambios y repuestos (si los hubo), sin referencias a "Intervención" ni "Mantenimiento" como secciones separadas
+- THEN el PDF MUST incluir ambas entradas con su fecha, técnico y cambios, sin referencias a "Intervención" ni "Mantenimiento" como secciones separadas
 
 #### Scenario: Exportar PDF de un equipo sin historial
 
