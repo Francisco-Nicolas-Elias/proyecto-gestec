@@ -8,7 +8,6 @@ import Dashboard from "./pages/Dashboard";
 import Activos from "./pages/Activos";
 import ActivoDetalle from "./pages/ActivoDetalle";
 import ActivoForm from "./pages/ActivoForm";
-import RegistrarIntervencion from "./pages/RegistrarIntervencion";
 import Tickets from "./pages/Tickets";
 import TicketDetalle from "./pages/TicketDetalle";
 import CrearReporte from "./pages/CrearReporte";
@@ -81,7 +80,6 @@ export const router = createBrowserRouter([
           { path: "activos/nuevo", Component: ActivoForm },
           { path: "activos/:id", Component: ActivoDetalle },
           { path: "activos/:id/editar", Component: ActivoForm },
-          { path: "activos/:id/intervencion", Component: RegistrarIntervencion },
           { path: "tickets", Component: Tickets },
           { path: "tickets/nuevo", Component: CrearReporte },
           { path: "tickets/:id", Component: TicketDetalle },

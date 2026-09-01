@@ -70,7 +70,7 @@ export async function createStockMovimientoService(
     tipo: TipoMovimientoStock;
     cantidad: number;
     motivo: string;
-    referenciaIntervencion?: string;
+    referenciaHistorial?: string;
   },
   usuarioId: string,
   usuarioNombre: string,

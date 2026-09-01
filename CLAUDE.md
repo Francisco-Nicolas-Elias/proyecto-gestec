@@ -120,8 +120,7 @@ types/        ← augmentación de Express.Request con req.user
 | Recurso | Rutas |
 |---------|-------|
 | Auth | `POST /api/auth/login` · `GET /api/auth/me` |
-| Activos | `GET/POST /api/activos` · `GET/PUT/DELETE /api/activos/:id` |
-| Intervenciones | `GET/POST /api/activos/:id/intervenciones` · `POST /api/activos/:id/mantenimiento` |
+| Activos | `GET/POST /api/activos` · `GET/PUT/DELETE /api/activos/:id` (el `PUT` acepta `cambios`/`repuestos` opcionales — genera historial automático) |
 | Componentes | `GET/POST /api/componentes` · `GET/PUT/DELETE /api/componentes/:id` · `GET /api/componentes/serie/:serie` · `GET /api/componentes/:id/historial` |
 | Tickets | `GET/POST /api/tickets` · `GET/PUT/DELETE /api/tickets/:id` · `POST /api/tickets/:id/comentarios` |
 | Tareas | `GET/POST /api/tareas` · `GET/PUT/DELETE /api/tareas/:id` · `PATCH /api/tareas/:id/estado` · CRUD de comentarios |
@@ -163,8 +162,7 @@ Schema: `backend/prisma/schema.prisma`
 | `Activo` | Equipo de IT. FK a `Ubicacion`. |
 | `Componente` | Hardware serializado. `activoId = null` → en Depósito IT. |
 | `HistorialMovimientoComponente` | Trazabilidad de movimientos de cada componente. |
-| `MantenimientoRecord` | Historial de mantenimientos por activo. |
-| `Intervencion` + `RepuestoIntervencion` | Intervención técnica con repuestos. ACID con `$transaction`. |
+| `HistorialEquipo` + `RepuestoHistorial` | Historial automático del equipo — se genera al editar (diff de campos) desde `PUT /api/activos/:id`. Si se cargan repuestos, consume componentes reales disponibles en depósito del tipo elegido (no hay flujo separado de "Intervención"/"Mantenimiento"). ACID con `$transaction`. |
 | `TipoComponente` · `Marca` · `Proveedor` | Catálogo editable desde Admin. |
 | `Ticket` + `ComentarioTicket` | Tickets de soporte. `docente_empleado` solo ve los propios. |
 | `Tarea` + `TareaAsignado` + `TareaHistorial` + `ComentarioTarea` | Kanban del equipo IT. |
@@ -176,7 +174,7 @@ Schema: `backend/prisma/schema.prisma`
 ### Convenciones
 
 - `Componente.activoId = null` → en depósito; `≠ null` → instalado en un activo.
-- `Intervencion` con repuestos usa `prisma.$transaction`.
+- `HistorialEquipo` con repuestos usa `prisma.$transaction`.
 - `addLogService()` en todo service que mute datos.
 - `AppError(statusCode, message)` para errores de negocio controlados.
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../components/AuthContext';
 import { ArrowLeft, QrCode, User, Calendar, Save, Loader2 } from 'lucide-react';
+import { useFormPersistence } from '../services/useFormPersistence';
 import SearchableSelect from '../components/SearchableSelect';
 import ClearableInput from '../components/ClearableInput';
 import QrScannerModal from '../components/QrScannerModal';
@@ -40,7 +41,7 @@ export default function NuevoComponenteForm() {
   const [proveedores, setProveedores] = useState<string[]>([]);
   const [loadingCatalogos, setLoadingCatalogos] = useState(true);
 
-  const [form, setForm] = useState({
+  const [form, setForm, clearFormPersistence] = useFormPersistence('gestec:stock:nuevo-componente', {
     idManual: '',
     ubicacion: 'Depósito IT',
     tipoComponente: '',
@@ -139,6 +140,7 @@ export default function NuevoComponenteForm() {
         capacidad: form.capacidad.trim() || undefined,
       });
       toast.success(`Componente "${nuevo.idManual}" registrado correctamente`);
+      clearFormPersistence();
       navigate('/stock');
     } catch {
       toast.error('Error al guardar el componente');
@@ -364,7 +366,7 @@ export default function NuevoComponenteForm() {
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => navigate('/stock')}
+                  onClick={() => { clearFormPersistence(); navigate('/stock'); }}
                   className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
                 >
                   Cancelar

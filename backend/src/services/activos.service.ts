@@ -1,4 +1,4 @@
-import { Prisma, EstadoActivo, TipoMovimientoStock } from '@prisma/client';
+import { Prisma, EstadoActivo, AccionComponente } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../middlewares/error.middleware';
 import { addLogService } from './logs.service';
@@ -52,8 +52,7 @@ export async function getActivoByIdService(id: string) {
     include: {
       ubicacion: true,
       componentes: { include: { tipoComponente: true, marca: true } },
-      mantenimientos: { orderBy: { fecha: 'desc' } },
-      intervenciones: { include: { repuestos: true }, orderBy: { fecha: 'desc' } },
+      historial: { include: { repuestos: true }, orderBy: { fecha: 'desc' } },
     },
   });
   if (!activo) throw new AppError(404, 'Activo no encontrado');
@@ -78,15 +77,65 @@ export async function createActivoService(data: Prisma.ActivoUncheckedCreateInpu
 
 export async function updateActivoService(
   id: string,
-  data: Prisma.ActivoUncheckedUpdateInput,
+  data: Prisma.ActivoUncheckedUpdateInput & {
+    cambios?: string[];
+    repuestos?: { item: string; cantidad: number; tipoComponenteId?: string }[];
+  },
   usuarioNombre: string,
   usuarioRol: string,
 ) {
-  const activo = await prisma.activo.update({
-    where: { id },
-    data,
-    include: { ubicacion: true },
+  const { cambios, repuestos, ...activoData } = data;
+
+  const activo = await prisma.$transaction(async (tx) => {
+    const updated = await tx.activo.update({
+      where: { id },
+      data: activoData,
+      include: { ubicacion: true },
+    });
+
+    if ((cambios?.length ?? 0) > 0 || (repuestos?.length ?? 0) > 0) {
+      await tx.historialEquipo.create({
+        data: {
+          activoId: id,
+          tecnico: usuarioNombre,
+          cambios: cambios ?? [],
+          repuestos: { create: (repuestos ?? []).map(({ item, cantidad }) => ({ item, cantidad })) },
+        },
+      });
+    }
+
+    // Consumir del depósito real: toma N componentes disponibles (sin equipo asignado) del
+    // tipo elegido y los vincula a este equipo — es la misma acción que "instalar" un componente.
+    for (const rep of (repuestos ?? []).filter((r) => r.tipoComponenteId)) {
+      const disponibles = await tx.componente.findMany({
+        where: { tipoComponenteId: rep.tipoComponenteId!, activoId: null },
+        take: rep.cantidad,
+        orderBy: { fechaIngreso: 'asc' },
+      });
+      if (disponibles.length < rep.cantidad) {
+        throw new AppError(400, `Stock insuficiente para "${rep.item}" (disponible: ${disponibles.length}, solicitado: ${rep.cantidad})`);
+      }
+      for (const comp of disponibles) {
+        await tx.componente.update({ where: { id: comp.id }, data: { activoId: id } });
+        await tx.historialMovimientoComponente.create({
+          data: {
+            componenteId: comp.id,
+            activoId: id,
+            activoCodigo: updated.nroPc,
+            accion: AccionComponente.instalado,
+            ubicacionOrigen: 'Depósito IT',
+            ubicacionDestino: updated.nroPc,
+            fecha: new Date(),
+            responsable: usuarioNombre,
+            observaciones: 'Repuesto usado en edición de equipo',
+          },
+        });
+      }
+    }
+
+    return updated;
   });
+
   await addLogService(`Equipo "${activo.nroPc}" editado`, 'Equipos', usuarioNombre, usuarioRol);
   return activo;
 }
@@ -96,25 +145,6 @@ export async function deleteActivoService(id: string, usuarioNombre: string, usu
   if (!activo) throw new AppError(404, 'Activo no encontrado');
   await prisma.activo.delete({ where: { id } });
   await addLogService(`Equipo "${activo.nroPc}" eliminado`, 'Equipos', usuarioNombre, usuarioRol);
-}
-
-export async function addMantenimientoService(
-  activoId: string,
-  data: { fecha: string; tipo: string; descripcion: string; tecnico: string },
-  usuarioNombre: string,
-  usuarioRol: string,
-) {
-  const [record] = await prisma.$transaction([
-    prisma.mantenimientoRecord.create({
-      data: { activoId, fecha: new Date(data.fecha), tipo: data.tipo, descripcion: data.descripcion, tecnico: data.tecnico },
-    }),
-    prisma.activo.update({
-      where: { id: activoId },
-      data: { fechaUltimoMantenimiento: new Date(data.fecha) },
-    }),
-  ]);
-  await addLogService(`Mantenimiento registrado en activo`, 'Equipos', usuarioNombre, usuarioRol);
-  return record;
 }
 
 export async function getHistorialComponentesByActivoService(activoId: string) {
@@ -135,72 +165,3 @@ export async function getHistorialComponentesByActivoService(activoId: string) {
   });
 }
 
-export async function getIntervencionesService(activoId: string) {
-  return prisma.intervencion.findMany({
-    where: { activoId },
-    include: { repuestos: true },
-    orderBy: { fecha: 'desc' },
-  });
-}
-
-export async function createIntervencionService(
-  activoId: string,
-  data: {
-    fecha: string;
-    tipo: string;
-    diagnostico: string;
-    accion: string;
-    tecnico: string;
-    tiempoEstimado?: number;
-    tiempoReal?: number;
-    resultado: string;
-    comentarios?: string;
-    repuestos: { item: string; cantidad: number; stockItemId?: string }[];
-  },
-  usuarioNombre: string,
-  usuarioRol: string,
-  usuarioId: string,
-) {
-  const intervencion = await prisma.$transaction(async (tx) => {
-    const inv = await tx.intervencion.create({
-      data: {
-        activoId,
-        fecha: new Date(data.fecha),
-        tipo: data.tipo,
-        diagnostico: data.diagnostico,
-        accion: data.accion,
-        tecnico: data.tecnico,
-        tiempoEstimado: data.tiempoEstimado,
-        tiempoReal: data.tiempoReal,
-        resultado: data.resultado,
-        comentarios: data.comentarios,
-        repuestos: { create: data.repuestos.map(({ item, cantidad }) => ({ item, cantidad })) },
-      },
-      include: { repuestos: true },
-    });
-
-    for (const rep of data.repuestos.filter((r) => r.stockItemId)) {
-      const item = await tx.stockItem.findUnique({ where: { id: rep.stockItemId! } });
-      if (!item) throw new AppError(404, `Item de stock "${rep.item}" no encontrado`);
-      await tx.stockMovimiento.create({
-        data: {
-          stockItemId: rep.stockItemId!,
-          tipo: TipoMovimientoStock.salida,
-          cantidad: rep.cantidad,
-          motivo: `Intervención: ${data.tipo}`,
-          referenciaIntervencion: inv.id,
-          usuarioId,
-        },
-      });
-      await tx.stockItem.update({
-        where: { id: rep.stockItemId! },
-        data: { cantidad: { decrement: rep.cantidad }, ultimaActualizacion: new Date() },
-      });
-    }
-
-    return inv;
-  });
-
-  await addLogService(`Intervención técnica registrada en activo`, 'Equipos', usuarioNombre, usuarioRol);
-  return intervencion;
-}

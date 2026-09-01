@@ -25,4 +25,11 @@ const activoBase = z.object({
 });
 
 export const createActivoSchema = activoBase;
-export const updateActivoSchema = activoBase.partial();
+export const updateActivoSchema = activoBase.partial().extend({
+  cambios: z.array(z.string()).optional(),
+  repuestos: z.array(z.object({
+    item: z.string().min(1),
+    cantidad: z.number().int().positive(),
+    tipoComponenteId: z.string().optional(),
+  })).optional(),
+});

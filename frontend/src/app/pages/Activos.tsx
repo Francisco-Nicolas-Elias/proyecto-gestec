@@ -50,8 +50,6 @@ export default function Activos() {
   const [deleting, setDeleting] = useState(false);
   const [exportingPDF, setExportingPDF] = useState(false);
   const [page, setPage] = useState(1);
-  // Modal historial mantenimiento desde la grilla
-  const [historialActivo, setHistorialActivo] = useState<Activo | null>(null);
 
   const canEdit = hasPermission('activos');
 
@@ -717,9 +715,9 @@ export default function Activos() {
                     <td className="px-3 py-2.5 whitespace-nowrap hidden lg:table-cell">
                       {a.fechaUltimoMantenimiento ? (
                         <button
-                          onClick={() => setHistorialActivo(a)}
+                          onClick={() => navigate(`/activos/${a.id}`)}
                           className="flex items-center gap-1 text-sm text-[#00a6d6] dark:text-[#00c4f0] hover:underline"
-                          title="Ver historial de mantenimiento"
+                          title="Ver historial del equipo"
                         >
                           <Calendar size={13} />
                           {fmtDate(a.fechaUltimoMantenimiento)}
@@ -862,57 +860,6 @@ export default function Activos() {
         </div>
       )}
 
-      {/* Modal Historial de Mantenimiento */}
-      {historialActivo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setHistorialActivo(null)} />
-          <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-              <div>
-                <h3 className="font-semibold dark:text-white">Historial de Mantenimiento</h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  {historialActivo.nroPc} — {historialActivo.usuario}
-                </p>
-              </div>
-              <button onClick={() => setHistorialActivo(null)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-500 dark:text-gray-400">
-                <X size={20} />
-              </button>
-            </div>
-            <div className="overflow-y-auto p-6 space-y-3">
-              {historialActivo.historialMantenimiento.length === 0 ? (
-                <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">Sin registros</p>
-              ) : (
-                historialActivo.historialMantenimiento.map(m => (
-                  <div key={m.id} className="flex gap-3">
-                    <div className="flex flex-col items-center">
-                      <div className={`w-3 h-3 rounded-full mt-0.5 shrink-0 ${m.tipo === 'Correctivo' ? 'bg-amber-400' : 'bg-[#00a6d6]'}`} />
-                      <div className="w-px flex-1 bg-gray-200 dark:bg-gray-700 mt-1" />
-                    </div>
-                    <div className="pb-4 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-medium dark:text-white">{fmtDate(m.fecha)}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${m.tipo === 'Correctivo' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300' : 'bg-[#e6f7fc] dark:bg-[#00a6d6]/20 text-[#00a6d6] dark:text-[#00c8f0]'}`}>
-                          {m.tipo}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">{m.descripcion}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Técnico: {m.tecnico}</p>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-            <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-700 flex justify-end">
-              <button
-                onClick={() => { navigate(`/activos/${historialActivo.id}`); setHistorialActivo(null); }}
-                className="text-sm text-[#00a6d6] hover:underline"
-              >
-                Ver detalle completo →
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

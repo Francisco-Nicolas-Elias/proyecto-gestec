@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import {
-  ArrowLeft, Pencil, Wrench, Trash2, Monitor, HardDrive, Cpu, Wifi,
-  MapPin, User, Calendar, Settings, Printer, X, Plus, Check, FileText, FileDown, Lock, CircuitBoard,
+  ArrowLeft, Pencil, Trash2, Monitor, HardDrive, Cpu, Wifi,
+  MapPin, User, Calendar, Settings, Printer, X, FileText, FileDown, Lock, CircuitBoard,
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import {
-  getActivoById, getIntervenciones, getTickets, deleteActivo,
-  addMantenimientoRecord, getCurrentUser, getHistorialComponentesByActivo,
-  type Activo, type MantenimientoRecord, type HistorialComponenteMovimiento,
+  getActivoById, getTickets, deleteActivo,
+  getHistorialComponentesByActivo,
+  type Activo, type HistorialEquipoEntry, type HistorialComponenteMovimiento,
 } from '../services/apiClient';
 import StatusBadge from '../components/StatusBadge';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -68,20 +68,13 @@ export default function ActivoDetalle() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { hasPermission, loading: authLoading } = useAuth();
-  const usuario = getCurrentUser();
   const [loading, setLoading] = useState(true);
   const [activo, setActivo] = useState<Activo | null>(null);
-  const [intervenciones, setIntervenciones] = useState<any[]>([]);
   const [historialComponentes, setHistorialComponentes] = useState<HistorialComponenteMovimiento[]>([]);
   const [tickets, setTickets] = useState<any[]>([]);
   const [tab, setTab] = useState<Tab>('hardware');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
-
-  // Agregar mantenimiento
-  const [showAddMant, setShowAddMant] = useState(false);
-  const [savingMant, setSavingMant] = useState(false);
-  const [mantForm, setMantForm] = useState({ fecha: '', tipo: 'Preventivo', descripcion: '' });
 
   const canEdit = hasPermission('activos');
 
@@ -89,15 +82,13 @@ export default function ActivoDetalle() {
 
   const loadData = async () => {
     try {
-      const [a, ints, ticks, histComp] = await Promise.all([
+      const [a, ticks, histComp] = await Promise.all([
         getActivoById(id!),
-        getIntervenciones(id!),
         getTickets(),
         getHistorialComponentesByActivo(id!),
       ]);
       if (!a) { toast.error('Equipo no encontrado'); navigate('/activos'); return; }
       setActivo(a);
-      setIntervenciones(ints);
       setTickets(ticks.filter((t: any) => t.activoId === id));
       setHistorialComponentes(histComp);
     } catch { toast.error('Error al cargar el equipo'); }
@@ -111,28 +102,6 @@ export default function ActivoDetalle() {
       toast.success('Equipo eliminado');
       navigate('/activos');
     } catch { toast.error('Error al eliminar'); setDeleting(false); }
-  };
-
-  const handleAddMant = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!mantForm.fecha || !mantForm.descripcion.trim()) {
-      toast.error('Completá la fecha y la descripción');
-      return;
-    }
-    setSavingMant(true);
-    try {
-      await addMantenimientoRecord(id!, {
-        fecha: mantForm.fecha,
-        tipo: mantForm.tipo,
-        descripcion: mantForm.descripcion.trim(),
-        tecnico: usuario?.nombre || 'Sistema',
-      });
-      await loadData();
-      setShowAddMant(false);
-      setMantForm({ fecha: '', tipo: 'Preventivo', descripcion: '' });
-      toast.success('Mantenimiento registrado');
-    } catch { toast.error('Error al registrar'); }
-    finally { setSavingMant(false); }
   };
 
   // ── Exportar Historial a PDF ──
@@ -163,7 +132,7 @@ export default function ActivoDetalle() {
     doc.setFontSize(14);
     doc.text('GESTEC — Colegio Universitario IES', 14, 12);
     doc.setFontSize(8.5);
-    doc.text('Historial de Mantenimiento e Intervenciones', 14, 22);
+    doc.text('Historial del Equipo', 14, 22);
     doc.text(`Exportado: ${fechaExport}`, pageW - 14, 22, { align: 'right' });
 
     // ── Ficha del activo ──
@@ -196,35 +165,35 @@ export default function ActivoDetalle() {
 
     y += 32;
 
-    // ── Sección 1: Registros de Mantenimiento ──
-    const mants = activo.historialMantenimiento ?? [];
+    // ── Historial del Equipo ──
+    const historial = activo.historial ?? [];
 
     doc.setFontSize(9);
     doc.setTextColor(...cyan);
     doc.setFont('helvetica', 'bold');
-    doc.text(`Registros de Mantenimiento (${mants.length})`, 14, y);
+    doc.text(`Historial del Equipo (${historial.length})`, 14, y);
     doc.setFont('helvetica', 'normal');
     y += 4;
 
-    if (mants.length === 0) {
+    if (historial.length === 0) {
       doc.setTextColor(160, 160, 160);
       doc.setFontSize(8);
-      doc.text('Sin registros de mantenimiento.', 14, y + 5);
+      doc.text('Sin registros de historial.', 14, y + 5);
       y += 12;
     } else {
       autoTable(doc, {
         startY: y,
         columns: [
-          { header: 'Fecha',        dataKey: 'fecha'       },
-          { header: 'Tipo',         dataKey: 'tipo'        },
-          { header: 'Técnico / Responsable', dataKey: 'tecnico'     },
-          { header: 'Descripción',  dataKey: 'descripcion' },
+          { header: 'Fecha',    dataKey: 'fecha'     },
+          { header: 'Técnico',  dataKey: 'tecnico'   },
+          { header: 'Cambios',  dataKey: 'cambios'   },
+          { header: 'Repuestos', dataKey: 'repuestos' },
         ],
-        body: mants.map((m: any) => ({
-          fecha:       fmtDate(m.fecha),
-          tipo:        m.tipo || '—',
-          tecnico:     m.tecnico || '—',
-          descripcion: m.descripcion || '—',
+        body: historial.map((h: HistorialEquipoEntry) => ({
+          fecha:     fmtDate(h.fecha),
+          tecnico:   h.tecnico || '—',
+          cambios:   h.cambios.length ? h.cambios.join('\n') : '—',
+          repuestos: h.repuestos.length ? h.repuestos.map(r => `${r.item} x${r.cantidad}`).join('\n') : '—',
         })),
         theme: 'grid',
         headStyles: {
@@ -237,10 +206,10 @@ export default function ActivoDetalle() {
         bodyStyles: { fontSize: 7.5, textColor: [40, 40, 40], cellPadding: 3 },
         alternateRowStyles: { fillColor: [237, 248, 254] },
         columnStyles: {
-          fecha:       { cellWidth: 24 },
-          tipo:        { cellWidth: 26 },
-          tecnico:     { cellWidth: 38 },
-          descripcion: { cellWidth: 'auto' as any },
+          fecha:     { cellWidth: 22 },
+          tecnico:   { cellWidth: 30 },
+          cambios:   { cellWidth: 'auto' as any },
+          repuestos: { cellWidth: 40 },
         },
         didDrawPage: (data: any) => {
           const pc = doc.getNumberOfPages();
@@ -253,63 +222,6 @@ export default function ActivoDetalle() {
         },
       });
       y = (doc as any).lastAutoTable.finalY + 10;
-    }
-
-    // ── Sección 2: Intervenciones Técnicas ──
-    if (intervenciones.length > 0) {
-      // Verificar si cabe en la misma página o saltar
-      if (y > pageH - 60) {
-        doc.addPage();
-        y = 20;
-      }
-
-      doc.setFontSize(9);
-      doc.setTextColor(...cyan);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`Intervenciones Técnicas (${intervenciones.length})`, 14, y);
-      doc.setFont('helvetica', 'normal');
-      y += 4;
-
-      autoTable(doc, {
-        startY: y,
-        columns: [
-          { header: 'Fecha',       dataKey: 'fecha'       },
-          { header: 'Tipo',        dataKey: 'tipo'        },
-          { header: 'Técnico',     dataKey: 'tecnico'     },
-          { header: 'Diagnóstico / Descripción', dataKey: 'diagnostico' },
-        ],
-        body: intervenciones.map((i: any) => ({
-          fecha:       fmtDate(i.fecha),
-          tipo:        i.tipo || '—',
-          tecnico:     i.tecnico || '—',
-          diagnostico: [i.diagnostico, i.solucion, i.descripcion].filter(Boolean).join(' · ') || '—',
-        })),
-        theme: 'grid',
-        headStyles: {
-          fillColor: [80, 50, 140] as [number, number, number],
-          textColor: [255, 255, 255],
-          fontStyle: 'bold',
-          fontSize: 8,
-          cellPadding: { top: 3, bottom: 3, left: 3, right: 3 },
-        },
-        bodyStyles: { fontSize: 7.5, textColor: [40, 40, 40], cellPadding: 3 },
-        alternateRowStyles: { fillColor: [246, 243, 255] },
-        columnStyles: {
-          fecha:       { cellWidth: 24 },
-          tipo:        { cellWidth: 30 },
-          tecnico:     { cellWidth: 34 },
-          diagnostico: { cellWidth: 'auto' as any },
-        },
-        didDrawPage: (data: any) => {
-          const pc = doc.getNumberOfPages();
-          doc.setFontSize(7);
-          doc.setTextColor(160, 160, 160);
-          doc.text(
-            `GESTEC – ${activo.nroPc}  |  Pág. ${data.pageNumber} de ${pc}`,
-            pageW / 2, pageH - 7, { align: 'center' },
-          );
-        },
-      });
     }
 
     // ── Pie en todas las páginas (re-render) ──
@@ -335,14 +247,14 @@ export default function ActivoDetalle() {
         const writable = await handle.createWritable();
         await writable.write(blob);
         await writable.close();
-        toast.success(`Historial exportado · ${mants.length + intervenciones.length} registros`);
+        toast.success(`Historial exportado · ${historial.length} registros`);
       } catch (err: any) {
         if (err?.name !== 'AbortError') {
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url; a.download = filename; a.click();
           URL.revokeObjectURL(url);
-          toast.success(`Historial exportado · ${mants.length + intervenciones.length} registros`);
+          toast.success(`Historial exportado · ${historial.length} registros`);
         }
       }
     } else {
@@ -350,7 +262,7 @@ export default function ActivoDetalle() {
       const a = document.createElement('a');
       a.href = url; a.download = filename; a.click();
       URL.revokeObjectURL(url);
-      toast.success(`Historial exportado · ${mants.length + intervenciones.length} registros`);
+      toast.success(`Historial exportado · ${historial.length} registros`);
     }
   };
 
@@ -359,7 +271,7 @@ export default function ActivoDetalle() {
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'hardware', label: 'Detalles Técnicos' },
-    { id: 'historial', label: `Historial (${activo.historialMantenimiento.length})` },
+    { id: 'historial', label: `Historial (${activo.historial.length})` },
     { id: 'componentes', label: `Componentes (${historialComponentes.length})` },
     { id: 'tickets', label: `Tickets (${tickets.length})` },
   ];
@@ -390,13 +302,6 @@ export default function ActivoDetalle() {
 
         {canEdit && (
           <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={() => navigate(`/activos/${id}/intervencion`)}
-              className="flex items-center gap-2 text-sm bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <Wrench size={15} />
-              <span className="hidden sm:inline">Intervención</span>
-            </button>
             <button
               onClick={() => navigate(`/activos/${id}/editar`)}
               className="p-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-400"
@@ -634,133 +539,63 @@ export default function ActivoDetalle() {
             </div>
           )}
 
-          {/* ── Historial de Mantenimiento ── */}
+          {/* ── Historial del Equipo ── */}
           {tab === 'historial' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold dark:text-white">Historial de Mantenimiento</h3>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={exportarHistorialPDF}
-                    className="flex items-center gap-1.5 text-sm border border-[#00a6d6] text-[#00a6d6] hover:bg-[#00a6d6]/10 dark:hover:bg-[#00a6d6]/20 px-3 py-1.5 rounded-lg transition-colors"
-                    title="Exportar historial a PDF"
-                  >
-                    <FileDown size={14} />
-                    <span className="hidden sm:inline">Exportar PDF</span>
-                  </button>
-                  {canEdit && (
-                    <button
-                      onClick={() => setShowAddMant(v => !v)}
-                      className="flex items-center gap-1.5 text-sm bg-[#00a6d6] hover:bg-[#0095c0] text-white px-3 py-1.5 rounded-lg transition-colors"
-                    >
-                      <Plus size={14} />
-                      Registrar
-                    </button>
-                  )}
-                </div>
+                <h3 className="font-semibold dark:text-white">Historial del Equipo</h3>
+                <button
+                  onClick={exportarHistorialPDF}
+                  className="flex items-center gap-1.5 text-sm border border-[#00a6d6] text-[#00a6d6] hover:bg-[#00a6d6]/10 dark:hover:bg-[#00a6d6]/20 px-3 py-1.5 rounded-lg transition-colors"
+                  title="Exportar historial a PDF"
+                >
+                  <FileDown size={14} />
+                  <span className="hidden sm:inline">Exportar PDF</span>
+                </button>
               </div>
 
-              {/* Formulario agregar mantenimiento */}
-              {showAddMant && (
-                <form onSubmit={handleAddMant} className="bg-[#e6f7fc] dark:bg-[#00a6d6]/10 border border-[#00a6d6]/30 rounded-xl p-4 space-y-3">
-                  <h4 className="text-sm font-semibold text-[#00a6d6] dark:text-[#00c4f0]">Nuevo Registro de Mantenimiento</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha *</label>
-                      <input type="date" value={mantForm.fecha}
-                        onChange={e => setMantForm(p => ({ ...p, fecha: e.target.value }))}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo</label>
-                      <select value={mantForm.tipo}
-                        onChange={e => setMantForm(p => ({ ...p, tipo: e.target.value }))}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-[#00a6d6]"
-                      >
-                        <option>Preventivo</option>
-                        <option>Correctivo</option>
-                        <option>Actualización</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Descripción *</label>
-                    <textarea
-                      value={mantForm.descripcion}
-                      onChange={e => setMantForm(p => ({ ...p, descripcion: e.target.value }))}
-                      rows={2}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-[#00a6d6] resize-none"
-                      placeholder="Describí el trabajo realizado..."
-                    />
-                  </div>
-                  <div className="flex gap-2 justify-end">
-                    <button type="button" onClick={() => setShowAddMant(false)}
-                      className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 transition-colors">
-                      Cancelar
-                    </button>
-                    <button type="submit" disabled={savingMant}
-                      className="flex items-center gap-1 px-3 py-1.5 text-sm bg-[#00a6d6] text-white rounded-lg hover:bg-[#0095c0] transition-colors disabled:opacity-50">
-                      <Check size={14} /> {savingMant ? 'Guardando...' : 'Guardar'}
-                    </button>
-                  </div>
-                </form>
-              )}
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Se genera automáticamente cada vez que se edita el equipo con cambios reales. Para agregar una entrada, usá "Editar".
+              </p>
 
               {/* Lista de registros */}
-              {activo.historialMantenimiento.length === 0 ? (
+              {activo.historial.length === 0 ? (
                 <div className="text-center py-12 text-gray-500 dark:text-gray-400">
                   <Calendar size={36} className="mx-auto mb-3 opacity-40" />
-                  <p className="text-sm">Sin registros de mantenimiento</p>
+                  <p className="text-sm">Sin registros de historial</p>
                 </div>
               ) : (
                 <div className="space-y-0">
-                  {activo.historialMantenimiento.map((m: MantenimientoRecord, i, arr) => (
-                    <div key={m.id} className="flex gap-4">
+                  {activo.historial.map((h: HistorialEquipoEntry, i, arr) => (
+                    <div key={h.id} className="flex gap-4">
                       <div className="flex flex-col items-center pt-1">
-                        <div className={`w-3 h-3 rounded-full shrink-0 ${m.tipo === 'Correctivo' ? 'bg-amber-400' : m.tipo === 'Actualización' ? 'bg-purple-400' : 'bg-[#00a6d6]'}`} />
+                        <div className="w-3 h-3 rounded-full shrink-0 bg-[#00a6d6]" />
                         {i < arr.length - 1 && <div className="w-px flex-1 bg-gray-200 dark:bg-gray-700 my-1" />}
                       </div>
-                      <div className={`pb-5 flex-1 min-w-0 ${i === arr.length - 1 ? '' : ''}`}>
+                      <div className="pb-5 flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2 flex-wrap">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-semibold dark:text-white">{fmtDate(m.fecha)}</span>
-                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                              m.tipo === 'Correctivo' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300' :
-                              m.tipo === 'Actualización' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300' :
-                              'bg-[#e6f7fc] dark:bg-[#00a6d6]/20 text-[#00a6d6] dark:text-[#00c8f0]'
-                            }`}>
-                              {m.tipo}
-                            </span>
-                          </div>
-                          <span className="text-xs text-gray-400 dark:text-gray-500">por {m.tecnico}</span>
+                          <span className="text-sm font-semibold dark:text-white">{fmtDate(h.fecha)}</span>
+                          <span className="text-xs text-gray-400 dark:text-gray-500">por {h.tecnico}</span>
                         </div>
-                        <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">{m.descripcion}</p>
+                        {h.cambios.length > 0 && (
+                          <ul className="mt-1.5 space-y-1 list-disc list-inside">
+                            {h.cambios.map((c, ci) => (
+                              <li key={ci} className="text-sm text-gray-700 dark:text-gray-300">{c}</li>
+                            ))}
+                          </ul>
+                        )}
+                        {h.repuestos.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {h.repuestos.map((r, ri) => (
+                              <span key={ri} className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300">
+                                {r.item} × {r.cantidad}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
-                </div>
-              )}
-
-              {/* También mostrar intervenciones técnicas */}
-              {intervenciones.length > 0 && (
-                <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
-                    <Wrench size={14} className="text-[#00a6d6]" />
-                    Intervenciones Técnicas ({intervenciones.length})
-                  </h4>
-                  <div className="space-y-3">
-                    {intervenciones.map(i => (
-                      <div key={i.id} className="bg-gray-50 dark:bg-gray-700/30 rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-medium dark:text-white">{i.tipo}</span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400">{fmtDate(i.fecha)}</span>
-                        </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{i.diagnostico}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">Técnico: {i.tecnico}</p>
-                      </div>
-                    ))}
-                  </div>
                 </div>
               )}
             </div>

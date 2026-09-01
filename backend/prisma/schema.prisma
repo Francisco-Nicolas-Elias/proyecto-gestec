@@ -177,37 +177,36 @@ model RegistroPendiente {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Activo {
-  id              String       @id @default(cuid())
-  nroPc           String       @unique
-  ubicacionId     String
-  ubicacion       Ubicacion    @relation(fields: [ubicacionId], references: [id])
-  oficina         String       @default("")
-  usuarioAsignado String       @default("")
-  microModelo     String       @default("")
-  microMarca      String       @default("")
-  microNroSerie   String       @default("")
-  ramTotal        String       @default("")
-  almacenamientoTotal String   @default("")
-  ip              String       @default("")
-  mac             String       @default("")
-  idAD            String       @default("")
-  pAD             String       @default("")
-  sistemaOperativo String      @default("")
-  impresoraModelo  String      @default("")
-  impresoraMarca   String      @default("")
-  impresoraNroSerie String     @default("")
-  observaciones   String       @default("")
-  fechaCambioPC             DateTime?
-  fechaUltimoMantenimiento  DateTime?
-  estado          EstadoActivo @default(activa)
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  id                       String       @id @default(cuid())
+  nroPc                    String       @unique
+  ubicacionId              String
+  ubicacion                Ubicacion    @relation(fields: [ubicacionId], references: [id])
+  oficina                  String       @default("")
+  usuarioAsignado          String       @default("")
+  microModelo              String       @default("")
+  microMarca               String       @default("")
+  microNroSerie            String       @default("")
+  ramTotal                 String       @default("")
+  almacenamientoTotal      String       @default("")
+  ip                       String       @default("")
+  mac                      String       @default("")
+  idAD                     String       @default("")
+  pAD                      String       @default("")
+  sistemaOperativo         String       @default("")
+  impresoraModelo          String       @default("")
+  impresoraMarca           String       @default("")
+  impresoraNroSerie        String       @default("")
+  observaciones            String       @default("")
+  fechaCambioPC            DateTime?
+  fechaUltimoMantenimiento DateTime?
+  estado                   EstadoActivo @default(activa)
+  createdAt                DateTime     @default(now())
+  updatedAt                DateTime     @updatedAt
 
-  componentes    Componente[]
-  mantenimientos MantenimientoRecord[]
-  intervenciones Intervencion[]
-  tickets        Ticket[]
-  tareas         Tarea[]
+  componentes Componente[]
+  historial   HistorialEquipo[]
+  tickets     Ticket[]
+  tareas      Tarea[]
 
   @@map("activos")
 }
@@ -259,49 +258,30 @@ model HistorialMovimientoComponente {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MANTENIMIENTO E INTERVENCIONES
+// HISTORIAL DE EQUIPO
 // ─────────────────────────────────────────────────────────────────────────────
 
-model MantenimientoRecord {
-  id          String   @id @default(cuid())
-  activoId    String
-  activo      Activo   @relation(fields: [activoId], references: [id], onDelete: Cascade)
-  fecha       DateTime
-  tipo        String
-  descripcion String
-  tecnico     String
+model HistorialEquipo {
+  id       String   @id @default(cuid())
+  activoId String
+  activo   Activo   @relation(fields: [activoId], references: [id], onDelete: Cascade)
+  fecha    DateTime @default(now())
+  tecnico  String
+  cambios  String[]
 
-  @@map("mantenimiento_records")
+  repuestos RepuestoHistorial[]
+
+  @@map("historial_equipo")
 }
 
-model Intervencion {
-  id             String   @id @default(cuid())
-  activoId       String
-  activo         Activo   @relation(fields: [activoId], references: [id])
-  fecha          DateTime
-  tipo           String
-  diagnostico    String
-  accion         String
-  tecnico        String
-  tiempoEstimado Int?
-  tiempoReal     Int?
-  resultado      String
-  comentarios    String?
-  createdAt      DateTime @default(now())
+model RepuestoHistorial {
+  id          String          @id @default(cuid())
+  historialId String
+  historial   HistorialEquipo @relation(fields: [historialId], references: [id], onDelete: Cascade)
+  item        String
+  cantidad    Int
 
-  repuestos RepuestoIntervencion[]
-
-  @@map("intervenciones")
-}
-
-model RepuestoIntervencion {
-  id             String       @id @default(cuid())
-  intervencionId String
-  intervencion   Intervencion @relation(fields: [intervencionId], references: [id], onDelete: Cascade)
-  item           String
-  cantidad       Int
-
-  @@map("repuestos_intervencion")
+  @@map("repuestos_historial")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -343,14 +323,14 @@ model TicketAsignado {
 }
 
 model ComentarioTicket {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   ticketId  String
-  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticket    Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   autorId   String
-  autor     Usuario  @relation(fields: [autorId], references: [id])
-  fecha     DateTime @default(now())
+  autor     Usuario   @relation(fields: [autorId], references: [id])
+  fecha     DateTime  @default(now())
   texto     String
-  esInterno Boolean  @default(false)
+  esInterno Boolean   @default(false)
   adjuntos  Adjunto[] @relation("AdjuntosComentarioTicket")
 
   @@map("comentarios_ticket")
@@ -361,20 +341,20 @@ model ComentarioTicket {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Tarea {
-  id              String         @id @default(cuid())
-  titulo          String
-  descripcion     String
-  prioridad       PrioridadTarea @default(media)
-  estado          EstadoTarea    @default(pendiente)
-  fechaLimite     DateTime?
-  ubicacionTexto  String?
-  activoId        String?
-  activo          Activo?        @relation(fields: [activoId], references: [id])
-  creadoPorId     String
-  creadoPor       Usuario        @relation("TareaCreador", fields: [creadoPorId], references: [id])
-  finalizadoPorId String?
-  finalizadoPor   Usuario?       @relation("TareaFinalizador", fields: [finalizadoPorId], references: [id])
-  fechaCreacion     DateTime  @default(now())
+  id                String         @id @default(cuid())
+  titulo            String
+  descripcion       String
+  prioridad         PrioridadTarea @default(media)
+  estado            EstadoTarea    @default(pendiente)
+  fechaLimite       DateTime?
+  ubicacionTexto    String?
+  activoId          String?
+  activo            Activo?        @relation(fields: [activoId], references: [id])
+  creadoPorId       String
+  creadoPor         Usuario        @relation("TareaCreador", fields: [creadoPorId], references: [id])
+  finalizadoPorId   String?
+  finalizadoPor     Usuario?       @relation("TareaFinalizador", fields: [finalizadoPorId], references: [id])
+  fechaCreacion     DateTime       @default(now())
   fechaInicio       DateTime?
   fechaFinalizacion DateTime?
 
@@ -409,12 +389,12 @@ model TareaHistorial {
 }
 
 model ComentarioTarea {
-  id       String   @id @default(cuid())
+  id       String    @id @default(cuid())
   tareaId  String
-  tarea    Tarea    @relation(fields: [tareaId], references: [id], onDelete: Cascade)
+  tarea    Tarea     @relation(fields: [tareaId], references: [id], onDelete: Cascade)
   autorId  String
-  autor    Usuario  @relation(fields: [autorId], references: [id])
-  fecha    DateTime @default(now())
+  autor    Usuario   @relation(fields: [autorId], references: [id])
+  fecha    DateTime  @default(now())
   texto    String
   adjuntos Adjunto[] @relation("AdjuntosComentarioTarea")
 
@@ -452,32 +432,32 @@ model Adjunto {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model StockItem {
-  id               String          @id @default(cuid())
-  nombre           String
-  tipoComponenteId String?
-  tipoComponente   TipoComponente? @relation(fields: [tipoComponenteId], references: [id])
-  proveedorId      String?
-  proveedor        Proveedor?      @relation(fields: [proveedorId], references: [id])
-  cantidad         Int             @default(0)
-  minimoRequerido  Int             @default(1)
-  ubicacion        String          @default("Depósito IT")
-  ultimaActualizacion DateTime     @default(now())
-  movimientos      StockMovimiento[]
+  id                  String            @id @default(cuid())
+  nombre              String
+  tipoComponenteId    String?
+  tipoComponente      TipoComponente?   @relation(fields: [tipoComponenteId], references: [id])
+  proveedorId         String?
+  proveedor           Proveedor?        @relation(fields: [proveedorId], references: [id])
+  cantidad            Int               @default(0)
+  minimoRequerido     Int               @default(1)
+  ubicacion           String            @default("Depósito IT")
+  ultimaActualizacion DateTime          @default(now())
+  movimientos         StockMovimiento[]
 
   @@map("stock_items")
 }
 
 model StockMovimiento {
-  id                     String              @id @default(cuid())
-  stockItemId            String
-  stockItem              StockItem           @relation(fields: [stockItemId], references: [id])
-  tipo                   TipoMovimientoStock
-  cantidad               Int
-  motivo                 String
-  fecha                  DateTime            @default(now())
-  usuarioId              String?
-  usuario                Usuario?            @relation(fields: [usuarioId], references: [id])
-  referenciaIntervencion String?
+  id                  String              @id @default(cuid())
+  stockItemId         String
+  stockItem           StockItem           @relation(fields: [stockItemId], references: [id])
+  tipo                TipoMovimientoStock
+  cantidad            Int
+  motivo              String
+  fecha               DateTime            @default(now())
+  usuarioId           String?
+  usuario             Usuario?            @relation(fields: [usuarioId], references: [id])
+  referenciaHistorial String?
 
   @@map("stock_movimientos")
 }
@@ -487,11 +467,11 @@ model StockMovimiento {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model InfoOperaciones {
-  id               String                @id @default("config")
+  id               String                 @id @default("config")
   telefono         String
   telefonoInterno  String
   horariosAtencion String
-  updatedAt        DateTime              @updatedAt
+  updatedAt        DateTime               @updatedAt
   emails           InfoOperacionesEmail[]
 
   @@map("info_operaciones")
@@ -513,7 +493,7 @@ model InfoOperacionesEmail {
 model LogEntry {
   id            String    @id @default(cuid())
   accion        String
-  detalle       String?   // JSON: { campos: { "Campo": ["antes", "después"] } }
+  detalle       String? // JSON: { campos: { "Campo": ["antes", "después"] } }
   modulo        ModuloLog
   usuarioId     String?
   usuario       Usuario?  @relation(fields: [usuarioId], references: [id])

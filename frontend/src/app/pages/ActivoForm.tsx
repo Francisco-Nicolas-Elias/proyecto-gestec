@@ -1,12 +1,12 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import {
-  ArrowLeft, Save, Monitor, HardDrive, Cpu, Wifi, Settings, Printer, MapPin, User, Plus, Trash2, Lock, CircuitBoard,
+  ArrowLeft, Save, Monitor, HardDrive, Cpu, Wifi, Settings, Printer, MapPin, User, Plus, Trash2, Lock, CircuitBoard, Package,
 } from 'lucide-react';
 import {
-  getActivoById, createActivo, updateActivo, updateComponente,
+  getActivoById, createActivo, updateActivo, updateComponente, getStock,
   getSectores, getPisoForSector, buscarComponentePorSerie, buscarActivoPorNroPc,
-  type ModuloRAM, type ModuloAlmacenamiento,
+  type ModuloRAM, type ModuloAlmacenamiento, type Activo,
 } from '../services/apiClient';
 import LoadingSpinner from '../components/LoadingSpinner';
 import SearchableSelect from '../components/SearchableSelect';
@@ -38,7 +38,21 @@ const TIPO_BADGE: Record<string, string> = {
   'SSD': 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
   'HDD': 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
   'M.2': 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
+  'M2':  'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
+  'Disco': 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
 };
+
+interface RepuestoForm { itemId: string; itemNombre: string; cantidad: number }
+
+// Tipos que ya se manejan con N° de serie exacto desde su propia sección del formulario —
+// se excluyen de "Repuestos Utilizados" para no vincular una unidad extra sin querer.
+const TIPOS_CON_SECCION_PROPIA = new Set([
+  'RAM', 'SSD', 'HDD', 'M.2', 'M2', 'SSHD', 'Disco',
+  'Procesador', 'CPU', 'Micro',
+  'Placa Madre', 'Placa madre', 'Motherboard',
+  'Placa de video', 'Placa de Video', 'GPU',
+  'Impresora',
+]);
 
 const empty = {
   sector: '', piso: '', oficina: '', nroPc: '', usuario: '',
@@ -55,7 +69,91 @@ const empty = {
   observaciones: '',
   fechaCambioPC: '', fechaUltimoMantenimiento: '',
   estado: 'activa' as 'activa' | 'inactiva',
+  repuestos: [] as RepuestoForm[],
 };
+
+const FIELD_LABELS: Record<string, string> = {
+  sector: 'Sector', oficina: 'Oficina/Aula', usuario: 'Usuario',
+  ip: 'IP', mac: 'MAC', idAD: 'ID AD', sistemaOperativo: 'Sistema Operativo',
+  observaciones: 'Observaciones', fechaCambioPC: 'Fecha de cambio de PC',
+  fechaUltimoMantenimiento: 'Fecha de último mantenimiento',
+};
+
+// Compara un bloque de componente único (marca+modelo+serie[+capacidad]) entre el original y el form final
+function diffBloque(label: string, oldParts: (string | undefined)[], newParts: (string | undefined)[]): string | null {
+  const oldStr = oldParts.filter(Boolean).join(' ').trim();
+  const newStr = newParts.filter(Boolean).join(' ').trim();
+  if (oldStr === newStr) return null;
+  if (!oldStr) return `${label}: agregado ${newStr}`;
+  if (!newStr) return `${label}: quitado (${oldStr})`;
+  return `${label}: ${oldStr} → ${newStr}`;
+}
+
+// Compara un array de módulos (RAM/almacenamiento) por nroSerie
+function diffModulos(label: string, originales: { nroSerie: string; marca: string; modelo: string; capacidad: string }[], actuales: { nroSerie: string; marca: string; modelo: string; capacidad: string }[]): string[] {
+  const lineas: string[] = [];
+  const origPorSerie = new Map(originales.filter(m => m.nroSerie?.trim()).map(m => [m.nroSerie.trim(), m]));
+  const actPorSerie = new Map(actuales.filter(m => m.nroSerie?.trim()).map(m => [m.nroSerie.trim(), m]));
+  for (const [serie, m] of actPorSerie) {
+    if (!origPorSerie.has(serie)) {
+      const desc = [m.marca, m.modelo, m.capacidad ? `(${m.capacidad})` : ''].filter(Boolean).join(' ');
+      lineas.push(`${label}: agregado módulo ${desc || serie}`);
+    }
+  }
+  for (const [serie, m] of origPorSerie) {
+    if (!actPorSerie.has(serie)) {
+      const desc = [m.marca, m.modelo].filter(Boolean).join(' ');
+      lineas.push(`${label}: quitado módulo ${desc || serie}`);
+    }
+  }
+  return lineas;
+}
+
+function calcularCambios(original: Activo, form: typeof empty): string[] {
+  const cambios: string[] = [];
+
+  for (const [key, label] of Object.entries(FIELD_LABELS)) {
+    const oldVal = (original as any)[key] ?? '';
+    const newVal = (form as any)[key] ?? '';
+    if (oldVal !== newVal) {
+      cambios.push(oldVal ? `${label}: ${oldVal} → ${newVal || '(vacío)'}` : `${label}: ${newVal}`);
+    }
+  }
+
+  if (original.estado !== form.estado) {
+    const estadoLabel = (v: string) => ESTADO_OPTIONS.find(o => o.value === v)?.label ?? v;
+    cambios.push(`Estado: ${estadoLabel(original.estado)} → ${estadoLabel(form.estado)}`);
+  }
+
+  if ((original.pAD || '') !== (form.pAD || '')) {
+    cambios.push('P AD actualizado');
+  }
+
+  const bloqueProcesador = diffBloque('Procesador',
+    [original.microMarca, original.microModelo, original.microNroSerie],
+    [form.microMarca, form.microModelo, form.microNroSerie]);
+  if (bloqueProcesador) cambios.push(bloqueProcesador);
+
+  const bloquePlacaMadre = diffBloque('Placa Madre',
+    [original.placaMadreMarca, original.placaMadreModelo, original.placaMadreNroSerie],
+    [form.placaMadreMarca, form.placaMadreModelo, form.placaMadreNroSerie]);
+  if (bloquePlacaMadre) cambios.push(bloquePlacaMadre);
+
+  const bloquePlacaVideo = diffBloque('Placa de Video',
+    [original.placaVideoMarca, original.placaVideoModelo, original.placaVideoNroSerie, (original as any).placaVideoCapacidad],
+    [form.placaVideoMarca, form.placaVideoModelo, form.placaVideoNroSerie, form.placaVideoCapacidad]);
+  if (bloquePlacaVideo) cambios.push(bloquePlacaVideo);
+
+  const bloqueImpresora = diffBloque('Impresora',
+    [original.impresoraMarca, original.impresoraModelo, original.impresoraNroSerie],
+    [form.impresoraMarca, form.impresoraModelo, form.impresoraNroSerie]);
+  if (bloqueImpresora) cambios.push(bloqueImpresora);
+
+  cambios.push(...diffModulos('RAM', original.ramModulos || [], form.ramModulos));
+  cambios.push(...diffModulos('Almacenamiento', original.almacenamientoModulos || [], form.almacenamientoModulos));
+
+  return cambios;
+}
 
 const ESTADO_OPTIONS = [
   { value: 'activa', label: 'Activo' },
@@ -133,6 +231,7 @@ export default function ActivoForm() {
   const [saving, setSaving] = useState(false);
   const [form, setForm, clearFormPersistence] = useFormPersistence(storageKey, empty);
   const [sectores, setSectores] = useState<string[]>([]);
+  const [stockItems, setStockItems] = useState<any[]>([]);
 
   // P AD: input raw (nunca persiste) — se encripta al guardar
   const [pADInput, setPADInput] = useState('');
@@ -175,17 +274,28 @@ export default function ActivoForm() {
   const showDraftBanner = !isEdit && hadPersistedDataRef.current;
   const originalGpuSerialRef = useRef<string>('');
   const originalMotherboardSerialRef = useRef<string>('');
+  const originalRamSeriesRef = useRef<Set<string>>(new Set());
+  const originalAlmacenamientoSeriesRef = useRef<Set<string>>(new Set());
+  const activoOriginalRef = useRef<Activo | null>(null);
 
   useEffect(() => {
     const load = async () => {
       try {
         const sects = await getSectores();
         setSectores(sects);
+        if (isEdit) getStock().then(setStockItems).catch(() => {});
         if (isEdit && id) {
           const activo = await getActivoById(id);
           if (activo) {
+            activoOriginalRef.current = activo;
             originalGpuSerialRef.current = activo.placaVideoNroSerie || '';
             originalMotherboardSerialRef.current = activo.placaMadreNroSerie || '';
+            originalRamSeriesRef.current = new Set(
+              (activo.ramModulos || []).map(m => m.nroSerie?.trim()).filter((s): s is string => !!s)
+            );
+            originalAlmacenamientoSeriesRef.current = new Set(
+              (activo.almacenamientoModulos || []).map(m => m.nroSerie?.trim()).filter((s): s is string => !!s)
+            );
             setForm({
               sector: activo.sector,
               piso: activo.piso,
@@ -218,6 +328,7 @@ export default function ActivoForm() {
               fechaCambioPC: activo.fechaCambioPC,
               fechaUltimoMantenimiento: activo.fechaUltimoMantenimiento,
               estado: activo.estado,
+              repuestos: [],
             });
           }
         }
@@ -397,6 +508,28 @@ export default function ActivoForm() {
     setForm(prev => ({ ...prev, almacenamientoTotal: calcularAlmacenamientoTotal(prev.almacenamientoModulos || []) }));
   }, [form.almacenamientoModulos]);
 
+  // ── Repuestos utilizados (solo edición) ──────────────────────────────────
+  const handleAddRepuesto = () => {
+    setForm(prev => ({ ...prev, repuestos: [...prev.repuestos, { itemId: '', itemNombre: '', cantidad: 1 }] }));
+  };
+
+  const handleRepuestoChange = (index: number, field: keyof RepuestoForm, value: string | number) => {
+    setForm(prev => {
+      const repuestos = [...prev.repuestos];
+      if (field === 'itemId') {
+        const item = stockItems.find(s => s.id === value);
+        repuestos[index] = { ...repuestos[index], itemId: String(value), itemNombre: item?.nombre || '' };
+      } else {
+        repuestos[index] = { ...repuestos[index], [field]: value };
+      }
+      return { ...prev, repuestos };
+    });
+  };
+
+  const handleRemoveRepuesto = (index: number) => {
+    setForm(prev => ({ ...prev, repuestos: prev.repuestos.filter((_, i) => i !== index) }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.nroPc.match(/^PC\d{3}$/)) {
@@ -444,7 +577,15 @@ export default function ActivoForm() {
       }
     }
 
-    const payload = { ...form, pAD: pADFinal };
+    const { repuestos: repuestosForm, ...formSinRepuestos } = form;
+    const payload: any = { ...formSinRepuestos, pAD: pADFinal };
+
+    if (isEdit && activoOriginalRef.current) {
+      payload.cambios = calcularCambios(activoOriginalRef.current, { ...form, pAD: pADFinal });
+      payload.repuestos = repuestosForm
+        .filter(r => r.itemId)
+        .map(r => ({ item: r.itemNombre, cantidad: r.cantidad, tipoComponenteId: r.itemId }));
+    }
 
     setSaving(true);
     try {
@@ -495,6 +636,31 @@ export default function ActivoForm() {
           } catch (err) { toast.error('No se pudo vincular la placa madre'); console.error(err); }
         }
       }
+
+      // Sincronizar módulos de RAM y almacenamiento: vincular/desvincular componentes por N° de serie
+      const syncModulos = async (
+        originalSeriesRef: React.MutableRefObject<Set<string>>,
+        modulos: { nroSerie: string }[],
+        etiqueta: string,
+      ) => {
+        const currentSeries = new Set(modulos.map(m => m.nroSerie?.trim()).filter((s): s is string => !!s));
+        for (const serie of originalSeriesRef.current) {
+          if (!currentSeries.has(serie)) {
+            try {
+              const comp = await buscarComponentePorSerie(serie);
+              if (comp && comp.activoId === savedId) await updateComponente(comp.id, { activoId: null } as any);
+            } catch (err) { toast.error(`No se pudo desvincular un componente de ${etiqueta}`); console.error(err); }
+          }
+        }
+        for (const serie of currentSeries) {
+          try {
+            const comp = await buscarComponentePorSerie(serie);
+            if (comp && comp.activoId !== savedId) await updateComponente(comp.id, { activoId: savedId } as any);
+          } catch (err) { toast.error(`No se pudo vincular un componente de ${etiqueta}`); console.error(err); }
+        }
+      };
+      await syncModulos(originalRamSeriesRef, form.ramModulos, 'RAM');
+      await syncModulos(originalAlmacenamientoSeriesRef, form.almacenamientoModulos, 'almacenamiento');
 
       toast.success(isEdit ? 'Equipo actualizado correctamente' : 'Equipo creado correctamente');
       clearFormPersistence();
@@ -964,6 +1130,59 @@ export default function ActivoForm() {
             />
           </Field>
         </Section>
+
+        {/* ── 11. Repuestos Utilizados (solo edición) ── */}
+        {isEdit && (
+          <Section icon={Package} title="Repuestos Utilizados">
+            <div className="space-y-3">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Si usaste un repuesto del depósito para esta edición, cargalo acá — se descuenta del stock automáticamente al guardar y queda registrado en el historial del equipo. RAM, Almacenamiento, Procesador, Placa Madre, Placa de Video e Impresora no aparecen acá: esos se cargan con su N° de serie exacto en su propia sección de arriba.
+              </p>
+              {form.repuestos.map((rep, index) => (
+                <div key={index} className="flex gap-3 items-start">
+                  <div className="flex-1">
+                    <SearchableSelect
+                      options={stockItems
+                        .filter(item => !TIPOS_CON_SECCION_PROPIA.has(item.nombre))
+                        .map(item => ({
+                          value: item.id,
+                          label: `${item.nombre} (Disponible: ${item.cantidad})`,
+                        }))}
+                      value={rep.itemId}
+                      onChange={v => handleRepuestoChange(index, 'itemId', v)}
+                      placeholder="Seleccionar repuesto..."
+                    />
+                  </div>
+                  <div className="w-24">
+                    <input
+                      type="number"
+                      min="1"
+                      value={rep.cantidad}
+                      onChange={e => handleRepuestoChange(index, 'cantidad', Number(e.target.value))}
+                      className={inputClass}
+                      placeholder="Cant."
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveRepuesto(index)}
+                    className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={handleAddRepuesto}
+                className="flex items-center gap-2 px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                <Plus size={16} />
+                Agregar repuesto
+              </button>
+            </div>
+          </Section>
+        )}
 
         {/* ── Botones ── */}
         <div className="flex flex-col items-end gap-2 pt-2">

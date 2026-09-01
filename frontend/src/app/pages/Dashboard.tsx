@@ -341,7 +341,7 @@ export default function Dashboard() {
     { name: 'Nuevo',       value: allTickets.filter(t => t.estado === 'nuevo').length,       color: TICKET_COLORS.nuevo },
     { name: 'En Progreso', value: allTickets.filter(t => t.estado === 'en_progreso').length, color: TICKET_COLORS.en_progreso },
     { name: 'Resuelto',    value: allTickets.filter(t => t.estado === 'resuelto').length,    color: TICKET_COLORS.resuelto },
-  ].filter(d => d.value > 0), [allTickets]);
+  ], [allTickets]);
 
   const activoPieData = useMemo(() => [
     { name: 'Activo',   value: allActivos.filter(a => a.estado === 'activa').length,   color: ACTIVO_COLORS.activa },
@@ -397,16 +397,13 @@ export default function Dashboard() {
           </div>
         </SectionCard>
 
-        <SectionCard>
-          <SectionHeader title="Estado de tickets" />
-          {ticketPieData.length === 0 ? (
-            <div className="flex items-center justify-center h-40 text-sm text-gray-400">Sin tickets</div>
+        <SectionCard className="self-start">
+          <SectionHeader title="Estado de tickets" action="Ver todos" onAction={() => navigate('/tickets')} />
+          {allTickets.length === 0 ? (
+            <div className="flex items-center justify-center h-16 text-sm text-gray-400">Sin tickets</div>
           ) : (
-            <div className="pb-4">
-              <div className="py-2">
-                <DonutChart data={ticketPieData} size={160} />
-              </div>
-              <div className="px-5 space-y-1.5">
+            <div className="flex items-center justify-between gap-3 px-5 pb-4">
+              <div className="flex-1 space-y-1.5">
                 {ticketPieData.map(d => (
                   <div key={d.name} className="flex items-center justify-between text-sm">
                     <span className="flex items-center gap-2">
@@ -417,6 +414,7 @@ export default function Dashboard() {
                   </div>
                 ))}
               </div>
+              <DonutChart data={ticketPieData.filter(d => d.value > 0)} size={80} />
             </div>
           )}
         </SectionCard>

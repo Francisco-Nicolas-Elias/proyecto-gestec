@@ -69,8 +69,8 @@ function sumarCapacidad(modulos: any[]): string {
 }
 
 const TIPOS_RAM         = ['RAM'];
-const TIPOS_STORAGE     = ['SSD', 'HDD', 'M.2', 'SSHD'];
-const TIPOS_PROCESADOR  = ['Procesador', 'CPU'];
+const TIPOS_STORAGE     = ['SSD', 'HDD', 'M.2', 'M2', 'SSHD', 'Disco'];
+const TIPOS_PROCESADOR  = ['Procesador', 'CPU', 'Micro'];
 const TIPOS_PLACA_VIDEO = ['Placa de video', 'GPU', 'Placa de Video'];
 const TIPOS_PLACA_MADRE = ['Placa Madre', 'Placa madre', 'Motherboard'];
 
@@ -128,8 +128,9 @@ function mapActivo(a: any): any {
     almacenamientoTotal: sumarCapacidad(almacenamientoModulos) || a.almacenamientoTotal || '',
     marca: procesador?.marca?.nombre ?? a.microMarca ?? '',
     modelo: procesador?.modelo ?? a.microModelo ?? '',
-    historialMantenimiento: (a.mantenimientos ?? []).map((m: any) => ({
-      id: m.id, fecha: toDateStr(m.fecha), tipo: m.tipo, descripcion: m.descripcion, tecnico: m.tecnico,
+    historial: (a.historial ?? []).map((h: any) => ({
+      id: h.id, fecha: toDateStr(h.fecha), tecnico: h.tecnico, cambios: h.cambios ?? [],
+      repuestos: (h.repuestos ?? []).map((r: any) => ({ item: r.item, cantidad: r.cantidad })),
     })),
   };
 }
@@ -223,7 +224,7 @@ const getUsersIdCache = async () => { if (!_usersIdCache) _usersIdCache = await 
 
 async function activoPayload(a: any): Promise<any> {
   const { sector, piso, usuario, ubicacion: _ub, codigo, tipo, marca: _m, modelo: _mo,
-    responsable, tags, historialMantenimiento, ramModulos, almacenamientoModulos,
+    responsable, tags, historial, ramModulos, almacenamientoModulos,
     placaVideoNroSerie: _pvn, placaVideoMarca: _pvm, placaVideoModelo: _pvmo, placaVideoCapacidad: _pvca,
     placaMadreNroSerie: _pmn, placaMadreMarca: _pmm, placaMadreModelo: _pmmo,
     ...rest } = a;
@@ -316,12 +317,12 @@ export const getCurrentUser = (): Usuario | null => {
 };
 
 // ============ ACTIVOS ============
-export interface MantenimientoRecord {
+export interface HistorialEquipoEntry {
   id: string;
   fecha: string;
-  tipo: string;
-  descripcion: string;
   tecnico: string;
+  cambios: string[];
+  repuestos: { item: string; cantidad: number }[];
 }
 
 export interface ModuloRAM {
@@ -378,7 +379,7 @@ export interface Activo {
   fechaCambioPC: string;
   fechaUltimoMantenimiento: string;
   estado: 'activa' | 'inactiva';
-  historialMantenimiento: MantenimientoRecord[];
+  historial: HistorialEquipoEntry[];
   codigo: string;
   ubicacion: string;
   tipo: string;
@@ -386,7 +387,6 @@ export interface Activo {
   modelo: string;
   responsable: string;
   tags: string[];
-  ultimaIntervencion?: string;
   numeroSerie?: string;
   anioCompra?: number;
   caracteristicas?: Record<string, any>;
@@ -411,19 +411,10 @@ export const SECTOR_PISO_MAP: Record<string, string> = {
   'Depósito IT': 'Subsuelo',
 };
 
-export interface Intervencion {
-  id: string;
-  activoId: string;
-  fecha: string;
-  tipo: string;
-  diagnostico: string;
-  accion: string;
-  repuestos: { item: string; cantidad: number; stockItemId?: string }[];
-  tecnico: string;
-  tiempoEstimado?: number;
-  tiempoReal?: number;
-  resultado: string;
-  comentarios?: string;
+export interface RepuestoUtilizado {
+  item: string;
+  cantidad: number;
+  tipoComponenteId?: string;
 }
 
 export const getActivos = async (filters?: any): Promise<Activo[]> => {
@@ -472,7 +463,10 @@ export const createActivo = async (activo: Partial<Activo>): Promise<Activo> => 
   return result;
 };
 
-export const updateActivo = async (id: string, data: Partial<Activo>): Promise<Activo> => {
+export const updateActivo = async (
+  id: string,
+  data: Partial<Activo> & { cambios?: string[]; repuestos?: RepuestoUtilizado[] },
+): Promise<Activo> => {
   const payload = await activoPayload(data);
   const result = await http.put<any>(`/activos/${id}`, payload).then(mapActivo);
   cacheInvalidate('activos');
@@ -505,19 +499,6 @@ export interface HistorialComponenteMovimiento {
 
 export const getHistorialComponentesByActivo = async (activoId: string): Promise<HistorialComponenteMovimiento[]> => {
   return http.get<HistorialComponenteMovimiento[]>(`/activos/${activoId}/historial-componentes`);
-};
-
-export const getIntervenciones = async (activoId: string): Promise<Intervencion[]> => {
-  return http.get<Intervencion[]>(`/activos/${activoId}/intervenciones`);
-};
-
-export const createIntervencion = async (intervencion: Partial<Intervencion>): Promise<Intervencion> => {
-  const { activoId, ...rest } = intervencion;
-  return http.post<Intervencion>(`/activos/${activoId}/intervenciones`, rest);
-};
-
-export const addMantenimientoRecord = async (activoId: string, data: Partial<MantenimientoRecord>): Promise<MantenimientoRecord> => {
-  return http.post<MantenimientoRecord>(`/activos/${activoId}/mantenimiento`, data);
 };
 
 // ============ TICKETS ============
@@ -671,7 +652,7 @@ export interface StockMovimiento {
   motivo: string;
   fecha: string;
   usuario: string;
-  referenciaIntervencion?: string;
+  referenciaHistorial?: string;
 }
 
 export const calcularEstadoStock = (cantidad: number): 'ok' | 'bajo' | 'critico' => {
