@@ -383,7 +383,7 @@ export default function Dashboard() {
           <KpiCard icon={CheckCircle}  label="Tareas Pendientes"    value={stats.tareasPendientes}  color="bg-purple-500" onClick={() => navigate('/tareas')} />
         )}
         {hasPermission('stock') && (
-          <KpiCard icon={Package}      label="Stock Bajo/Crítico"   value={stats.stockBajo}         color="bg-orange-500" onClick={() => navigate('/stock')} />
+          <KpiCard icon={Package}      label="Stock Bajo/Crítico"   value={stats.stockBajo}         color="bg-orange-500" onClick={() => navigate('/stock#control-stock')} />
         )}
       </div>
 
@@ -452,7 +452,7 @@ export default function Dashboard() {
 
           {hasPermission('stock') && (
             <SectionCard className="lg:col-span-2">
-              <SectionHeader title="Stock crítico / bajo" action="Ver stock" onAction={() => navigate('/stock')} />
+              <SectionHeader title="Stock crítico / bajo" action="Ver stock" onAction={() => navigate('/stock#control-stock')} />
               <div className="px-5 pb-5">
                 {stockCritico.length === 0 ? (
                   <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400 py-4">

@@ -17,30 +17,34 @@ interface HistorialComponenteModalProps {
 
 const ACCION_CONFIG: Record<
   HistorialMovimientoComponente['accion'],
-  { label: string; color: string; dotColor: string; icon: React.ReactNode }
+  { label: string; color: string; dotColor: string; ringColor: string; icon: React.ReactNode }
 > = {
   creado: {
     label: 'Registrado en sistema',
     color: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800',
     dotColor: 'bg-blue-500',
+    ringColor: 'ring-blue-500',
     icon: <PlusCircle size={14} className="text-blue-500" />,
   },
   instalado: {
     label: 'Instalado en equipo',
     color: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800',
     dotColor: 'bg-green-500',
+    ringColor: 'ring-green-500',
     icon: <LogIn size={14} className="text-green-500" />,
   },
   removido: {
     label: 'Removido de equipo',
     color: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800',
     dotColor: 'bg-red-500',
+    ringColor: 'ring-red-500',
     icon: <LogOut size={14} className="text-red-500" />,
   },
   transferido: {
     label: 'Transferido',
     color: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800',
     dotColor: 'bg-amber-500',
+    ringColor: 'ring-amber-500',
     icon: <ArrowRightLeft size={14} className="text-amber-500" />,
   },
 };
@@ -177,8 +181,7 @@ export default function HistorialComponenteModal({
                     <div key={evento.id} className="relative pl-10">
                       {/* Dot */}
                       <div
-                        className={`absolute left-3 top-3 w-4 h-4 rounded-full border-2 border-white dark:border-gray-800 ${config.dotColor} ${isFirst ? 'ring-2 ring-offset-1 ring-offset-white dark:ring-offset-gray-800 ring-current' : ''}`}
-                        style={isFirst ? { ringColor: config.dotColor } : undefined}
+                        className={`absolute left-3 top-3 w-4 h-4 rounded-full border-2 border-white dark:border-gray-800 ${config.dotColor} ${isFirst ? `ring-2 ring-offset-1 ring-offset-white dark:ring-offset-gray-800 ${config.ringColor}` : ''}`}
                       />
 
                       {/* Card */}

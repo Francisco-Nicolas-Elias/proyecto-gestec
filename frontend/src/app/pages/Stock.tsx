@@ -48,6 +48,7 @@ export default function Stock() {
   const [compFilterTipo, setCompFilterTipo] = useState('');
   const [compFilterFecha, setCompFilterFecha] = useState('');
   const [compFilterProveedor, setCompFilterProveedor] = useState('');
+  const [compFilterUbicacion, setCompFilterUbicacion] = useState<'' | 'instalado' | 'deposito'>('');
   const [showCompFilters, setShowCompFilters] = useState(false);
 
   // ── Ordenamiento de componentes ──
@@ -63,6 +64,12 @@ export default function Stock() {
   const [stockDetalleItem, setStockDetalleItem] = useState<any | null>(null);
 
   useEffect(() => { loadData(); }, []);
+
+  useEffect(() => {
+    if (!loading && window.location.hash === '#control-stock') {
+      document.getElementById('control-stock')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [loading]);
 
   const loadData = async () => {
     try {
@@ -88,11 +95,12 @@ export default function Stock() {
     setCompFilterTipo('');
     setCompFilterFecha('');
     setCompFilterProveedor('');
+    setCompFilterUbicacion('');
     setComponenteSearch('');
     setCompPage(1);
   };
 
-  const hasCompFilters = compFilterId || compFilterTipo || compFilterFecha || compFilterProveedor || componenteSearch;
+  const hasCompFilters = compFilterId || compFilterTipo || compFilterFecha || compFilterProveedor || compFilterUbicacion || componenteSearch;
 
   const clearFilters = () => { setSearchTerm(''); setFilterEstado(''); setFilterCategoria(''); };
 
@@ -138,8 +146,10 @@ export default function Stock() {
     if (compFilterTipo) list = list.filter(c => c.tipoComponente === compFilterTipo);
     if (compFilterFecha) list = list.filter(c => c.fecha === compFilterFecha);
     if (compFilterProveedor) list = list.filter(c => c.proveedor === compFilterProveedor);
+    if (compFilterUbicacion === 'instalado') list = list.filter(c => !!c.activoId);
+    if (compFilterUbicacion === 'deposito') list = list.filter(c => !c.activoId);
     return list;
-  }, [componentes, componenteSearch, compFilterId, compFilterTipo, compFilterFecha, compFilterProveedor]);
+  }, [componentes, componenteSearch, compFilterId, compFilterTipo, compFilterFecha, compFilterProveedor, compFilterUbicacion]);
 
   const sortedComponentes = useMemo(() => compSort
     ? [...filteredComponentes].sort((a, b) => {
@@ -234,6 +244,7 @@ export default function Stock() {
       compFilterTipo && `Componente: "${compFilterTipo}"`,
       compFilterFecha && `Fecha: "${formatFecha(compFilterFecha)}"`,
       compFilterProveedor && `Proveedor: "${compFilterProveedor}"`,
+      compFilterUbicacion && `Ubicación: "${compFilterUbicacion === 'instalado' ? 'Instalado en equipo' : 'Depósito IT'}"`,
     ].filter(Boolean);
     if (activeFilters.length) {
       doc.setFont('helvetica', 'italic');
@@ -654,21 +665,37 @@ export default function Stock() {
           <p className="text-2xl font-bold text-gray-900 dark:text-white">{items.length}</p>
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{componentes.length} unidades totales</p>
         </div>
-        <div className="bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800 p-4">
+        <button
+          type="button"
+          onClick={() => document.getElementById('control-stock')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          className="bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800 p-4 text-left hover:ring-2 hover:ring-green-400 dark:hover:ring-green-600 transition-shadow"
+        >
           <p className="text-sm text-green-600 dark:text-green-400 mb-1">Stock OK</p>
           <p className="text-2xl font-bold text-green-700 dark:text-green-300">{items.filter(i => i.estado === 'ok').length}</p>
-        </div>
-        <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800 p-4">
+        </button>
+        <button
+          type="button"
+          onClick={() => document.getElementById('control-stock')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800 p-4 text-left hover:ring-2 hover:ring-yellow-400 dark:hover:ring-yellow-600 transition-shadow"
+        >
           <p className="text-sm text-yellow-600 dark:text-yellow-400 mb-1">Stock Bajo / Crítico</p>
           <p className="text-2xl font-bold text-yellow-700 dark:text-yellow-300">{items.filter(i => i.estado === 'bajo' || i.estado === 'critico').length}</p>
-        </div>
-        <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800 p-4">
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setCompFilterUbicacion('instalado');
+            setShowCompFilters(true);
+            document.getElementById('componentes-registrados')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }}
+          className="bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800 p-4 text-left hover:ring-2 hover:ring-purple-400 dark:hover:ring-purple-600 transition-shadow"
+        >
           <p className="text-sm text-purple-600 dark:text-purple-400 mb-1">Instalados en Equipos</p>
           <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">
             {componentes.filter(c => c.activoId).length}
           </p>
           <p className="text-xs text-purple-400 dark:text-purple-500 mt-0.5">{componentes.filter(c => !c.activoId).length} en depósito</p>
-        </div>
+        </button>
       </div>
 
       {/* ── Sección Componentes ── */}
@@ -754,12 +781,24 @@ export default function Stock() {
                 placeholder="Todos los proveedores..."
               />
             </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Ubicación</label>
+              <SearchableSelect
+                options={[
+                  { value: 'instalado', label: 'Instalado en equipo' },
+                  { value: 'deposito', label: 'Depósito IT' },
+                ]}
+                value={compFilterUbicacion}
+                onChange={v => setCompFilterUbicacion(v as '' | 'instalado' | 'deposito')}
+                placeholder="Todas las ubicaciones..."
+              />
+            </div>
           </div>
         )}
       </div>
 
       {/* Tabla de componentes */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div id="componentes-registrados" className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
@@ -905,7 +944,7 @@ export default function Stock() {
       </div>
 
       {/* Tabla de stock */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div id="control-stock" className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
             <Package size={16} className="text-blue-600 dark:text-blue-400" />
