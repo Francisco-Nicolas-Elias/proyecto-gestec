@@ -12,16 +12,3 @@ export async function getStockItems(req: Request, res: Response, next: NextFunct
   } catch (err) { next(err); }
 }
 
-export async function createMovimiento(req: Request, res: Response, next: NextFunction) {
-  try {
-    const { itemId, ...rest } = req.body;
-    res.status(201).json(await svc.createStockMovimientoService({ stockItemId: itemId, ...rest }, req.user!.id, req.user!.nombre, req.user!.rol));
-  } catch (err) { next(err); }
-}
-
-export async function getMovimientos(req: Request, res: Response, next: NextFunction) {
-  try {
-    const { stockItemId } = req.query as Record<string, string>;
-    res.json(await svc.getStockMovimientosService(stockItemId));
-  } catch (err) { next(err); }
-}

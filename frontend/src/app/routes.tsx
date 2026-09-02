@@ -12,7 +12,6 @@ import Tickets from "./pages/Tickets";
 import TicketDetalle from "./pages/TicketDetalle";
 import CrearReporte from "./pages/CrearReporte";
 import Stock from "./pages/Stock";
-import StockMovimientos from "./pages/StockMovimientos";
 import NuevoComponenteForm from "./pages/NuevoComponenteForm";
 import Tareas from "./pages/Tareas";
 import NuevaTareaForm from "./pages/NuevaTareaForm";
@@ -85,7 +84,6 @@ export const router = createBrowserRouter([
           { path: "tickets/:id", Component: TicketDetalle },
           { path: "stock", Component: Stock },
           { path: "stock/nuevo", Component: NuevoComponenteForm },
-          { path: "stock/movimientos", Component: StockMovimientos },
           { path: "tareas", Component: Tareas },
           { path: "tareas/nueva", Component: NuevaTareaForm },
           { path: "admin", Component: Admin },

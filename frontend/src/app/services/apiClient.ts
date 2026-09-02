@@ -673,18 +673,6 @@ export interface StockItem {
   instalados?: number;
 }
 
-export interface StockMovimiento {
-  id: string;
-  itemId: string;
-  itemNombre: string;
-  tipo: 'entrada' | 'salida' | 'ajuste';
-  cantidad: number;
-  motivo: string;
-  fecha: string;
-  usuario: string;
-  referenciaHistorial?: string;
-}
-
 export const calcularEstadoStock = (cantidad: number): 'ok' | 'bajo' | 'critico' => {
   if (cantidad <= 3) return 'critico';
   if (cantidad <= 10) return 'bajo';
@@ -704,19 +692,6 @@ export const getStock = async (filters?: any): Promise<StockItem[]> => {
   return result;
 };
 
-export const getStockById = async (id: string): Promise<StockItem | null> => {
-  return http.get<StockItem>(`/stock/items/${id}`);
-};
-
-export const createStockMovimiento = async (movimiento: Partial<StockMovimiento>): Promise<StockMovimiento> => {
-  cacheInvalidate('stock');
-  return http.post<StockMovimiento>('/stock/movimientos', movimiento);
-};
-
-export const getStockMovimientos = async (itemId?: string): Promise<StockMovimiento[]> => {
-  const qs = itemId ? `?itemId=${itemId}` : '';
-  return http.get<StockMovimiento[]>(`/stock/movimientos${qs}`);
-};
 
 // ============ COMPONENTES ============
 export interface TipoComponente {

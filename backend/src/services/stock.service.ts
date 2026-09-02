@@ -1,7 +1,4 @@
-import { TipoMovimientoStock } from '@prisma/client';
 import { prisma } from '../lib/prisma';
-import { AppError } from '../middlewares/error.middleware';
-import { addLogService } from './logs.service';
 
 // Stock derivado desde Componentes (activos serializados)
 export async function getStockComponentesService() {
@@ -64,55 +61,3 @@ export async function getStockItemsService(filters?: { estado?: string }) {
     .filter((item) => !filters?.estado || item.estado === filters.estado);
 }
 
-export async function createStockMovimientoService(
-  data: {
-    stockItemId: string;
-    tipo: TipoMovimientoStock;
-    cantidad: number;
-    motivo: string;
-    referenciaHistorial?: string;
-  },
-  usuarioId: string,
-  usuarioNombre: string,
-  usuarioRol: string,
-) {
-  const item = await prisma.stockItem.findUnique({ where: { id: data.stockItemId } });
-  if (!item) throw new AppError(404, 'Item de stock no encontrado');
-
-  const movimiento = await prisma.$transaction(async (tx) => {
-    const mov = await tx.stockMovimiento.create({
-      data: { ...data, usuarioId },
-      include: { stockItem: true },
-    });
-
-    // Para 'ajuste': el campo cantidad representa el nuevo total deseado,
-    // por lo que el delta es la diferencia respecto al stock actual.
-    const delta = data.tipo === 'entrada' ? data.cantidad
-                : data.tipo === 'salida'  ? -data.cantidad
-                : data.cantidad - item.cantidad;
-    await tx.stockItem.update({
-      where: { id: data.stockItemId },
-      data: { cantidad: { increment: delta }, ultimaActualizacion: new Date() },
-    });
-
-    return mov;
-  });
-
-  const accion = data.tipo === 'entrada' ? 'Entrada' : data.tipo === 'salida' ? 'Salida' : 'Ajuste';
-  await addLogService(
-    `${accion} de stock: ${data.cantidad} unidades de "${item.nombre}"`,
-    'Stock',
-    usuarioNombre,
-    usuarioRol,
-  );
-
-  return movimiento;
-}
-
-export async function getStockMovimientosService(stockItemId?: string) {
-  return prisma.stockMovimiento.findMany({
-    where: stockItemId ? { stockItemId } : undefined,
-    include: { stockItem: true, usuario: { omit: { password: true } } },
-    orderBy: { fecha: 'desc' },
-  });
-}

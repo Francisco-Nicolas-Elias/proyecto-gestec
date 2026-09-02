@@ -638,13 +638,6 @@ export default function Stock() {
             <Plus size={18} />
             <span>Nuevo Componente</span>
           </button>
-          <button
-            onClick={() => navigate('/stock/movimientos')}
-            className="flex items-center gap-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors dark:text-white"
-          >
-            <Package size={18} />
-            <span className="hidden sm:inline">Movimientos</span>
-          </button>
           {itemsBajos.length > 0 && (
             <button
               onClick={() => setShowAlertasModal(true)}

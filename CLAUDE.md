@@ -87,7 +87,7 @@ VITE_USE_MOCK=false   # true = usar mock de apiClient.ts sin backend
 |------|--------|-------|
 | `/activos` | `Activos.tsx`, `ActivoDetalle.tsx`, `ActivoForm.tsx` | CRUD de equipos con trazabilidad de componentes |
 | `/tickets` | `Tickets.tsx`, `TicketDetalle.tsx`, `CrearReporte.tsx` | `docente_empleado` solo puede crear |
-| `/stock` | `Stock.tsx`, `StockMovimientos.tsx` | Inventario con entradas/salidas |
+| `/stock` | `Stock.tsx` | Inventario de componentes serializados con trazabilidad de ubicación |
 | `/tareas` | `Tareas.tsx` | Kanban con react-dnd |
 | `/admin` | `Admin.tsx` | Usuarios, ubicaciones, catálogo, logs |
 
@@ -124,7 +124,7 @@ types/        ← augmentación de Express.Request con req.user
 | Componentes | `GET/POST /api/componentes` · `GET/PUT/DELETE /api/componentes/:id` · `GET /api/componentes/serie/:serie` · `GET /api/componentes/:id/historial` |
 | Tickets | `GET/POST /api/tickets` · `GET/PUT/DELETE /api/tickets/:id` · `POST /api/tickets/:id/comentarios` |
 | Tareas | `GET/POST /api/tareas` · `GET/PUT/DELETE /api/tareas/:id` · `PATCH /api/tareas/:id/estado` · CRUD de comentarios |
-| Stock | `GET /api/stock/componentes` · `GET /api/stock/items` · `GET/POST /api/stock/movimientos` |
+| Stock | `GET /api/stock/componentes` · `GET /api/stock/items` |
 | Admin | CRUD de usuarios, ubicaciones, tipos-componente, marcas, proveedores · `GET/DELETE /api/admin/logs` |
 | Info | `GET/PUT /api/info` |
 
@@ -166,7 +166,7 @@ Schema: `backend/prisma/schema.prisma`
 | `TipoComponente` · `Marca` · `Proveedor` | Catálogo editable desde Admin. |
 | `Ticket` + `ComentarioTicket` | Tickets de soporte. `docente_empleado` solo ve los propios. |
 | `Tarea` + `TareaAsignado` + `TareaHistorial` + `ComentarioTarea` | Kanban del equipo IT. |
-| `StockItem` + `StockMovimiento` | Consumibles sin número de serie. |
+| `StockItem` + `StockMovimiento` | Modelo legado para consumibles sin número de serie — sin flujo de aplicación activo (0 registros, ninguna pantalla los crea). El stock real se gestiona 100% vía `Componente`. |
 | `Adjunto` | Multimedia. 4 FKs nullable (ticket, comentarioTicket, tarea, comentarioTarea). |
 | `InfoOperaciones` | Singleton con `id = "config"`. Siempre usar upsert. |
 | `LogEntry` | Auditoría. `usuarioNombre` y `usuarioRol` desnormalizados. |
