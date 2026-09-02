@@ -338,8 +338,8 @@ export default function Admin() {
       );
       setShowDeleteUbicacionModal(false);
       setUbicacionToDelete(null);
-    } catch {
-      toast.error('Error al eliminar la ubicación');
+    } catch (error: any) {
+      toast.error(error.message || 'Error al eliminar la ubicación');
     } finally {
       setSaving(false);
     }
@@ -1845,7 +1845,7 @@ export default function Admin() {
                 toast.success('Área eliminada');
                 addLog(`Área "${areaToDelete.nombre}" eliminada`, 'Administración', usuario?.nombre ?? 'Sistema', usuario?.rol ?? '');
                 setShowDeleteAreaModal(false); setAreaToDelete(null);
-              } catch { toast.error('Error al eliminar'); }
+              } catch (err: any) { toast.error(err?.message ?? 'Error al eliminar'); }
               finally { setSaving(false); }
             }} disabled={saving}
               className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg disabled:opacity-50 transition-colors text-sm">

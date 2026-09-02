@@ -94,8 +94,10 @@ export async function updateUbicacionService(id: string, data: { sector: string;
 }
 
 export async function deleteUbicacionService(id: string, adminNombre: string) {
-  const u = await prisma.ubicacion.findUnique({ where: { id } });
+  const u = await prisma.ubicacion.findUnique({ where: { id }, include: { _count: { select: { activos: true } } } });
   if (!u) throw new AppError(404, 'Ubicación no encontrada');
+  if (u._count.activos > 0)
+    throw new AppError(409, `No se puede eliminar "${u.sector}" porque tiene ${u._count.activos} equipo${u._count.activos !== 1 ? 's' : ''} asociado${u._count.activos !== 1 ? 's' : ''}`);
   await prisma.ubicacion.delete({ where: { id } });
   await addLogService(`Ubicación "${u.sector}" eliminada`, 'Administracion', adminNombre, 'administrador');
 }
@@ -124,8 +126,9 @@ export async function deleteTipoComponenteService(id: string, adminNombre: strin
   const partes: string[] = [];
   if (t._count.componentes > 0) partes.push(`${t._count.componentes} componente${t._count.componentes !== 1 ? 's' : ''}`);
   if (t._count.stockItems > 0) partes.push(`${t._count.stockItems} ítem${t._count.stockItems !== 1 ? 's' : ''} de stock`);
+  const totalAsociados = t._count.componentes + t._count.stockItems;
   if (partes.length > 0)
-    throw new AppError(409, `No se puede eliminar "${t.nombre}" porque tiene ${partes.join(' y ')} asociado${partes.length > 1 ? 's' : ''}`);
+    throw new AppError(409, `No se puede eliminar "${t.nombre}" porque tiene ${partes.join(' y ')} asociado${totalAsociados !== 1 ? 's' : ''}`);
   await prisma.tipoComponente.delete({ where: { id } });
   await addLogService(`Tipo de componente "${t.nombre}" eliminado`, 'Administracion', adminNombre, 'administrador');
 }
@@ -184,8 +187,9 @@ export async function deleteProveedorService(id: string, adminNombre: string) {
   const partes: string[] = [];
   if (p._count.componentes > 0) partes.push(`${p._count.componentes} componente${p._count.componentes !== 1 ? 's' : ''}`);
   if (p._count.stockItems > 0) partes.push(`${p._count.stockItems} ítem${p._count.stockItems !== 1 ? 's' : ''} de stock`);
+  const totalAsociados = p._count.componentes + p._count.stockItems;
   if (partes.length > 0)
-    throw new AppError(409, `No se puede eliminar "${p.nombre}" porque tiene ${partes.join(' y ')} asociado${partes.length > 1 ? 's' : ''}`);
+    throw new AppError(409, `No se puede eliminar "${p.nombre}" porque tiene ${partes.join(' y ')} asociado${totalAsociados !== 1 ? 's' : ''}`);
   await prisma.proveedor.delete({ where: { id } });
   await addLogService(`Proveedor "${p.nombre}" eliminado`, 'Administracion', adminNombre, 'administrador');
 }
@@ -211,6 +215,9 @@ export async function updateAreaService(id: string, nombre: string, adminNombre:
 export async function deleteAreaService(id: string, adminNombre: string) {
   const a = await prisma.area.findUnique({ where: { id } });
   if (!a) throw new AppError(404, 'Área no encontrada');
+  const usuariosConArea = await prisma.usuario.count({ where: { area: a.nombre } });
+  if (usuariosConArea > 0)
+    throw new AppError(409, `No se puede eliminar "${a.nombre}" porque tiene ${usuariosConArea} usuario${usuariosConArea !== 1 ? 's' : ''} asociado${usuariosConArea !== 1 ? 's' : ''}`);
   await prisma.area.delete({ where: { id } });
   await addLogService(`Área "${a.nombre}" eliminada`, 'Administracion', adminNombre, 'administrador');
 }
