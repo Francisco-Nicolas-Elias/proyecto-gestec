@@ -1,6 +1,6 @@
 # Runbook de deploy — GESTEC en servidor IES21
 
-Comandos a ejecutar por SSH en el servidor Ubuntu + Apache de la institución. Reemplazar `TU_DOMINIO_AQUI` y `/var/www/gestec` por los valores reales antes de correr cada bloque.
+Comandos a ejecutar por SSH en el servidor Ubuntu + Apache de la institución. El dominio es `gestec.ies21.edu.ar`; reemplazar `/var/www/gestec` por la ruta real si difiere antes de correr cada bloque.
 
 Este runbook se ejecuta **después** de terminar la revisión manual (desktop y mobile) del sistema.
 
@@ -23,7 +23,7 @@ Crear `backend/.env` real (no versionado) a partir de `backend/.env.example`, co
 - `DATABASE_URL` / `DIRECT_URL` reales de Supabase, con `connection_limit=10`
 - `JWT_SECRET` real (largo y aleatorio)
 - `NODE_ENV=production`
-- `FRONTEND_URL="https://TU_DOMINIO_AQUI"`
+- `FRONTEND_URL="https://gestec.ies21.edu.ar"`
 - Credenciales SMTP reales
 
 ## 3. Instalar y buildear
@@ -51,7 +51,7 @@ Copiar `deploy/apache-gestec.conf.template` a `/etc/apache2/sites-available/gest
 
 ```bash
 sudo cp deploy/apache-gestec.conf.template /etc/apache2/sites-available/gestec.conf
-sudo nano /etc/apache2/sites-available/gestec.conf   # completar TU_DOMINIO_AQUI y rutas
+sudo nano /etc/apache2/sites-available/gestec.conf   # confirmar el dominio y completar rutas
 sudo a2ensite gestec
 sudo systemctl reload apache2
 ```
@@ -60,7 +60,7 @@ sudo systemctl reload apache2
 
 ```bash
 sudo apt install certbot python3-certbot-apache
-sudo certbot --apache -d TU_DOMINIO_AQUI
+sudo certbot --apache -d gestec.ies21.edu.ar
 ```
 
 Certbot ajusta automáticamente el bloque `:443` del VirtualHost con las rutas del certificado.
@@ -123,7 +123,7 @@ crontab -e
 ## 10. Verificación final
 
 ```bash
-curl -I https://TU_DOMINIO_AQUI
+curl -I https://gestec.ies21.edu.ar
 ```
 
 - Confirmar que responde con el certificado SSL válido (sin warning de "no seguro").

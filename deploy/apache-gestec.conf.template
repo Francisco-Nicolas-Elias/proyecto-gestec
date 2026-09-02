@@ -1,9 +1,9 @@
 # Plantilla de VirtualHost para GESTEC en Apache.
-# Antes de usar: reemplazar TU_DOMINIO_AQUI y /var/www/gestec por los valores reales del servidor.
+# Dominio: gestec.ies21.edu.ar. Antes de usar: reemplazar /var/www/gestec por la ruta real del servidor si difiere.
 # Requiere: a2enmod proxy proxy_http rewrite ssl
 
 <VirtualHost *:80>
-    ServerName TU_DOMINIO_AQUI
+    ServerName gestec.ies21.edu.ar
 
     RewriteEngine On
     RewriteCond %{HTTPS} off
@@ -11,11 +11,11 @@
 </VirtualHost>
 
 <VirtualHost *:443>
-    ServerName TU_DOMINIO_AQUI
+    ServerName gestec.ies21.edu.ar
 
     SSLEngine on
-    SSLCertificateFile /etc/letsencrypt/live/TU_DOMINIO_AQUI/fullchain.pem
-    SSLCertificateKeyFile /etc/letsencrypt/live/TU_DOMINIO_AQUI/privkey.pem
+    SSLCertificateFile /etc/letsencrypt/live/gestec.ies21.edu.ar/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/gestec.ies21.edu.ar/privkey.pem
 
     DocumentRoot /var/www/gestec/frontend/dist
 
