@@ -697,7 +697,7 @@ export default function ActivoDetalle() {
                   >
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs text-gray-500 dark:text-gray-400">#{t.id}</span>
+                        <span className="font-mono text-xs text-gray-500 dark:text-gray-400">#{t.nro}</span>
                         <StatusBadge status={t.estado} type="ticket" />
                         <StatusBadge status={t.prioridad} type="prioridad" />
                       </div>

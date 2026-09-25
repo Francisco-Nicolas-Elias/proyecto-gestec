@@ -82,8 +82,11 @@ export default function Tickets() {
 
   const clearFilters = () => {
     setSearchTerm('');
-    setFilterPrioridad('');
+    if (isOperations) setFilterPrioridad('');
+    else setQuickFilter('activos');
   };
+
+  const hasActiveFilter = isOperations ? !!filterPrioridad : quickFilter !== 'activos';
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -171,11 +174,6 @@ export default function Tickets() {
       key: 'ubicacion',
       label: 'Ubicación',
       className: 'hidden md:table-cell',
-    },
-    {
-      key: 'prioridad',
-      label: 'Prioridad',
-      render: (value: string) => <StatusBadge status={value} type="prioridad" />,
     },
     {
       key: 'estado',
@@ -273,31 +271,50 @@ export default function Tickets() {
           >
             <Filter size={20} />
             <span>Filtros</span>
-            {filterPrioridad && <span className="w-2 h-2 bg-blue-600 rounded-full" />}
+            {hasActiveFilter && <span className="w-2 h-2 bg-blue-600 rounded-full" />}
           </button>
         </div>
 
         {showFilters && (
           <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Prioridad</label>
-              <SearchableSelect
-                options={[
-                  { value: '', label: 'Todas' },
-                  { value: 'baja', label: 'Baja' },
-                  { value: 'media', label: 'Media' },
-                  { value: 'alta', label: 'Alta' },
-                  { value: 'urgente', label: 'Urgente' },
-                ]}
-                value={filterPrioridad}
-                onChange={setFilterPrioridad}
-                placeholder="Todas"
-                noClear
-                noSort
-              />
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {isOperations ? 'Prioridad' : 'Estado'}
+              </label>
+              {isOperations ? (
+                <SearchableSelect
+                  options={[
+                    { value: '', label: 'Todas' },
+                    { value: 'baja', label: 'Baja' },
+                    { value: 'media', label: 'Media' },
+                    { value: 'alta', label: 'Alta' },
+                    { value: 'urgente', label: 'Urgente' },
+                  ]}
+                  value={filterPrioridad}
+                  onChange={setFilterPrioridad}
+                  placeholder="Todas"
+                  noClear
+                  noSort
+                />
+              ) : (
+                <SearchableSelect
+                  options={[
+                    { value: 'activos', label: 'Activos (no resueltos)' },
+                    { value: 'todos', label: 'Todos' },
+                    { value: 'nuevo', label: 'Nuevos' },
+                    { value: 'en_progreso', label: 'En Progreso' },
+                    { value: 'resuelto', label: 'Resueltos' },
+                  ]}
+                  value={quickFilter}
+                  onChange={v => setQuickFilter(v as QuickFilter)}
+                  placeholder="Activos"
+                  noClear
+                  noSort
+                />
+              )}
             </div>
 
-            {filterPrioridad && (
+            {hasActiveFilter && (
               <div className="md:col-span-2 flex justify-end">
                 <button
                   onClick={clearFilters}
@@ -311,8 +328,8 @@ export default function Tickets() {
         )}
       </div>
 
-      {/* Resueltos banner */}
-      {quickFilter === 'resuelto' && (
+      {/* Resueltos banner — solo operaciones/admin, únicos que pueden reabrir un ticket */}
+      {isOperations && quickFilter === 'resuelto' && (
         <div className="flex items-center gap-2 px-4 py-2.5 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl text-sm text-green-700 dark:text-green-300">
           <span className="font-medium">Vista: Tickets Resueltos</span>
           <span className="text-green-500 dark:text-green-600">·</span>

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 const activoBase = z.object({
-  nroPc: z.string().regex(/^PC\d{2,4}$/, 'Formato inválido — Ej: PC001'),
+  nroPc: z.string().trim().min(1, 'El N° de PC es obligatorio'),
   ubicacionId: z.string().optional(),
   oficina: z.string().optional(),
   usuarioAsignado: z.string().optional(),

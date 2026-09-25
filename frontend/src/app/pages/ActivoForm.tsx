@@ -509,8 +509,8 @@ export default function ActivoForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.nroPc.match(/^PC\d{3}$/)) {
-      toast.error('N° PC inválido. Formato requerido: PC000 – PC999');
+    if (!form.nroPc.trim()) {
+      toast.error('El N° de PC es obligatorio');
       return;
     }
     if (!form.sector) {
@@ -743,15 +743,14 @@ export default function ActivoForm() {
         {/* ── 1. Identificación ── */}
         <Section icon={User} title="Identificación">
           <Grid2>
-            <Field label="N° PC" required hint="Formato: PC000 – PC999">
+            <Field label="N° PC" required hint="Debe ser único">
               <ClearableInput
                 type="text"
                 value={form.nroPc}
-                maxLength={5}
-                placeholder="Ej: PC001"
+                maxLength={50}
+                placeholder="Ej: PC001, Sala de Servidores, Notebook Rectorado"
                 onChange={e => {
-                  const raw = e.target.value.toUpperCase().replace(/[^PC0-9]/g, '');
-                  setForm(prev => ({ ...prev, nroPc: raw }));
+                  setForm(prev => ({ ...prev, nroPc: e.target.value }));
                 }}
                 className={`${inputClass} font-mono ${nroPcEnUso ? 'border-red-400 focus:ring-red-400' : ''}`}
               />

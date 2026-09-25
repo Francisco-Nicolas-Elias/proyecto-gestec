@@ -136,9 +136,11 @@ export default function Activos() {
 
     if (sortKey) {
       list.sort((a, b) => {
-        const va = String(a[sortKey as keyof Activo] ?? '').toLowerCase();
-        const vb = String(b[sortKey as keyof Activo] ?? '').toLowerCase();
-        return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+        const va = String(a[sortKey as keyof Activo] ?? '');
+        const vb = String(b[sortKey as keyof Activo] ?? '');
+        // numeric: true → orden "natural" (PC7 < PC9 < PC79), no lexicográfico puro
+        const cmp = va.localeCompare(vb, undefined, { numeric: true, sensitivity: 'base' });
+        return sortDir === 'asc' ? cmp : -cmp;
       });
     }
     setFiltered(list);

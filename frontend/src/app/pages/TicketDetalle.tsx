@@ -332,7 +332,7 @@ export default function TicketDetalle() {
           <div className="flex items-center gap-3 mb-2 flex-wrap">
             <span className="font-mono text-sm text-gray-500 dark:text-gray-400">{ticket.nro}</span>
             <StatusBadge status={ticket.estado} type="ticket" />
-            <StatusBadge status={ticket.prioridad} type="prioridad" />
+            {isOperations && <StatusBadge status={ticket.prioridad} type="prioridad" />}
           </div>
           {!editMode && (
             <>
@@ -461,7 +461,7 @@ export default function TicketDetalle() {
               </div>
 
               {/* Tipo + Prioridad */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className={isOperations ? 'grid grid-cols-2 gap-3' : ''}>
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
                     Tipo de problema
@@ -473,32 +473,34 @@ export default function TicketDetalle() {
                     placeholder="Seleccionar..."
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
-                    Prioridad
-                  </label>
-                  {canEditPrioridad ? (
-                    <SearchableSelect
-                      options={[
-                        { value: 'baja', label: 'Baja' },
-                        { value: 'media', label: 'Media' },
-                        { value: 'alta', label: 'Alta' },
-                        { value: 'urgente', label: 'Urgente' },
-                      ]}
-                      value={editForm.prioridad}
-                      onChange={v => setEditForm(p => ({ ...p, prioridad: v as any }))}
-                      placeholder="Seleccionar..."
-                      noClear
-                    />
-                  ) : (
-                    <div className="pt-1 space-y-1">
-                      <StatusBadge status={editForm.prioridad} type="prioridad" />
-                      <p className="text-xs text-gray-400 dark:text-gray-500">
-                        Solo administradores y operadores pueden modificarla.
-                      </p>
-                    </div>
-                  )}
-                </div>
+                {isOperations && (
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+                      Prioridad
+                    </label>
+                    {canEditPrioridad ? (
+                      <SearchableSelect
+                        options={[
+                          { value: 'baja', label: 'Baja' },
+                          { value: 'media', label: 'Media' },
+                          { value: 'alta', label: 'Alta' },
+                          { value: 'urgente', label: 'Urgente' },
+                        ]}
+                        value={editForm.prioridad}
+                        onChange={v => setEditForm(p => ({ ...p, prioridad: v as any }))}
+                        placeholder="Seleccionar..."
+                        noClear
+                      />
+                    ) : (
+                      <div className="pt-1 space-y-1">
+                        <StatusBadge status={editForm.prioridad} type="prioridad" />
+                        <p className="text-xs text-gray-400 dark:text-gray-500">
+                          Solo administradores y operadores pueden modificarla.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Descripción */}

@@ -38,7 +38,9 @@ export async function notificarTareaAsignadaService(
         tareaId: tarea.id,
       },
     });
-    await sendTaskAssignedEmail(u.email, u.nombre, tarea, asignadoPor);
+    // Fire-and-forget: el envío por SMTP puede tardar varios segundos y no debe
+    // bloquear la respuesta HTTP. sendTaskAssignedEmail ya loguea sus propios errores.
+    sendTaskAssignedEmail(u.email, u.nombre, tarea, asignadoPor);
   }
 }
 
@@ -57,6 +59,8 @@ export async function notificarTicketAsignadoService(
         ticketId: ticket.id,
       },
     });
-    await sendTicketAssignedEmail(u.email, u.nombre, ticket, asignadoPor);
+    // Fire-and-forget: el envío por SMTP puede tardar varios segundos y no debe
+    // bloquear la respuesta HTTP. sendTicketAssignedEmail ya loguea sus propios errores.
+    sendTicketAssignedEmail(u.email, u.nombre, ticket, asignadoPor);
   }
 }
