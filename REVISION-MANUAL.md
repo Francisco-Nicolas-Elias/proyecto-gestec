@@ -21,10 +21,10 @@ Registro de la revisión manual del sistema, pestaña por pestaña. El usuario p
 - [x] Cards de KPI (Tickets nuevos, en progreso, Tareas pendientes, Stock bajo/crítico) — navegación al hacer clic *(sesión 2026-09-01/02)*
 - [x] Card "Estado de tickets" — tamaño, layout, botón "Ver todos" *(sesión 2026-09-01)*
 - [x] Card "Stock crítico/bajo" — enlace a la grilla correcta de Stock *(sesión 2026-09-02)*
-- [ ] Gráfico "Tickets por mes"
-- [ ] Card "Estado de equipos"
-- [ ] Comportamiento con 0 datos (institución/cuenta nueva sin carga)
-- [ ] Qué ve cada rol (administrador / operaciones / docente_empleado)
+- [x] Gráfico "Tickets por mes" *(sesión 2026-10-09)*
+- [x] Card "Estado de equipos" *(sesión 2026-10-09)*
+- [x] Comportamiento con 0 datos (institución/cuenta nueva sin carga) *(revisado por código 2026-10-09 — bien defendido en todos los gráficos/cards; detalle cosmético menor en el mensaje de Stock vacío, no aplica a IES21 hoy, se deja así)*
+- [x] Qué ve cada rol (administrador / operaciones / docente_empleado) *(sesión 2026-10-09)*
 
 ### 2. Equipos (`/activos`)
 - [x] Listado — filtros, orden, columnas (incluye columna Fuente) *(sesión 2026-09-01)*
@@ -36,6 +36,7 @@ Registro de la revisión manual del sistema, pestaña por pestaña. El usuario p
 - [x] Tab "Tickets" del equipo *(sesión 2026-09-24 — se corrigió que mostraba el ID interno en vez del N° de ticket)*
 - [x] Eliminar equipo *(sesión 2026-09-24)*
 - [x] Exportar Excel/PDF del listado de equipos *(sesión 2026-09-24)*
+- [x] Exportar PDF del historial de un equipo individual (dentro del detalle, tab Historial) *(sesión 2026-10-09)*
 - [x] Permisos por rol (quién puede crear/editar/eliminar) *(sesión 2026-09-24)*
 
 ### 3. Tickets (`/tickets`)
@@ -57,8 +58,8 @@ Registro de la revisión manual del sistema, pestaña por pestaña. El usuario p
 - [x] Editar componente — ubicación editable para tipos sin sección propia (teclado, mouse, etc.) *(sesión 2026-09-01)*
 - [x] Historial de un componente (modal, colores del timeline) *(sesión 2026-09-01)*
 - [ ] Eliminar componente
-- [ ] Exportar Excel/PDF de componentes
-- [ ] Permisos por rol
+- [x] Exportar Excel/PDF de componentes *(sesión 2026-10-09)*
+- [x] Permisos por rol *(sesión 2026-10-09)*
 
 ### 5. Tareas (`/tareas`)
 - [ ] Kanban — 3 columnas (Pendientes / En Curso / Finalizadas), drag & drop entre columnas
@@ -80,16 +81,16 @@ Registro de la revisión manual del sistema, pestaña por pestaña. El usuario p
 - [ ] Confirmar que solo `administrador` puede acceder a `/admin`
 
 ### 7. Información institucional (`/informacion`)
-- [ ] Ver datos de contacto (teléfono, teléfono interno, horarios, correos)
-- [ ] Editar información de contacto
-- [ ] Permisos por rol (quién puede editar)
+- [x] Ver datos de contacto (teléfono, teléfono interno, horarios, correos) *(sesión 2026-10-09)*
+- [x] Editar información de contacto *(sesión 2026-10-09)*
+- [x] Permisos por rol (quién puede editar) *(sesión 2026-10-09)*
 
 ### 8. Transversales
-- [ ] Modo oscuro en todas las pantallas
-- [ ] Notificaciones (campana) — se marcan como leídas, el clic redirige bien
-- [ ] Achicar la ventana de escritorio (responsive en distintos anchos)
-- [ ] Sesión expirada — redirección a login
-- [ ] Exportaciones Excel/PDF restantes en las grillas que falten
+- [x] Modo oscuro en todas las pantallas *(sesión 2026-10-09)*
+- [x] Notificaciones (campana) — se marcan como leídas, el clic redirige bien *(sesión 2026-10-09)*
+- [x] Achicar la ventana de escritorio (responsive en distintos anchos) *(sesión 2026-10-09)*
+- [x] Sesión expirada — redirección a login *(sesión 2026-10-09 — probado bajando JWT_EXPIRES_IN a 30s temporalmente, ya restaurado a 8h)*
+- [x] Exportar PDF de Logs (Admin) *(sesión 2026-10-09)*
 
 ---
 
