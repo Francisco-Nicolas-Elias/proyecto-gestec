@@ -207,9 +207,7 @@ function mapStockItem(s: any): any {
     cantidad,
     minimo: STOCK_MINIMOS[s.nombre] ?? 1,
     ubicacion: 'Depósito IT',
-    proveedor: undefined,
     estado: s.estado ?? calcularEstadoStock(cantidad),
-    ultimaActualizacion: s.ultimaActualizacion ?? '',
     totalRegistrados: s.total ?? s.totalRegistrados ?? 0,
     instalados: s.instalados ?? 0,
   };
@@ -666,9 +664,7 @@ export interface StockItem {
   cantidad: number;
   minimo: number;
   ubicacion: string;
-  proveedor?: string;
   estado: 'ok' | 'bajo' | 'critico';
-  ultimaActualizacion: string;
   totalRegistrados?: number;
   instalados?: number;
 }

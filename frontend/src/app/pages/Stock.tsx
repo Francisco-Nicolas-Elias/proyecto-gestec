@@ -410,20 +410,9 @@ export default function Stock() {
     },
     { key: 'ubicacion', label: 'Ubicación', className: 'hidden lg:table-cell' },
     {
-      key: 'proveedor',
-      label: 'Proveedor',
-      className: 'hidden xl:table-cell',
-    },
-    {
       key: 'estado',
       label: 'Estado',
       render: (value: string) => <StatusBadge status={value} type="stock" />,
-    },
-    {
-      key: 'ultimaActualizacion',
-      label: 'Última Act.',
-      className: 'hidden lg:table-cell',
-      render: (value: string) => new Date(value).toLocaleDateString('es-ES'),
     },
     {
       key: 'id',
