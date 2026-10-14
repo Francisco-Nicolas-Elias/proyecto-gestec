@@ -57,28 +57,28 @@ Registro de la revisión manual del sistema, pestaña por pestaña. El usuario p
 - [x] Nuevo componente — persistencia de formulario, carga con QR de N° de serie *(sesión 2026-09-01)*
 - [x] Editar componente — ubicación editable para tipos sin sección propia (teclado, mouse, etc.) *(sesión 2026-09-01)*
 - [x] Historial de un componente (modal, colores del timeline) *(sesión 2026-09-01)*
-- [ ] Eliminar componente
+- [x] Eliminar componente *(sesión 2026-10-14)*
 - [x] Exportar Excel/PDF de componentes *(sesión 2026-10-09)*
 - [x] Permisos por rol *(sesión 2026-10-09)*
 
 ### 5. Tareas (`/tareas`)
 - [x] Kanban — 3 columnas (Pendientes / En Curso / Finalizadas), drag & drop entre columnas *(sesión 2026-10-14)*
-- [x] Crear tarea nueva — todos los campos, asignación a varias personas *(sesión 2026-10-14)*
+- [x] Crear tarea nueva — todos los campos, asignación a varias personas *(sesión 2026-10-14 — se corrigió que fallaba al dejar el equipo vacío: ahora crear y editar tratan "sin equipo" como null)*
 - [x] Detalle de tarea (modal) — editar, cambiar prioridad, asignados *(sesión 2026-10-14)*
 - [x] Comentarios de tarea — agregar, editar, eliminar, adjuntos *(sesión 2026-10-14 — se permite comentario solo con archivo, borrar un archivo individual, y operaciones puede eliminar comentarios ajenos)*
 - [x] Eliminar tarea *(sesión 2026-10-14)*
 - [x] Permisos por rol *(sesión 2026-10-14)*
 
 ### 6. Administración (`/admin`)
-- [ ] Usuarios — crear, editar, bloquear/desbloquear, eliminar, asignar rol y área
+- [x] Usuarios — editar (nombre/rol/área), bloquear/desbloquear, eliminar *(sesión 2026-10-14 — decisión: el admin NO crea usuarios —se registran solos— ni modifica emails; se eliminó el alta y el email quedó solo lectura. Eliminar verificado con un usuario descartable: borrado de la base y log registrado)*
 - [x] Ubicaciones — crear, editar, eliminar (bloquea si tiene equipos asociados) *(sesión 2026-09-02 — se limpiaron 9 ubicaciones de seed sin uso)*
 - [x] Áreas — crear, editar, eliminar (bloquea si tiene usuarios asociados) *(sesión 2026-09-02)*
-- [ ] Roles — confirmar que la vista de solo lectura refleja los permisos reales de cada rol
+- [x] Roles — confirmar que la vista de solo lectura refleja los permisos reales de cada rol *(sesión 2026-10-14 — se agregaron los permisos "Ver Dashboard" y "Ver Información" a los 3 roles)*
 - [x] Componentes (catálogo de tipos) — crear, editar, eliminar (bloquea si tiene componentes/stock asociados) *(sesión 2026-09-02)*
 - [x] Marcas — crear, editar, eliminar (bloquea si tiene componentes asociados) *(sesión 2026-09-02)*
 - [x] Proveedores — crear, editar, eliminar (bloquea si tiene componentes/stock asociados) *(sesión 2026-09-02 — se limpiaron 4 proveedores de seed sin uso)*
-- [ ] Logs — listado, filtros, exportar, botón "Limpiar todo"
-- [ ] Confirmar que solo `administrador` puede acceder a `/admin`
+- [x] Logs — listado, filtros, exportar, botón "Limpiar todo" *(sesión 2026-10-14)*
+- [x] Confirmar que solo `administrador` puede acceder a `/admin` *(sesión 2026-10-14)*
 
 ### 7. Información institucional (`/informacion`)
 - [x] Ver datos de contacto (teléfono, teléfono interno, horarios, correos) *(sesión 2026-10-09)*
