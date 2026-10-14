@@ -70,6 +70,8 @@ export async function createTareaService(
   const tarea = await prisma.tarea.create({
     data: {
       ...rest,
+      // El formulario manda '' cuando no se elige equipo: es una FK, '' no existe → debe ser null
+      activoId: rest.activoId || null,
       creadoPorId,
       fechaLimite: data.fechaLimite ? new Date(data.fechaLimite) : undefined,
       historial: {
@@ -152,6 +154,8 @@ export async function updateTareaService(id: string, data: any, usuarioNombre: s
 
   const updateData: Prisma.TareaUncheckedUpdateInput = {
     ...rest,
+    // '' (equipo desvinculado desde el formulario) no es un ID válido → null
+    ...(rest.activoId !== undefined ? { activoId: rest.activoId || null } : {}),
     ...(fechaLimite !== undefined
       ? { fechaLimite: fechaLimite ? new Date(fechaLimite) : null }
       : {}),
