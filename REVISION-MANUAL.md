@@ -62,12 +62,12 @@ Registro de la revisión manual del sistema, pestaña por pestaña. El usuario p
 - [x] Permisos por rol *(sesión 2026-10-09)*
 
 ### 5. Tareas (`/tareas`)
-- [ ] Kanban — 3 columnas (Pendientes / En Curso / Finalizadas), drag & drop entre columnas
-- [ ] Crear tarea nueva — todos los campos, asignación a varias personas
-- [ ] Detalle de tarea (modal) — editar, cambiar prioridad, asignados
-- [ ] Comentarios de tarea — agregar, editar, eliminar, adjuntos
-- [ ] Eliminar tarea
-- [ ] Permisos por rol
+- [x] Kanban — 3 columnas (Pendientes / En Curso / Finalizadas), drag & drop entre columnas *(sesión 2026-10-14)*
+- [x] Crear tarea nueva — todos los campos, asignación a varias personas *(sesión 2026-10-14)*
+- [x] Detalle de tarea (modal) — editar, cambiar prioridad, asignados *(sesión 2026-10-14)*
+- [x] Comentarios de tarea — agregar, editar, eliminar, adjuntos *(sesión 2026-10-14 — se permite comentario solo con archivo, borrar un archivo individual, y operaciones puede eliminar comentarios ajenos)*
+- [x] Eliminar tarea *(sesión 2026-10-14)*
+- [x] Permisos por rol *(sesión 2026-10-14)*
 
 ### 6. Administración (`/admin`)
 - [ ] Usuarios — crear, editar, bloquear/desbloquear, eliminar, asignar rol y área
