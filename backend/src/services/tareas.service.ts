@@ -285,7 +285,9 @@ export async function deleteComentarioTareaService(
 ) {
   const comentario = await prisma.comentarioTarea.findUnique({ where: { id: comentarioId }, select: { autorId: true } });
   if (!comentario) throw new AppError(404, 'Comentario no encontrado');
-  if (usuarioRol !== 'administrador' && comentario.autorId !== usuarioId) {
+  // Administrador y operaciones (únicos roles con acceso a Tareas) pueden moderar cualquier comentario
+  const puedeModerar = usuarioRol === 'administrador' || usuarioRol === 'operaciones';
+  if (!puedeModerar && comentario.autorId !== usuarioId) {
     throw new AppError(403, 'No podés eliminar comentarios ajenos');
   }
   await prisma.comentarioTarea.delete({ where: { id: comentarioId } });

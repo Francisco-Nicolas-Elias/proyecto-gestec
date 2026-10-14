@@ -27,6 +27,13 @@ export const updateTareaEstadoSchema = z.object({
   asignadosIds: z.array(z.string()).optional(),
 });
 
+// Al crear, el texto puede ir vacío: el comentario puede llevar solo archivos adjuntos
+// (el frontend valida que haya texto o adjuntos antes de enviar).
 export const createComentarioTareaSchema = z.object({
+  texto: z.string(),
+});
+
+// Al editar sí se exige texto: un comentario editado no puede quedar en blanco.
+export const updateComentarioTareaSchema = z.object({
   texto: z.string().min(1, 'El comentario no puede estar vacío'),
 });

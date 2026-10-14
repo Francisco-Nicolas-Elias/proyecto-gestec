@@ -9,7 +9,7 @@ import SearchableSelect from './SearchableSelect';
 import {
   addComentarioTarea, updateTarea, updateTareaAdjuntos, deleteTarea,
   getUbicaciones, getUsuariosStaff,
-  updateComentarioTarea, deleteComentarioTarea, getCurrentUser, getTareaById,
+  updateComentarioTarea, deleteComentarioTarea, deleteAdjunto, getCurrentUser, getTareaById,
 } from '../services/apiClient';
 import { toast } from 'sonner@2.0.3';
 import { getRolAvatarSolidClasses } from './rolColor';
@@ -226,6 +226,36 @@ export default function TareaDetalleModal({
     } finally {
       setDeletingCommentId(null);
       setConfirmDeleteCommentId(null);
+    }
+  };
+
+  // Quita un único archivo de un comentario (sin borrar el comentario completo).
+  // MultimediaUpload ya pidió confirmación y devuelve la lista sin el archivo quitado.
+  const handleEliminarAdjuntoComentario = async (comentarioId: string, restantes: Adjunto[]) => {
+    const comentario = comentarios.find(c => c.id === comentarioId);
+    const quitado = comentario?.adjuntos?.find(a => !restantes.some(r => r.id === a.id));
+    if (!comentario || !quitado) return;
+    try {
+      await deleteAdjunto(quitado.id);
+      // Si el comentario quedó sin texto ni archivos, se intenta eliminar también para no dejar uno vacío.
+      // Puede fallar (ej. comentario ajeno y el usuario no es administrador): en ese caso el comentario
+      // queda sin archivos, pero el archivo ya borrado no debe seguir apareciendo.
+      let quedaVacio = !comentario.texto.trim() && restantes.length === 0;
+      if (quedaVacio) {
+        try {
+          await deleteComentarioTarea(datosTarea.id, comentarioId);
+        } catch {
+          quedaVacio = false;
+        }
+      }
+      const actualizados = quedaVacio
+        ? comentarios.filter(c => c.id !== comentarioId)
+        : comentarios.map(c => c.id === comentarioId ? { ...c, adjuntos: restantes } : c);
+      setComentarios(actualizados);
+      onTareaActualizada({ ...datosTarea, comentarios: actualizados });
+      toast.success('Archivo eliminado');
+    } catch (error: any) {
+      toast.error(error?.message || 'Error al eliminar el archivo');
     }
   };
 
@@ -790,8 +820,11 @@ export default function TareaDetalleModal({
                           <div className="pt-1 border-t border-gray-100 dark:border-gray-700">
                             <MultimediaUpload
                               adjuntos={c.adjuntos}
-                              onChange={() => {}}
+                              onChange={restantes => handleEliminarAdjuntoComentario(c.id, restantes)}
                               readOnly
+                              allowRemove
+                              currentUserName={usuarioActual?.nombre}
+                              canManageAll={usuarioActual?.rol === 'administrador' || usuarioActual?.rol === 'operaciones'}
                             />
                           </div>
                         )}

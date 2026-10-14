@@ -19,6 +19,8 @@ interface Props {
   onChange: (adjuntos: Adjunto[]) => void;
   maxFiles?: number;
   readOnly?: boolean;
+  /** Con readOnly activo, permite igual quitar archivos ya subidos (sin mostrar los botones de subir/grabar) */
+  allowRemove?: boolean;
   /** Nombre del usuario logueado — para permitir borrar solo lo propio */
   currentUserName?: string;
   /** true si el usuario (operaciones/admin) puede borrar adjuntos de cualquiera */
@@ -40,6 +42,7 @@ export default function MultimediaUpload({
   onChange,
   maxFiles = 5,
   readOnly = false,
+  allowRemove = false,
   currentUserName,
   canManageAll = false,
 }: Props) {
@@ -417,7 +420,7 @@ export default function MultimediaUpload({
               </div>
 
               {/* Eliminar — solo quien lo subió, o operaciones/admin */}
-              {!readOnly && (canManageAll || !adj.subidoPor || adj.subidoPor === currentUserName) && (
+              {(!readOnly || allowRemove) && (canManageAll || !adj.subidoPor || adj.subidoPor === currentUserName) && (
                 pendingRemoveId === adj.id ? (
                   <div className="flex items-center gap-1 shrink-0">
                     <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">¿Eliminar?</span>
