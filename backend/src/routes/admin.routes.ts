@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { authenticate } from '../middlewares/auth.middleware';
 import { isAdmin, isAnyUser, isOperaciones } from '../middlewares/roles.middleware';
 import { validate } from '../middlewares/validate.middleware';
-import { createUsuarioSchema, updateUsuarioSchema } from '../schemas/usuario.schema';
+import { updateUsuarioSchema } from '../schemas/usuario.schema';
 import { ubicacionSchema, tipoComponenteSchema, marcaSchema, proveedorSchema, areaSchema } from '../schemas/catalogo.schema';
 import * as ctrl from '../controllers/admin.controller';
 
@@ -15,7 +15,6 @@ router.get('/usuarios/staff', isOperaciones, ctrl.getUsuariosStaff);
 
 // Usuarios y logs — solo admin
 router.get('/usuarios', isAdmin, ctrl.getUsuarios);
-router.post('/usuarios', isAdmin, validate(createUsuarioSchema), ctrl.createUsuario);
 router.put('/usuarios/:id', isAdmin, validate(updateUsuarioSchema), ctrl.updateUsuario);
 router.delete('/usuarios/:id', isAdmin, ctrl.deleteUsuario);
 router.patch('/usuarios/:id/bloquear', isAdmin, ctrl.toggleBloqueoUsuario);

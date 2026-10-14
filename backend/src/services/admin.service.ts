@@ -20,22 +20,11 @@ export async function getUsuariosStaffService() {
   });
 }
 
-export async function createUsuarioService(
-  data: { nombre: string; email: string; password: string; rol: Rol; area?: string },
-  adminNombre: string,
-) {
-  const hash = await bcrypt.hash(data.password, 12);
-  const usuario = await prisma.usuario.create({
-    data: { ...data, password: hash },
-    omit: { password: true },
-  });
-  await addLogService(`Usuario "${usuario.nombre}" creado`, 'Administracion', adminNombre, 'administrador');
-  return usuario;
-}
-
+// No hay createUsuarioService: los usuarios se registran solos (auth/registro, con verificación de email).
+// El email tampoco es editable desde acá — es la identidad de la cuenta.
 export async function updateUsuarioService(
   id: string,
-  data: { nombre?: string; email?: string; rol?: Rol; area?: string; password?: string },
+  data: { nombre?: string; rol?: Rol; area?: string; password?: string },
   adminNombre: string,
 ) {
   const updateData: any = { ...data };

@@ -1006,10 +1006,6 @@ export const deleteUsuario = async (id: string): Promise<void> => {
   return http.del(`/admin/usuarios/${id}`);
 };
 
-export const createUsuario = async (usuario: Partial<Usuario> & { password?: string }): Promise<Usuario> => {
-  return http.post<Usuario>('/admin/usuarios', usuario);
-};
-
 // ── Ubicaciones estructuradas ──────────────────────────────────────────────
 export interface UbicacionEntry {
   id: string;

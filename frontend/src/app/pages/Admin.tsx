@@ -4,7 +4,7 @@ import { Users, MapPin, Pencil, Trash2, Shield, Check, Cpu, Truck, Star, Plus, X
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import {
-  getUsuarios, createUsuario, updateUsuario, deleteUsuario, toggleBloqueoUsuario,
+  getUsuarios, updateUsuario, deleteUsuario, toggleBloqueoUsuario,
   getUbicacionesStruct, createUbicacionEntry, updateUbicacionEntry, deleteUbicacionEntry,
   getTiposComponente, getMarcas, getProveedores, getAreas,
   createTipoComponente, updateTipoComponente, deleteTipoComponente,
@@ -44,6 +44,7 @@ const PISO_OPTIONS = [
 const ic = 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent text-sm placeholder:text-gray-400';
 
 const PERMISOS_DISPONIBLES = [
+  { key: 'dashboard', label: 'Ver Dashboard' },
   { key: 'activos', label: 'Ver Equipos' },
   { key: 'activos_editar', label: 'Crear/Editar Equipos' },
   { key: 'tickets_crear', label: 'Crear Tickets' },
@@ -51,6 +52,7 @@ const PERMISOS_DISPONIBLES = [
   { key: 'stock', label: 'Gestión de Stock' },
   { key: 'tareas', label: 'Gestión de Tareas' },
   { key: 'admin', label: 'Administración' },
+  { key: 'informacion', label: 'Ver Información' },
 ];
 
 type AdminTab = 'usuarios' | 'ubicaciones' | 'roles' | 'componentes' | 'marcas' | 'proveedores' | 'areas' | 'logs';
@@ -82,7 +84,8 @@ export default function Admin() {
   const [showBloqueoModal, setShowBloqueoModal] = useState(false);
   const [userToBloquear, setUserToBloquear] = useState<any | null>(null);
   // Formularios con persistencia de draft en sessionStorage
-  const [formData, setFormData, clearFormDataPersistence] = useFormPersistence('gestec:admin:usuario:new', INIT_USUARIO);
+  // Solo se usa para editar un usuario existente (el alta se hace desde el registro de la app)
+  const [formData, setFormData] = useState(INIT_USUARIO);
   const [usuariosSearch, setUsuariosSearch] = useState('');
   const [usuariosRolFiltro, setUsuariosRolFiltro] = useState('');
   const [usuariosAreaFiltro, setUsuariosAreaFiltro] = useState('');
@@ -99,9 +102,9 @@ export default function Admin() {
 
   // ── Roles (solo lectura — definidos por el sistema) ─────────────────────────
   const [roles] = useState([
-    { id: '1', nombre: 'Administrador', descripcion: 'Acceso total al sistema', permisos: ['activos', 'activos_editar', 'tickets_crear', 'tickets_gestionar', 'stock', 'tareas', 'admin'] },
-    { id: '2', nombre: 'Operaciones', descripcion: 'Gestión de activos, tickets, stock y tareas', permisos: ['activos', 'activos_editar', 'tickets_crear', 'tickets_gestionar', 'stock', 'tareas'] },
-    { id: '3', nombre: 'Docente/Empleado', descripcion: 'Solo puede crear y ver sus propios tickets', permisos: ['tickets_crear'] },
+    { id: '1', nombre: 'Administrador', descripcion: 'Acceso total al sistema', permisos: ['dashboard', 'activos', 'activos_editar', 'tickets_crear', 'tickets_gestionar', 'stock', 'tareas', 'admin', 'informacion'] },
+    { id: '2', nombre: 'Operaciones', descripcion: 'Gestión de activos, tickets, stock y tareas', permisos: ['dashboard', 'activos', 'activos_editar', 'tickets_crear', 'tickets_gestionar', 'stock', 'tareas', 'informacion'] },
+    { id: '3', nombre: 'Docente/Empleado', descripcion: 'Solo puede crear y ver sus propios tickets', permisos: ['dashboard', 'tickets_crear', 'informacion'] },
   ]);
 
   // ── Tipos de Componente ───────────────────────────────────────────────────
@@ -181,12 +184,6 @@ export default function Admin() {
   };
 
   // ── Usuarios handlers ─────────────────────────────────────────────────────
-  const openNuevoUsuario = () => {
-    setEditingUsuario(null);
-    // NO reseteamos formData: el hook ya restauró el draft desde sessionStorage.
-    setShowUsuarioModal(true);
-  };
-
   const handleEditUsuario = (usuario: any) => {
     setEditingUsuario(usuario);
     setFormData({
@@ -200,31 +197,22 @@ export default function Admin() {
 
   const handleSubmitUsuario = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!editingUsuario) return;
     setSaving(true);
     try {
-      if (editingUsuario) {
-        await updateUsuario(editingUsuario.id, formData);
-        setUsuarios(prev => prev.map(u => u.id === editingUsuario.id ? { ...u, ...formData } : u));
-        toast.success('Usuario actualizado correctamente');
-        addLog(
-          `Usuario "${formData.nombre}" editado — rol: ${formData.rol}${formData.area ? `, área: ${formData.area}` : ''}`,
-          'Administración', usuario?.nombre ?? 'Sistema', usuario?.rol ?? '',
-        );
-      } else {
-        await createUsuario(formData);
-        const fresh = await getUsuarios();
-        setUsuarios(fresh);
-        toast.success('Usuario creado correctamente');
-        addLog(
-          `Usuario "${formData.nombre}" creado con rol ${formData.rol}${formData.area ? ` (${formData.area})` : ''}`,
-          'Administración', usuario?.nombre ?? 'Sistema', usuario?.rol ?? '',
-        );
-      }
+      // El email no se envía: es la identidad de la cuenta y no se modifica desde Admin
+      const cambios = { nombre: formData.nombre, rol: formData.rol, area: formData.area };
+      await updateUsuario(editingUsuario.id, cambios);
+      setUsuarios(prev => prev.map(u => u.id === editingUsuario.id ? { ...u, ...cambios } : u));
+      toast.success('Usuario actualizado correctamente');
+      addLog(
+        `Usuario "${formData.nombre}" editado — rol: ${formData.rol}${formData.area ? `, área: ${formData.area}` : ''}`,
+        'Administración', usuario?.nombre ?? 'Sistema', usuario?.rol ?? '',
+      );
       setShowUsuarioModal(false);
       setEditingUsuario(null);
-      clearFormDataPersistence(); // ← Limpiar draft al guardar
-    } catch {
-      toast.error('Error al guardar el usuario');
+    } catch (error: any) {
+      toast.error(error?.message || 'Error al guardar el usuario');
     } finally {
       setSaving(false);
     }
@@ -1284,11 +1272,10 @@ export default function Admin() {
       <Modal
         isOpen={showUsuarioModal}
         onClose={() => {
-          // X button: NO limpiar draft (solo cerrar)
           setShowUsuarioModal(false);
           setEditingUsuario(null);
         }}
-        title={editingUsuario ? 'Editar Usuario' : 'Nuevo Usuario'}
+        title="Editar Usuario"
         size="md"
       >
         <form onSubmit={handleSubmitUsuario} className="space-y-4">
@@ -1303,14 +1290,14 @@ export default function Admin() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Email <span className="text-red-500">*</span>
-            </label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
             <input
-              type="email" required value={formData.email}
-              onChange={e => setFormData(p => ({ ...p, email: e.target.value }))}
-              className={ic} placeholder="jperez@institucion.edu"
+              type="email" value={formData.email} readOnly disabled
+              className={`${ic} bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed`}
             />
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+              El email lo define cada usuario al registrarse y no se puede modificar.
+            </p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1356,7 +1343,6 @@ export default function Admin() {
             <button
               type="button"
               onClick={() => {
-                if (!editingUsuario) clearFormDataPersistence(); // ← Cancelar limpia el draft solo en "nuevo"
                 setShowUsuarioModal(false);
                 setEditingUsuario(null);
               }}
@@ -1365,7 +1351,7 @@ export default function Admin() {
             </button>
             <button type="submit" disabled={saving}
               className="bg-[#00a6d6] hover:bg-[#0095c0] text-white px-6 py-2 rounded-lg disabled:opacity-50 transition-colors text-sm">
-              {saving ? (editingUsuario ? 'Actualizando...' : 'Creando...') : (editingUsuario ? 'Actualizar Usuario' : 'Crear Usuario')}
+              {saving ? 'Actualizando...' : 'Actualizar Usuario'}
             </button>
           </div>
         </form>

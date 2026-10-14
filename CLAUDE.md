@@ -125,7 +125,7 @@ types/        ← augmentación de Express.Request con req.user
 | Tickets | `GET/POST /api/tickets` · `GET/PUT/DELETE /api/tickets/:id` · `POST /api/tickets/:id/comentarios` |
 | Tareas | `GET/POST /api/tareas` · `GET/PUT/DELETE /api/tareas/:id` · `PATCH /api/tareas/:id/estado` · CRUD de comentarios |
 | Stock | `GET /api/stock/componentes` · `GET /api/stock/items` |
-| Admin | CRUD de usuarios, ubicaciones, tipos-componente, marcas, proveedores · `GET/DELETE /api/admin/logs` |
+| Admin | Usuarios: solo listar, editar (nombre/rol/área — **no email**), bloquear y eliminar; el alta es por auto-registro (`/api/auth`), no existe `POST /admin/usuarios` · CRUD de ubicaciones, tipos-componente, marcas, proveedores, áreas · `GET/DELETE /api/admin/logs` |
 | Info | `GET/PUT /api/info` |
 
 ### Variables de entorno del backend (`backend/.env`)
