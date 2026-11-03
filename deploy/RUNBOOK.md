@@ -305,6 +305,8 @@ Para que el backup de adjuntos funcione, el `backend/.env` tiene que tener `SUPA
 
 Los avisos usan el mismo SMTP que el resto del sistema (`SMTP_*` del `.env`) y requieren el backend buildeado (`dist/scripts/notificar-backup.js`).
 
+**Consulta diaria para que Supabase no pause la base:** al principio de cada corrida el script hace una consulta mínima (`select 1`, no lee ni modifica datos) con `psql`. Sirve para dos cosas: mantener la base con actividad todos los días (el plan gratuito de Supabase la pausa tras ~1 semana sin actividad) y avisar temprano, con el mail de falla, si la base está pausada o no responde. En el log aparece como `OK: la base de datos responde`, o `ERROR: la base de datos no responde` si falla.
+
 > **Regla de oro de esta sección:** todo se hace con el **mismo usuario**, y ese usuario es **root** (`sudo`). La configuración de rclone se guarda en la carpeta personal del usuario que corre `rclone config`; el cron tiene que correr con ese mismo usuario, o el backup no encuentra la configuración. Además el script escribe en `/var/log` y `/var/backups`, que requieren root. Por eso todos los comandos de rclone, la prueba del script y el crontab llevan `sudo`.
 
 ### Paso 1 — Instalar las herramientas
@@ -405,6 +407,7 @@ sudo rclone ls gdrive:gestec-backup-ies-adjuntos | head
 
 **Qué tiene que pasar:** el log termina con estas líneas OK (con la fecha de hoy):
 ```
+OK: la base de datos responde
 OK: dump local creado en /var/backups/gestec/gestec-AAAAMMDD-HHMMSS.sql.gz (…)
 OK: subido a gdrive:gestec-backup-ies
 Adjuntos en el bucket: N | descargados ahora: N | fallidos: 0
@@ -415,6 +418,7 @@ Backup finalizado
 El archivo `.sql.gz` pesa algo razonable (no 0 bytes) y aparece en Google Drive, dentro de la carpeta `gestec-backup-ies`. Los adjuntos aparecen en `/var/backups/gestec-adjuntos` y en la carpeta `gestec-backup-ies-adjuntos` de Drive. Las carpetas se crean solas; no hay que crearlas a mano. La cantidad `N` de adjuntos tiene que coincidir con los archivos del bucket (Supabase → Storage → `gestec-adjuntos`). También se puede verificar entrando a drive.google.com con la cuenta. Si se corre una segunda vez, `descargados ahora` tiene que ser 0.
 
 **Si falla:** el log dice la causa:
+- `ERROR: la base de datos no responde` → lo más probable es que Supabase haya **pausado el proyecto** (hacer Restore, sección 12.5) o que `DIRECT_URL` en el `.env` sea incorrecta o `psql` no esté instalado (`sudo apt install postgresql-client`). Probar a mano: `psql "$DIRECT_URL" -c "select 1"`.
 - `ERROR: pg_dump fallo` → ver `pg_dump --version` (paso 1) y que `DIRECT_URL` en `.env` sea correcta (probar `psql "$DIRECT_URL" -c "select 1"`).
 - `ERROR: rclone copy fallo` → el dump local sí quedó; el problema es rclone/Drive (paso 3, o ver "Qué rompe el backup a Drive" en la sección 12).
 - `ERROR: no se pudieron respaldar los adjuntos` → mirar las líneas justo arriba en el log: `Faltan SUPABASE_URL o SUPABASE_SERVICE_KEY` (completar el `.env`), `Cannot find module .../backup-adjuntos.js` (falta `pnpm build` en el backend), `node: command not found` (Node no está en el PATH del cron), o `No se pudo listar el bucket` (clave o URL de Supabase incorrectas, o proyecto pausado).
@@ -553,7 +557,7 @@ Hace el mismo proceso de autorización del paso 3.b–3.d de la sección 10 (com
 
 ### 12.5. Otros puntos que pueden romper el sistema en el futuro
 
-- **Supabase (plan gratuito) pausa el proyecto por inactividad.** Si pasa, el sitio carga pero el login y todo lo que use datos falla, y en `pm2 logs` aparece `tenant/user ... not found`. Solución: entrar a supabase.com → el proyecto → **Restore**, esperar unos minutos y ejecutar `pm2 restart gestec-backend`. (Ya pasó en desarrollo.) Con uso diario normal no debería ocurrir, pero un período largo sin uso (vacaciones) sí puede pausarlo. Considerar el plan Pro si la disponibilidad es crítica.
+- **Supabase (plan gratuito) pausa el proyecto por inactividad.** Si pasa, el sitio carga pero el login y todo lo que use datos falla, y en `pm2 logs` aparece `tenant/user ... not found`. Solución: entrar a supabase.com → el proyecto → **Restore**, esperar unos minutos y ejecutar `pm2 restart gestec-backend`. (Ya pasó en desarrollo.) Con uso diario normal no debería ocurrir, pero un período largo sin uso (vacaciones) sí puede pausarlo. Para evitarlo, el script de backup hace todos los días una consulta mínima a la base (sección 10) y el backup mismo se conecta a diario; aun así Supabase no define con precisión qué cuenta como actividad, así que no es una garantía absoluta. Supabase avisa por mail al dueño del proyecto aproximadamente una semana antes de pausarlo y otra vez cuando lo pausa: conviene que ese mail lo lea alguien. Considerar el plan Pro si la disponibilidad es crítica (los proyectos de pago no se pausan y traen backups diarios).
 - **Cambió la contraseña de la base de Supabase:** actualizar `DATABASE_URL` y `DIRECT_URL` en `backend/.env` y hacer `pm2 restart gestec-backend --update-env`. El backup también usa `DIRECT_URL` del mismo `.env`, así que se corrige junto.
 - **Cambió el mail/contraseña del SMTP:** actualizar las variables `SMTP_*` en `backend/.env` y reiniciar el backend. Síntoma del problema: no llegan los mails de verificación ni de recuperación (el sistema igual dice "enviado").
 - **Cambió el dominio:** actualizar `FRONTEND_URL` en `backend/.env`, `VITE_API_URL` en `frontend/.env` (y **rebuildear** el frontend), el VirtualHost de Apache y sacar un certificado nuevo.

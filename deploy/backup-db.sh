@@ -57,6 +57,15 @@ if [ -z "$DIRECT_URL" ]; then
   exit 1
 fi
 
+# Consulta mínima diaria: mantiene activa la base (el plan gratuito de Supabase pausa el proyecto tras
+# ~1 semana sin actividad) y avisa temprano si está pausada o inaccesible. No lee ni modifica datos.
+if psql "$DIRECT_URL" -v ON_ERROR_STOP=1 -tAc "select 1" >/dev/null 2>>"$LOG_FILE"; then
+  log "OK: la base de datos responde"
+else
+  log "ERROR: la base de datos no responde (¿proyecto de Supabase pausado? ver RUNBOOK sección 12.5)"
+  FALLOS=1
+fi
+
 FILENAME="gestec-$(date '+%Y%m%d-%H%M%S').sql.gz"
 FILEPATH="$BACKUP_DIR/$FILENAME"
 
