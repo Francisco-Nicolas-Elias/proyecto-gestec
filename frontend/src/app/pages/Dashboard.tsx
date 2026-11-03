@@ -362,7 +362,7 @@ export default function Dashboard() {
   // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="p-4 lg:p-6 space-y-5">
+    <div className="p-4 lg:p-6 flex flex-col gap-5">
 
       {/* Header */}
       <div>
@@ -422,7 +422,7 @@ export default function Dashboard() {
 
       {/* Charts Row 2: Estado Activos + Stock Crítico */}
       {(hasPermission('activos') || hasPermission('stock')) && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="order-2 lg:order-none grid grid-cols-1 lg:grid-cols-3 gap-5">
 
           {hasPermission('activos') && (
             <SectionCard>
@@ -492,11 +492,13 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Row 3: Actividad Reciente + Tickets Recientes */}
-      <div className={`grid grid-cols-1 ${hasPermission('admin') ? 'lg:grid-cols-2' : ''} gap-5`}>
+      {/* Row 3: Actividad Reciente + Tickets Recientes.
+          En mobile (flex-col) el wrapper es 'contents' y se reordena con 'order': Tickets recientes
+          va justo después de los gráficos de tickets, no al final de una pantalla larga. */}
+      <div className={`contents lg:grid ${hasPermission('admin') ? 'lg:grid-cols-2' : 'lg:grid-cols-1'} lg:gap-5`}>
 
         {hasPermission('admin') && (
-          <SectionCard>
+          <SectionCard className="order-3 lg:order-none">
             <SectionHeader title="Actividad reciente" action="Ver logs" onAction={() => navigate('/admin?tab=logs')} />
             <div className="px-5 pb-5 space-y-3">
               {logs.length === 0 ? (
@@ -524,7 +526,7 @@ export default function Dashboard() {
           </SectionCard>
         )}
 
-        <SectionCard>
+        <SectionCard className="order-1 lg:order-none">
           <SectionHeader title="Tickets recientes" action="Ver todos" onAction={() => navigate('/tickets')} />
           <div className="px-5 pb-5 space-y-2">
             {recentTickets.length === 0 ? (

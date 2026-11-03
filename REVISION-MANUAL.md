@@ -98,24 +98,24 @@ Registro de la revisión manual del sistema, pestaña por pestaña. El usuario p
 Mismo checklist que Desktop, probado desde el celular o la vista mobile. Marcar `[x]` a medida que se confirma. Además de cada ítem, fijarse en: botones y textos legibles y tocables, menú lateral/hamburguesa, modales y formularios que no se corten, tablas con scroll propio y teclado que no tape los campos.
 
 ### 0. Autenticación
-- [ ] Login con credenciales correctas
-- [ ] Login con credenciales incorrectas (mensaje de error, bloqueo tras intentos fallidos)
-- [ ] Recuperar contraseña (envío de mail)
-- [ ] Reset de contraseña desde el link del mail
-- [ ] Registro de usuario nuevo (si está habilitado para probar)
-- [ ] Verificar email
-- [ ] Logout
-- [ ] Sesión persiste al refrescar la página
-- [ ] Redirección a `/login` si no hay sesión activa
+- [x] Login con credenciales correctas *(mobile 2026-11-03)*
+- [x] Login con credenciales incorrectas (mensaje de error, bloqueo tras intentos fallidos) *(mobile 2026-11-03)*
+- [x] Recuperar contraseña (envío de mail) *(mobile 2026-11-03)*
+- [x] Reset de contraseña desde el link del mail *(mobile 2026-11-03)*
+- [x] Registro de usuario nuevo (si está habilitado para probar) *(mobile 2026-11-03)*
+- [x] Verificar email *(mobile 2026-11-03)*
+- [x] Logout *(mobile 2026-11-03)*
+- [x] Sesión persiste al refrescar la página *(mobile 2026-11-03)*
+- [x] Redirección a `/login` si no hay sesión activa *(mobile 2026-11-03)*
 
 ### 1. Dashboard
-- [ ] Cards de KPI (Tickets nuevos, en progreso, Tareas pendientes, Stock bajo/crítico) — navegación al hacer clic
-- [ ] Card "Estado de tickets" — tamaño, layout, botón "Ver todos"
-- [ ] Card "Stock crítico/bajo" — enlace a la grilla correcta de Stock
-- [ ] Gráfico "Tickets por mes"
-- [ ] Card "Estado de equipos"
-- [ ] Comportamiento con 0 datos (institución/cuenta nueva sin carga)
-- [ ] Qué ve cada rol (administrador / operaciones / docente_empleado)
+- [x] Cards de KPI (Tickets nuevos, en progreso, Tareas pendientes, Stock bajo/crítico) — navegación al hacer clic *(mobile 2026-11-03 — se ajustó que la pestaña activa de Admin quede a la vista al entrar desde "Ver logs")*
+- [x] Card "Estado de tickets" — tamaño, layout, botón "Ver todos" *(mobile 2026-11-03 — en Mobile "Tickets recientes" sube justo debajo de los gráficos de tickets)*
+- [x] Card "Stock crítico/bajo" — enlace a la grilla correcta de Stock *(mobile 2026-11-03)*
+- [x] Gráfico "Tickets por mes" *(mobile 2026-11-03)*
+- [x] Card "Estado de equipos" *(mobile 2026-11-03)*
+- [x] Comportamiento con 0 datos (institución/cuenta nueva sin carga) *(mobile 2026-11-03 — mismo código que desktop, revisado por código)*
+- [x] Qué ve cada rol (administrador / operaciones / docente_empleado) *(mobile 2026-11-03)*
 
 ### 2. Equipos (`/activos`)
 - [ ] Listado — filtros, orden, columnas (incluye columna Fuente)

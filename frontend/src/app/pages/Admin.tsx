@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router';
 import { Users, MapPin, Pencil, Trash2, Shield, Check, Cpu, Truck, Star, Plus, X, ScrollText, Search, Download, AlertTriangle, RefreshCw, Phone, Building2, Ban, ShieldCheck } from 'lucide-react';
 import jsPDF from 'jspdf';
@@ -73,6 +73,15 @@ export default function Admin() {
   useEffect(() => {
     setSearchParams({ tab: activeTab }, { replace: true });
   }, [activeTab]);
+
+  // En pantallas angostas las pestañas hacen scroll horizontal: llevar la activa a la vista
+  // (si se entra directo a ?tab=logs, por ejemplo, quedaría fuera de pantalla)
+  const tabsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    tabsRef.current
+      ?.querySelector<HTMLElement>('[data-tab-activa="true"]')
+      ?.scrollIntoView({ inline: 'center', block: 'nearest' });
+  }, [activeTab, loading, authLoading]);
   const [saving, setSaving] = useState(false);
 
   // ── Usuarios ──────────────────────────────────────────────────────────────
@@ -439,13 +448,14 @@ export default function Admin() {
 
       {/* Tabs */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
+        <div ref={tabsRef} className="border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
           <div className="flex">
             {tabs.map(tab => {
               const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
+                  data-tab-activa={activeTab === tab.id}
                   onClick={() => setActiveTab(tab.id as AdminTab)}
                   className={`flex items-center gap-2 px-5 py-3 font-medium text-sm whitespace-nowrap border-b-2 transition-colors ${
                     activeTab === tab.id
