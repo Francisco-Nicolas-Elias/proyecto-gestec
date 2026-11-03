@@ -7,6 +7,7 @@ Este runbook se ejecuta **después** de terminar la revisión manual (desktop y 
 **Cómo usarlo:** seguir las secciones en orden. Cada sección tiene el objetivo, los comandos, **qué tiene que pasar** si salió bien, y **qué hacer si falla**. No pasar a la sección siguiente si la anterior no dio el resultado esperado.
 
 Índice:
+
 0. Antes de empezar (checklist previo)
 1. Verificar dependencias del servidor
 2. Copiar el código y crear los `.env`
