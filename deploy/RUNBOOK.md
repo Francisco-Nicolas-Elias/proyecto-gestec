@@ -94,7 +94,10 @@ Completar **todos** estos valores:
 | `PORT` | `3000` |
 | `NODE_ENV` | `production` (importante: activa las cookies seguras y el `trust proxy` del rate limiting) |
 | `FRONTEND_URL` | `"https://gestec.ies21.edu.ar"` (sin barra final). Se usa para CORS y para los links de los mails. |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Credenciales reales del correo institucional que va a mandar los mails de verificación/recuperación. |
+| `SUPABASE_URL` | URL del proyecto de Supabase (Dashboard → Project Settings → API → Project URL, tipo `https://xxxx.supabase.co`). La usa el almacenamiento de **adjuntos** (fotos, videos y audios de tickets y tareas). **Si falta, el backend arranca pero subir adjuntos falla.** |
+| `SUPABASE_SERVICE_KEY` | La clave `service_role` (Dashboard → Project Settings → API → `service_role`). **Es una clave con control total del proyecto: tratarla como una contraseña, nunca ponerla en el frontend ni compartirla.** |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Credenciales reales del correo institucional que va a mandar los mails de verificación/recuperación (y también los avisos del backup). |
+| `BACKUP_ALERT_EMAILS` | Mails que reciben los avisos del backup, separados por coma: `"fahumada@ies21.edu.ar"`. Para agregar más personas ver la sección 12.3. |
 
 Si la contraseña de la base tiene caracteres especiales (`@`, `#`, `/`, `:`, `%`), en la URL tienen que ir codificados (por ejemplo `@` → `%40`). Si no, la conexión falla con un error de formato de URL.
 
@@ -284,9 +287,22 @@ curl -s http://localhost:3000/health
 
 ---
 
-## 10. Backup automático de la base de datos
+## 10. Backup automático de la base de datos y los adjuntos
 
-El plan gratuito de Supabase **no incluye backups automáticos**. Este paso arma uno casero: un dump diario (`pg_dump`) que se guarda en el servidor y se sube a Google Drive, con 7 días de retención en ambos destinos.
+El plan gratuito de Supabase **no incluye backups automáticos**. Este paso arma uno casero que respalda **dos cosas** todos los días y las sube a Google Drive:
+
+1. **La base de datos** (tablas y datos): un dump diario (`pg_dump`) comprimido, con 7 días de retención en el servidor y en Drive.
+2. **Los archivos adjuntos** (fotos, videos y audios de tickets y tareas, que viven en el bucket `gestec-adjuntos` de Supabase Storage): el script `backend/src/scripts/backup-adjuntos.ts` (compilado a `backend/dist/scripts/backup-adjuntos.js`) los descarga a `/var/backups/gestec-adjuntos` y se copian a Drive en la carpeta `gestec-backup-ies-adjuntos`. Es **incremental**: solo baja los archivos nuevos. **No tiene rotación de 7 días**: un archivo que se borra desde la app **queda** en el backup (a propósito, por si fue un error). La carpeta va creciendo, así que hay que vigilar el espacio del disco del servidor (`df -h`) y el de la cuenta de Drive; cuando haga falta, limpiar a mano los archivos viejos que ya no se necesiten.
+
+Para que el backup de adjuntos funcione, el `backend/.env` tiene que tener `SUPABASE_URL` y `SUPABASE_SERVICE_KEY` (sección 2) y el backend tiene que estar buildeado (`pnpm build`, sección 3).
+
+> Un fallo en el backup de adjuntos no frena el de la base de datos (que se hace primero): el log lo marca con su propio `ERROR`.
+
+**Avisos por mail:** el script manda un mail a los destinatarios de `BACKUP_ALERT_EMAILS` (hoy `fahumada@ies21.edu.ar`) en dos casos:
+- **Si algo falla** (dump, subida a Drive, adjuntos), en el momento, con el asunto `[GESTEC] FALLO el backup del DD/MM/AAAA` y las últimas líneas del log en el cuerpo.
+- **Los lunes, si todo salió bien**, un resumen con el asunto `[GESTEC] Backups funcionando - resumen del lunes ...`. Sirve de "señal de vida": **si un lunes NO llega ese mail, algo anda mal** (el cron dejó de correr, el servidor está caído, o el SMTP falla) y hay que revisar el servidor.
+
+Los avisos usan el mismo SMTP que el resto del sistema (`SMTP_*` del `.env`) y requieren el backend buildeado (`dist/scripts/notificar-backup.js`).
 
 > **Regla de oro de esta sección:** todo se hace con el **mismo usuario**, y ese usuario es **root** (`sudo`). La configuración de rclone se guarda en la carpeta personal del usuario que corre `rclone config`; el cron tiene que correr con ese mismo usuario, o el backup no encuentra la configuración. Además el script escribe en `/var/log` y `/var/backups`, que requieren root. Por eso todos los comandos de rclone, la prueba del script y el crontab llevan `sudo`.
 
@@ -382,19 +398,27 @@ sudo /var/www/gestec/deploy/backup-db.sh
 sudo cat /var/log/gestec-backup.log
 sudo ls -lh /var/backups/gestec/
 sudo rclone ls gdrive:gestec-backup-ies
+sudo ls /var/backups/gestec-adjuntos | head
+sudo rclone ls gdrive:gestec-backup-ies-adjuntos | head
 ```
 
-**Qué tiene que pasar:** el log termina con estas tres líneas OK (con la fecha de hoy):
+**Qué tiene que pasar:** el log termina con estas líneas OK (con la fecha de hoy):
 ```
 OK: dump local creado en /var/backups/gestec/gestec-AAAAMMDD-HHMMSS.sql.gz (…)
 OK: subido a gdrive:gestec-backup-ies
+Adjuntos en el bucket: N | descargados ahora: N | fallidos: 0
+OK: adjuntos sincronizados en /var/backups/gestec-adjuntos
+OK: adjuntos subidos a gdrive:gestec-backup-ies-adjuntos
 Backup finalizado
 ```
-El archivo `.sql.gz` pesa algo razonable (no 0 bytes) y el mismo archivo aparece en Google Drive, dentro de la carpeta `gestec-backup-ies` (la carpeta se crea sola; no hay que crearla a mano). También se puede verificar entrando a drive.google.com con la cuenta.
+El archivo `.sql.gz` pesa algo razonable (no 0 bytes) y aparece en Google Drive, dentro de la carpeta `gestec-backup-ies`. Los adjuntos aparecen en `/var/backups/gestec-adjuntos` y en la carpeta `gestec-backup-ies-adjuntos` de Drive. Las carpetas se crean solas; no hay que crearlas a mano. La cantidad `N` de adjuntos tiene que coincidir con los archivos del bucket (Supabase → Storage → `gestec-adjuntos`). También se puede verificar entrando a drive.google.com con la cuenta. Si se corre una segunda vez, `descargados ahora` tiene que ser 0.
 
 **Si falla:** el log dice la causa:
 - `ERROR: pg_dump fallo` → ver `pg_dump --version` (paso 1) y que `DIRECT_URL` en `.env` sea correcta (probar `psql "$DIRECT_URL" -c "select 1"`).
 - `ERROR: rclone copy fallo` → el dump local sí quedó; el problema es rclone/Drive (paso 3, o ver "Qué rompe el backup a Drive" en la sección 12).
+- `ERROR: no se pudieron respaldar los adjuntos` → mirar las líneas justo arriba en el log: `Faltan SUPABASE_URL o SUPABASE_SERVICE_KEY` (completar el `.env`), `Cannot find module .../backup-adjuntos.js` (falta `pnpm build` en el backend), `node: command not found` (Node no está en el PATH del cron), o `No se pudo listar el bucket` (clave o URL de Supabase incorrectas, o proyecto pausado).
+- `ERROR: rclone copy de adjuntos fallo` → mismo diagnóstico que el de la base: problema de rclone/Drive.
+- `ADVERTENCIA: no se pudo enviar el aviso por mail` → el backup en sí puede estar bien, pero el aviso no salió: revisar `SMTP_*` y `BACKUP_ALERT_EMAILS` en el `.env` y probar con el comando de la sección 12.3.
 
 ### Paso 5 — Programarlo (cron, diario a las 3 AM)
 
@@ -425,6 +449,8 @@ gunzip -c /var/backups/gestec/gestec-AAAAMMDD-HHMMSS.sql.gz | psql "URL-DE-LA-BA
 ```
 
 Después comprobar que las tablas y los datos están (por ejemplo con Prisma Studio apuntando a esa base de prueba).
+
+**Restaurar los adjuntos** (solo si se perdió el bucket): crear de nuevo en Supabase → Storage un bucket público llamado exactamente `gestec-adjuntos` y subir ahí el contenido de `/var/backups/gestec-adjuntos` (o de la carpeta `gestec-backup-ies-adjuntos` de Drive). Los nombres de archivo tienen que quedar **idénticos**: la base guarda la URL de cada adjunto con ese nombre, y si el proyecto de Supabase cambió, además hay que actualizar el dominio en las URLs de la tabla `Adjunto`. Es un caso complejo: consultar antes de hacerlo.
 
 ---
 
@@ -478,7 +504,24 @@ sudo tail -n 20 /var/log/gestec-backup.log
 sudo grep -E "ERROR|ADVERTENCIA" /var/log/gestec-backup.log | tail
 ```
 
-Tiene que haber un "Backup finalizado" por cada día, y ningún `ERROR` reciente. **El sistema no avisa por mail si un backup falla**: si nadie mira el log, un backup roto puede pasar semanas sin que nadie lo note. Conviene poner un recordatorio fijo (por ejemplo, los lunes) y mirar también que la carpeta `gestec-backup-ies` del Drive tenga archivos de los últimos 7 días.
+Tiene que haber un "Backup finalizado" por cada día, y ningún `ERROR` reciente.
+
+**Avisos por mail:** si un backup falla llega un mail de aviso, y los lunes llega un resumen de "todo OK". Aun así, los mails tienen límites: si el problema es el propio SMTP o el servidor está apagado, el aviso de falla no puede salir. Por eso **la ausencia del mail de los lunes es la señal de alarma**. Conviene igual mirar el log una vez por semana, y comprobar que la carpeta `gestec-backup-ies` del Drive tenga archivos de los últimos 7 días y que cada corrida del log tenga la línea `OK: adjuntos subidos`.
+
+**Agregar o sacar destinatarios de los avisos:** editar `BACKUP_ALERT_EMAILS` en `/var/www/gestec/backend/.env`, con los mails separados por coma y sin espacios obligatorios:
+
+```
+BACKUP_ALERT_EMAILS="fahumada@ies21.edu.ar,otra.persona@ies21.edu.ar"
+```
+
+No hace falta reiniciar nada: el script lee el archivo cada vez que corre (la próxima corrida ya usa la lista nueva). Para probar los avisos sin esperar a una falla:
+
+```bash
+cd /var/www/gestec/backend
+echo "Prueba de aviso" | sudo node dist/scripts/notificar-backup.js "[GESTEC] Prueba de aviso de backup"
+```
+
+Tiene que imprimir `Aviso enviado a: ...` y el mail tiene que llegar a cada destinatario (revisar también la carpeta de spam la primera vez).
 
 ### 12.4. Qué rompe el backup a Google Drive (y cómo arreglarlo)
 
@@ -514,7 +557,7 @@ Hace el mismo proceso de autorización del paso 3.b–3.d de la sección 10 (com
 - **Cambió el mail/contraseña del SMTP:** actualizar las variables `SMTP_*` en `backend/.env` y reiniciar el backend. Síntoma del problema: no llegan los mails de verificación ni de recuperación (el sistema igual dice "enviado").
 - **Cambió el dominio:** actualizar `FRONTEND_URL` en `backend/.env`, `VITE_API_URL` en `frontend/.env` (y **rebuildear** el frontend), el VirtualHost de Apache y sacar un certificado nuevo.
 - **Se reinicia el servidor:** PM2 y Apache tienen que volver solos (por eso `pm2 startup`). Verificar con `pm2 status` y abriendo el sitio.
-- **Disco lleno:** los logs de PM2/Apache y los backups locales ocupan espacio. Revisar con `df -h`. Los backups locales se limpian solos a los 7 días.
+- **Disco lleno:** los logs de PM2/Apache y los backups locales ocupan espacio. Revisar con `df -h`. Los dumps de la base se limpian solos a los 7 días, **pero la carpeta de adjuntos (`/var/backups/gestec-adjuntos`) no se limpia nunca** y crece con cada archivo subido: revisar su tamaño con `sudo du -sh /var/backups/gestec-adjuntos`.
 - **Cambiar `JWT_SECRET`:** cierra la sesión de todos los usuarios. Hacerlo solo si se sospecha que el secreto se filtró.
 
 ---
