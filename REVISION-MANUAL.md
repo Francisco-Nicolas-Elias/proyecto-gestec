@@ -161,7 +161,7 @@ Mismo checklist que Desktop, probado desde el celular o la vista mobile. Marcar 
 - [x] Permisos por rol *(mobile 2026-11-17)*
 
 ### 6. Administración (`/admin`)
-- [ ] Usuarios — editar (nombre/rol/área), bloquear/desbloquear, eliminar
+- [x] Usuarios — editar (nombre/rol/área), bloquear/desbloquear, eliminar *(mobile 2026-11-17 — la grilla muestra todas las columnas; en Mobile las filas son de una línea, se desliza hacia el costado y las acciones quedan fijas a la derecha)*
 - [ ] Ubicaciones — crear, editar, eliminar (bloquea si tiene equipos asociados)
 - [ ] Áreas — crear, editar, eliminar (bloquea si tiene usuarios asociados)
 - [ ] Roles — confirmar que la vista de solo lectura refleja los permisos reales de cada rol
@@ -172,9 +172,9 @@ Mismo checklist que Desktop, probado desde el celular o la vista mobile. Marcar 
 - [ ] Confirmar que solo `administrador` puede acceder a `/admin`
 
 ### 7. Información institucional (`/informacion`)
-- [ ] Ver datos de contacto (teléfono, teléfono interno, horarios, correos)
-- [ ] Editar información de contacto
-- [ ] Permisos por rol (quién puede editar)
+- [x] Ver datos de contacto (teléfono, teléfono interno, horarios, correos) *(mobile 2026-11-17)*
+- [x] Editar información de contacto *(mobile 2026-11-17)*
+- [x] Permisos por rol (quién puede editar) *(mobile 2026-11-17)*
 
 ### 8. Transversales
 - [ ] Modo oscuro en todas las pantallas
