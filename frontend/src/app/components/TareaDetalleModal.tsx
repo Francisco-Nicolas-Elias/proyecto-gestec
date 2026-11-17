@@ -478,7 +478,7 @@ export default function TareaDetalleModal({
                     <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Fecha límite</label>
                     <input type="date" value={formData.fechaLimite}
                       onChange={e => setFormData(p => ({ ...p, fechaLimite: e.target.value }))}
-                      className={inputClass} />
+                      className={`${inputClass} h-[38px] appearance-none min-w-0`} />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Ubicación</label>

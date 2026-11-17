@@ -39,7 +39,7 @@ export async function createComponenteService(
   usuarioRol: string,
 ) {
   const componente = await prisma.$transaction(async (tx) => {
-    const c = await tx.componente.create({ data, include: { tipoComponente: true } });
+    const c = await tx.componente.create({ data, include: COMPONENTE_INCLUDE });
     await tx.historialMovimientoComponente.create({
       data: {
         componenteId: c.id,
@@ -69,7 +69,7 @@ export async function updateComponenteService(
     data.activoId !== undefined && data.activoId !== prev.activoId;
 
   const componente = await prisma.$transaction(async (tx) => {
-    const c = await tx.componente.update({ where: { id }, data, include: { tipoComponente: true, activo: true } });
+    const c = await tx.componente.update({ where: { id }, data, include: COMPONENTE_INCLUDE });
 
     if (activoIdChanged) {
       const esInstalacion = !!data.activoId;

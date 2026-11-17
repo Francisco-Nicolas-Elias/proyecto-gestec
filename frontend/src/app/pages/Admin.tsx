@@ -358,7 +358,7 @@ export default function Admin() {
         </div>
       ),
     },
-    { key: 'email', label: 'Email', className: 'hidden md:table-cell' },
+    { key: 'email', label: 'Email' },
     {
       key: 'rol',
       label: 'Rol',
@@ -378,14 +378,14 @@ export default function Admin() {
     {
       key: 'area',
       label: 'Área',
-      className: 'hidden lg:table-cell',
       render: (value: string) => value || <span className="text-gray-400">—</span>,
     },
     {
       key: 'actions',
       label: 'Acciones',
+      stickyRight: true,
       render: (_: any, row: any) => (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 md:gap-2">
           <button
             onClick={() => handleEditUsuario(row)}
             title="Editar usuario"
@@ -531,6 +531,7 @@ export default function Admin() {
                 </div>
 
                 <Table
+                  compact
                   columns={usuariosColumns}
                   data={filteredUsuarios}
                   emptyMessage={usuarios.length === 0 ? 'No hay usuarios registrados' : 'No hay usuarios que coincidan con los filtros'}

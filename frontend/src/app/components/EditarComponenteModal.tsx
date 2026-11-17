@@ -349,27 +349,27 @@ export default function EditarComponenteModal({
                     1 número de serie en conflicto — no se puede guardar.
                   </p>
                 )}
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   Solo el ID Manual es obligatorio. El resto puede dejarse vacío.
                 </p>
-                <div className="flex gap-3">
+                <div className="flex w-full sm:w-auto gap-3">
                   <button
                     type="button"
                     onClick={onClose}
-                    className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
+                    className="flex-1 sm:flex-none px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
                     disabled={!isFormValid || saving}
-                    className="flex items-center gap-2 px-5 py-2 text-sm bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-5 py-2 text-sm whitespace-nowrap bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     {saving ? (
                       <><Loader2 size={15} className="animate-spin" /> Guardando...</>
                     ) : (
-                      <><Save size={15} /> Guardar cambios</>
+                      <><Save size={15} /> <span className="sm:hidden">Guardar</span><span className="hidden sm:inline">Guardar cambios</span></>
                     )}
                   </button>
                 </div>

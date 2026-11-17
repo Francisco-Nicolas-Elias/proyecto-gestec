@@ -210,3 +210,13 @@
 html {
   font-size: var(--font-size);
 }
+/* iPhone (Safari y Chrome, ambos usan WebKit): si un campo tiene letra menor a 16px, al tocarlo
+   hace zoom automático. En pantallas chicas se fuerza 16px para evitarlo; desktop no cambia.
+   Sin esta regla gana la clase text-sm (14px) de los inputs. */
+@media (max-width: 1023px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='color']),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}

@@ -1,4 +1,4 @@
-import { Outlet, useNavigate, useLocation } from 'react-router';
+import { Outlet, useNavigate, useLocation, useNavigationType } from 'react-router';
 import { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
@@ -26,7 +26,14 @@ export default function MainLayout() {
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+  const navigationType = useNavigationType();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Al navegar a otra pantalla, arrancar desde arriba (si no, el detalle de un ticket abre con el
+  // scroll que tenía el listado). Con "atrás" (POP) se deja al navegador restaurar la posición.
+  useEffect(() => {
+    if (navigationType !== 'POP') window.scrollTo(0, 0);
+  }, [location.pathname]);
 
   const handleLogout = async () => {
     try {

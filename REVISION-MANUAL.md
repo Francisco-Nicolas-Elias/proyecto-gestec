@@ -131,33 +131,34 @@ Mismo checklist que Desktop, probado desde el celular o la vista mobile. Marcar 
 - [ ] Permisos por rol (quién puede crear/editar/eliminar)
 
 ### 3. Tickets (`/tickets`)
-- [ ] Listado — filtros (estado, prioridad, tipo), búsqueda, orden
-- [ ] Crear ticket (CrearReporte) — todos los campos, adjuntos
-- [ ] Detalle de ticket — cambiar estado, prioridad, asignar responsable
-- [ ] Comentarios — agregar, editar, eliminar, marcar interno/público
-- [ ] Adjuntos — subir imagen/video/audio y grabar audio con micrófono, eliminar
-- [ ] Reproductor de video en adjuntos (ya se arregló un bug antes — reverificar)
-- [ ] Eliminar ticket
-- [ ] Permisos: `docente_empleado` solo ve/crea los propios; operaciones/admin ven todos
+- [x] Listado — filtros (estado, prioridad, tipo), búsqueda, orden *(mobile 2026-11-17)*
+- [x] Crear ticket (CrearReporte) — todos los campos, adjuntos *(mobile 2026-11-17)*
+- [x] Detalle de ticket — cambiar estado, prioridad, asignar responsable *(mobile 2026-11-17 — en Mobile el detalle abre arriba y muestra primero la información; estado, prioridad y responsables van al final)*
+- [x] Comentarios — agregar, editar, eliminar, marcar interno/público *(mobile 2026-11-17)*
+- [x] Adjuntos — subir imagen/video/audio y grabar audio con micrófono, eliminar *(mobile 2026-11-17 — la grabación con micrófono no se pudo probar: el navegador exige HTTPS, ver ítem siguiente)*
+- [ ] Grabar audio con el micrófono desde el celular (requiere HTTPS: reprobar en producción o con el flag de Chrome `unsafely-treat-insecure-origin-as-secure`)
+- [x] Reproductor de video en adjuntos (ya se arregló un bug antes — reverificar) *(mobile 2026-11-17)*
+- [x] Eliminar ticket *(mobile 2026-11-17)*
+- [x] Permisos: `docente_empleado` solo ve/crea los propios; operaciones/admin ven todos *(mobile 2026-11-17)*
 
 ### 4. Stock (`/stock`)
-- [ ] Grilla "Componentes Registrados" — filtros, búsqueda, orden, filtro de ubicación
-- [ ] Grilla "Control de Stock" — navegación desde las cards del Dashboard y de Stock
-- [ ] Cards KPI (Stock OK, Bajo/Crítico, Instalados en Equipos) — navegación y filtros
-- [ ] Nuevo componente — persistencia de formulario, carga con QR de N° de serie
-- [ ] Editar componente — ubicación editable para tipos sin sección propia (teclado, mouse, etc.)
-- [ ] Historial de un componente (modal, colores del timeline)
-- [ ] Eliminar componente
-- [ ] Exportar Excel/PDF de componentes
-- [ ] Permisos por rol
+- [x] Grilla "Componentes Registrados" — filtros, búsqueda, orden, filtro de ubicación *(mobile 2026-11-17 — se agregó el botón "Ver detalle" (ojo) con todos los datos del componente)*
+- [x] Grilla "Control de Stock" — navegación desde las cards del Dashboard y de Stock *(mobile 2026-11-17 — el filtro "Categoría" (una sola opción) pasó a ser "Componente")*
+- [x] Cards KPI (Stock OK, Bajo/Crítico, Instalados en Equipos) — navegación y filtros *(mobile 2026-11-17)*
+- [x] Nuevo componente — persistencia de formulario, carga con QR de N° de serie *(mobile 2026-11-17 — botones Cancelar/Registrar a todo el ancho)*
+- [x] Editar componente — ubicación editable para tipos sin sección propia (teclado, mouse, etc.) *(mobile 2026-11-17 — se corrigió que marca y proveedor no se veían tras crear/editar: el backend no devolvía esos datos)*
+- [x] Historial de un componente (modal, colores del timeline) *(mobile 2026-11-17)*
+- [x] Eliminar componente *(mobile 2026-11-17)*
+- [x] Exportar Excel/PDF de componentes *(mobile 2026-11-17)*
+- [x] Permisos por rol *(mobile 2026-11-17)*
 
 ### 5. Tareas (`/tareas`)
-- [ ] Kanban — 3 columnas (Pendientes / En Curso / Finalizadas), drag & drop entre columnas
-- [ ] Crear tarea nueva — todos los campos, asignación a varias personas
-- [ ] Detalle de tarea (modal) — editar, cambiar prioridad, asignados
-- [ ] Comentarios de tarea — agregar, editar, eliminar, adjuntos
-- [ ] Eliminar tarea
-- [ ] Permisos por rol
+- [x] Kanban — 3 columnas (Pendientes / En Curso / Finalizadas), drag & drop entre columnas *(mobile 2026-11-17)*
+- [x] Crear tarea nueva — todos los campos, asignación a varias personas *(mobile 2026-11-17 — se igualó el alto del campo Fecha límite con el de Prioridad)*
+- [x] Detalle de tarea (modal) — editar, cambiar prioridad, asignados *(mobile 2026-11-17)*
+- [x] Comentarios de tarea — agregar, editar, eliminar, adjuntos *(mobile 2026-11-17)*
+- [x] Eliminar tarea *(mobile 2026-11-17)*
+- [x] Permisos por rol *(mobile 2026-11-17)*
 
 ### 6. Administración (`/admin`)
 - [ ] Usuarios — editar (nombre/rol/área), bloquear/desbloquear, eliminar

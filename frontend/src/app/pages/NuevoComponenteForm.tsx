@@ -359,27 +359,27 @@ export default function NuevoComponenteForm() {
                 1 número de serie en conflicto — no se puede guardar.
               </p>
             )}
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
                 <span className="text-red-500">*</span> Campos obligatorios
               </p>
-              <div className="flex items-center gap-3">
+              <div className="flex w-full sm:w-auto items-center gap-3">
                 <button
                   type="button"
                   onClick={() => { clearFormPersistence(); navigate('/stock'); }}
-                  className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
+                  className="flex-1 sm:flex-none px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={!isFormValid || saving}
-                  className="flex items-center gap-2 px-5 py-2 text-sm bg-[#00a6d6] text-white rounded-lg hover:bg-[#008bb8] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm whitespace-nowrap bg-[#00a6d6] text-white rounded-lg hover:bg-[#008bb8] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {saving ? (
                     <><Loader2 size={15} className="animate-spin" /> Guardando...</>
                   ) : (
-                    <><Save size={15} /> Registrar Componente</>
+                    <><Save size={15} /> <span className="sm:hidden">Registrar</span><span className="hidden sm:inline">Registrar Componente</span></>
                   )}
                 </button>
               </div>

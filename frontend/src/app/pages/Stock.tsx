@@ -34,7 +34,7 @@ export default function Stock() {
     // Solo acepta valores válidos del selector; cualquier otro valor se ignora
     return ['ok', 'bajo', 'critico'].includes(e) ? e : '';
   });
-  const [filterCategoria, setFilterCategoria] = useState('');
+  const [filterComponente, setFilterComponente] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [showAlertasModal, setShowAlertasModal] = useState(false);
 
@@ -57,6 +57,7 @@ export default function Stock() {
   // ── Acciones de componente ──
   const [componenteToEdit, setComponenteToEdit] = useState<Componente | null>(null);
   const [componenteHistorial, setComponenteHistorial] = useState<Componente | null>(null);
+  const [componenteDetalle, setComponenteDetalle] = useState<Componente | null>(null);
   const [componenteToDelete, setComponenteToDelete] = useState<Componente | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -102,7 +103,7 @@ export default function Stock() {
 
   const hasCompFilters = compFilterId || compFilterTipo || compFilterFecha || compFilterProveedor || compFilterUbicacion || componenteSearch;
 
-  const clearFilters = () => { setSearchTerm(''); setFilterEstado(''); setFilterCategoria(''); };
+  const clearFilters = () => { setSearchTerm(''); setFilterEstado(''); setFilterComponente(''); };
 
   const handleCompSort = React.useCallback((key: string) => {
     setCompSort(prev =>
@@ -123,9 +124,9 @@ export default function Stock() {
       });
     }
     if (filterEstado) list = list.filter(i => i.estado === filterEstado);
-    if (filterCategoria) list = list.filter(i => i.categoria === filterCategoria);
+    if (filterComponente) list = list.filter(i => i.nombre === filterComponente);
     return list;
-  }, [items, searchTerm, filterEstado, filterCategoria]);
+  }, [items, searchTerm, filterEstado, filterComponente]);
 
   const filteredComponentes = useMemo(() => {
     let list = componentes;
@@ -171,7 +172,7 @@ export default function Stock() {
   // Resetear página cuando cambian filtros
   useEffect(() => { setCompPage(1); }, [filteredComponentes]);
 
-  const categorias      = useMemo(() => [...new Set(items.map(i => i.categoria))], [items]);
+  const componentesStock = useMemo(() => [...new Set(items.map(i => i.nombre))].sort((a, b) => a.localeCompare(b, 'es')), [items]);
   const itemsBajos      = useMemo(() => items.filter(i => i.estado === 'bajo' || i.estado === 'critico'), [items]);
   const compTipos       = useMemo(() => [...new Set(componentes.map(c => c.tipoComponente))].sort((a, b) => a.localeCompare(b, 'es')), [componentes]);
   const compProveedores = useMemo(() => [...new Set(componentes.map(c => c.proveedor))].sort((a, b) => a.localeCompare(b, 'es')), [componentes]);
@@ -545,6 +546,14 @@ export default function Stock() {
       label: 'Acciones',
       render: (_: string, row: Componente) => (
         <div className="flex items-center gap-1">
+          {/* Ver detalle: en pantallas angostas la grilla oculta columnas, acá se ve todo */}
+          <button
+            onClick={() => setComponenteDetalle(row)}
+            title="Ver detalle del componente"
+            className="xl:hidden p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          >
+            <Eye size={15} />
+          </button>
           {/* Historial clínico */}
           <button
             onClick={() => setComponenteHistorial(row)}
@@ -883,13 +892,13 @@ export default function Stock() {
           </div>
           <button
             onClick={() => setShowFilters(v => !v)}
-            className={`flex items-center gap-2 px-3 py-2 text-sm border rounded-lg transition-colors ${showFilters || filterEstado || filterCategoria ? 'bg-[#00a6d6]/10 border-[#00a6d6] text-[#00a6d6] dark:text-[#00c4f0]' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+            className={`flex items-center gap-2 px-3 py-2 text-sm border rounded-lg transition-colors ${showFilters || filterEstado || filterComponente ? 'bg-[#00a6d6]/10 border-[#00a6d6] text-[#00a6d6] dark:text-[#00c4f0]' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
           >
             <Filter size={16} />
             <span className="hidden sm:inline">Filtros</span>
-            {(filterEstado || filterCategoria) && <span className="w-2 h-2 bg-[#00a6d6] rounded-full" />}
+            {(filterEstado || filterComponente) && <span className="w-2 h-2 bg-[#00a6d6] rounded-full" />}
           </button>
-          {(filterEstado || filterCategoria) && (
+          {(filterEstado || filterComponente) && (
             <button onClick={clearFilters} className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors" title="Limpiar filtros">
               <X size={16} />
             </button>
@@ -913,12 +922,12 @@ export default function Stock() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Categoría</label>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Componente</label>
               <SearchableSelect
-                options={categorias}
-                value={filterCategoria}
-                onChange={setFilterCategoria}
-                placeholder="Todas"
+                options={componentesStock}
+                value={filterComponente}
+                onChange={setFilterComponente}
+                placeholder="Todos"
               />
             </div>
           </div>
@@ -993,6 +1002,54 @@ export default function Stock() {
           reloadStockItems();
         }}
       />
+
+      {/* Modal Detalle de componente */}
+      <Modal
+        isOpen={!!componenteDetalle}
+        onClose={() => setComponenteDetalle(null)}
+        title="Detalle del componente"
+        size="sm"
+      >
+        {componenteDetalle && (
+          <div className="space-y-4">
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+              {[
+                ['ID Manual', componenteDetalle.idManual],
+                ['Componente', componenteDetalle.tipoComponente],
+                ['Marca', componenteDetalle.marca],
+                ['Modelo', componenteDetalle.modelo],
+                ['Capacidad', componenteDetalle.capacidad],
+                ['N° de serie', componenteDetalle.numeroSerie],
+                ['Ubicación', componenteDetalle.activoId ? componenteDetalle.ubicacion : 'Depósito IT'],
+                ['Proveedor', componenteDetalle.proveedor],
+                ['Fecha', componenteDetalle.fecha ? formatFecha(componenteDetalle.fecha) : ''],
+                ['Responsable', componenteDetalle.responsable],
+              ].map(([label, valor]) => (
+                <div key={label} className="min-w-0">
+                  <dt className="text-xs text-gray-500 dark:text-gray-400">{label}</dt>
+                  <dd className="font-medium text-gray-900 dark:text-white break-words">{valor || '—'}</dd>
+                </div>
+              ))}
+            </dl>
+            <div className="flex gap-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+              <button
+                onClick={() => { setComponenteHistorial(componenteDetalle); setComponenteDetalle(null); }}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg text-[#00a6d6] hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                <Clock size={15} /> Historial
+              </button>
+              {hasPermission('stock') && (
+                <button
+                  onClick={() => { setComponenteToEdit(componenteDetalle); setComponenteDetalle(null); }}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors"
+                >
+                  <Pencil size={15} /> Editar
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* Modal Historial Clínico */}
       <HistorialComponenteModal

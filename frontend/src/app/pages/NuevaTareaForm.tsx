@@ -23,6 +23,9 @@ const INITIAL_TAREA = {
 
 const selectClass = 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-[#00a6d6] focus:border-transparent';
 
+// Mismo alto que el selector de Prioridad (38px): en el celu el input date nativo se renderiza más alto
+const dateClass = `${selectClass} text-sm h-[38px] appearance-none min-w-0`;
+
 export default function NuevaTareaForm() {
   const navigate = useNavigate();
   const { hasPermission, loading: authLoading } = useAuth();
@@ -175,7 +178,7 @@ export default function NuevaTareaForm() {
               type="date"
               value={formData.fechaLimite}
               onChange={handleChange}
-              className={selectClass}
+              className={dateClass}
             />
           </div>
         </div>
