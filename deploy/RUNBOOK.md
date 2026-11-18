@@ -34,7 +34,7 @@ Tener resuelto **antes** de entrar al servidor. Si falta algo de esto, el deploy
 - [ ] **Firewall de la institución / router:** los puertos **80 y 443** del servidor tienen que estar accesibles desde internet (el sistema es de acceso público). Si el servidor está detrás de un firewall o NAT de la red de la institución, hay que pedir que abran/redirijan esos dos puertos. Esto es independiente del `ufw` del servidor (sección 8).
 - [ ] **Acceso al repositorio:** el servidor tiene que poder hacer `git clone` (repo privado → usar un token de acceso personal de GitHub o una deploy key).
 - [ ] **Datos para el `backend/.env`** (ver sección 2) a mano: URLs de Supabase (`DATABASE_URL` y `DIRECT_URL`) y credenciales SMTP.
-- [ ] **Cuenta de Google para los backups:** `fahumada@ies21.edu.ar`. La persona que haga la sección 10 necesita poder iniciar sesión con esa cuenta en una PC (usuario, contraseña y, si tiene verificación en dos pasos, el celular con el código).
+- [ ] **Cuenta de Google para los backups:** `<correo-de-la-cuenta-de-backups>`. La persona que haga la sección 10 necesita poder iniciar sesión con esa cuenta en una PC (usuario, contraseña y, si tiene verificación en dos pasos, el celular con el código).
 - [ ] **Una PC con navegador** (Windows está bien) para autorizar a rclone (sección 10, paso 3).
 
 ---
@@ -98,7 +98,7 @@ Completar **todos** estos valores:
 | `SUPABASE_URL` | URL del proyecto de Supabase (Dashboard → Project Settings → API → Project URL, tipo `https://xxxx.supabase.co`). La usa el almacenamiento de **adjuntos** (fotos, videos y audios de tickets y tareas). **Si falta, el backend arranca pero subir adjuntos falla.** |
 | `SUPABASE_SERVICE_KEY` | La clave `service_role` (Dashboard → Project Settings → API → `service_role`). **Es una clave con control total del proyecto: tratarla como una contraseña, nunca ponerla en el frontend ni compartirla.** |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Credenciales reales del correo institucional que va a mandar los mails de verificación/recuperación (y también los avisos del backup). |
-| `BACKUP_ALERT_EMAILS` | Mails que reciben los avisos del backup, separados por coma: `"fahumada@ies21.edu.ar"`. Para agregar más personas ver la sección 12.3. |
+| `BACKUP_ALERT_EMAILS` | Mails que reciben los avisos del backup, separados por coma: `"<correo-de-avisos>"`. **Es obligatoria:** si falta, el aviso no se puede enviar. Para agregar más personas ver la sección 12.3. |
 
 Si la contraseña de la base tiene caracteres especiales (`@`, `#`, `/`, `:`, `%`), en la URL tienen que ir codificados (por ejemplo `@` → `%40`). Si no, la conexión falla con un error de formato de URL.
 
@@ -299,7 +299,7 @@ Para que el backup de adjuntos funcione, el `backend/.env` tiene que tener `SUPA
 
 > Un fallo en el backup de adjuntos no frena el de la base de datos (que se hace primero): el log lo marca con su propio `ERROR`.
 
-**Avisos por mail:** el script manda un mail a los destinatarios de `BACKUP_ALERT_EMAILS` (hoy `fahumada@ies21.edu.ar`) en dos casos:
+**Avisos por mail:** el script manda un mail a los destinatarios de `BACKUP_ALERT_EMAILS` (los que figuren en esa variable) en dos casos:
 - **Si algo falla** (dump, subida a Drive, adjuntos), en el momento, con el asunto `[GESTEC] FALLO el backup del DD/MM/AAAA` y las últimas líneas del log en el cuerpo.
 - **Los lunes, si todo salió bien**, un resumen con el asunto `[GESTEC] Backups funcionando - resumen del lunes ...`. Sirve de "señal de vida": **si un lunes NO llega ese mail, algo anda mal** (el cron dejó de correr, el servidor está caído, o el SMTP falla) y hay que revisar el servidor.
 
@@ -329,7 +329,7 @@ chmod +x /var/www/gestec/deploy/backup-db.sh
 
 Revisar las primeras líneas de `/var/www/gestec/deploy/backup-db.sh`. Si la ruta del código no es `/var/www/gestec`, ajustar `ENV_FILE`. `RCLONE_REMOTE` debe quedar `gdrive:gestec-backup-ies` (así se llamará el remote en el paso 3).
 
-### Paso 3 — Conectar rclone con Google Drive (la cuenta `fahumada@ies21.edu.ar`)
+### Paso 3 — Conectar rclone con Google Drive (la cuenta `<correo-de-la-cuenta-de-backups>`)
 
 El servidor no tiene navegador, así que la autorización se hace en **otra PC** y se pega un código en el servidor. Se necesitan las dos cosas abiertas a la vez: la terminal del servidor y una PC con navegador.
 
@@ -371,7 +371,7 @@ config_token>
 ```
 
 Se abre el navegador:
-1. **Iniciar sesión con `fahumada@ies21.edu.ar`** (si ya hay otra cuenta de Google abierta en ese navegador, elegir "Usar otra cuenta"; es fácil autorizar con la cuenta equivocada).
+1. **Iniciar sesión con `<correo-de-la-cuenta-de-backups>`** (si ya hay otra cuenta de Google abierta en ese navegador, elegir "Usar otra cuenta"; es fácil autorizar con la cuenta equivocada).
 2. Aceptar los permisos que pide rclone.
 3. Aparece "Success!" y en PowerShell se imprime un bloque largo entre llaves: `{"access_token":"...","token_type":"Bearer","refresh_token":"...", ...}`.
 
@@ -516,7 +516,7 @@ Tiene que haber un "Backup finalizado" por cada día, y ningún `ERROR` reciente
 **Agregar o sacar destinatarios de los avisos:** editar `BACKUP_ALERT_EMAILS` en `/var/www/gestec/backend/.env`, con los mails separados por coma y sin espacios obligatorios:
 
 ```
-BACKUP_ALERT_EMAILS="fahumada@ies21.edu.ar,otra.persona@ies21.edu.ar"
+BACKUP_ALERT_EMAILS="<correo-1>,<correo-2>"
 ```
 
 No hace falta reiniciar nada: el script lee el archivo cada vez que corre (la próxima corrida ya usa la lista nueva). Para probar los avisos sin esperar a una falla:
@@ -536,7 +536,7 @@ Causas posibles:
 
 | Qué pasó | Cómo se nota | Solución |
 |----------|--------------|----------|
-| Se cambió la contraseña de `fahumada@ies21.edu.ar` | Normalmente rclone **sigue funcionando** (el token de acceso es independiente de la contraseña), pero en algunas configuraciones de Google Workspace el cambio de contraseña o el cierre de sesiones sí invalida el token | Si empieza a fallar: reconectar (ver abajo) |
+| Se cambió la contraseña de `<correo-de-la-cuenta-de-backups>` | Normalmente rclone **sigue funcionando** (el token de acceso es independiente de la contraseña), pero en algunas configuraciones de Google Workspace el cambio de contraseña o el cierre de sesiones sí invalida el token | Si empieza a fallar: reconectar (ver abajo) |
 | Se revocó el acceso de rclone a la cuenta (en myaccount.google.com → Seguridad → Aplicaciones con acceso a la cuenta) | `ERROR: rclone copy fallo` con mensajes de `invalid_grant` o `token` | Reconectar |
 | El administrador de Google Workspace bloqueó apps de terceros / la API de Drive | Igual que arriba | Pedirle al administrador de Workspace que permita el acceso; luego reconectar |
 | La cuenta fue suspendida o dada de baja (por ejemplo, la persona dejó la institución) | Falla siempre | Elegir otra cuenta (idealmente una cuenta genérica de sistemas, no personal) y reconfigurar el remote `gdrive` con esa cuenta |

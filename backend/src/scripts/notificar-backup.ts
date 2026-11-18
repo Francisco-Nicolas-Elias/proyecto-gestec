@@ -8,18 +8,16 @@ import 'dotenv/config';
 import fs from 'fs';
 import nodemailer from 'nodemailer';
 
-const DESTINATARIOS_POR_DEFECTO = 'fahumada@ies21.edu.ar';
-
 async function main() {
   const asunto = process.argv[2];
   if (!asunto) throw new Error('Falta el asunto. Uso: notificar-backup "<asunto>" (cuerpo por stdin)');
 
   const cuerpo = fs.readFileSync(0, 'utf8').trim() || '(sin detalle)';
-  const destinatarios = (process.env.BACKUP_ALERT_EMAILS || DESTINATARIOS_POR_DEFECTO)
+  const destinatarios = (process.env.BACKUP_ALERT_EMAILS ?? '')
     .split(',')
     .map((e) => e.trim())
     .filter(Boolean);
-  if (destinatarios.length === 0) throw new Error('BACKUP_ALERT_EMAILS no tiene ningún destinatario');
+  if (destinatarios.length === 0) throw new Error('BACKUP_ALERT_EMAILS no está definida en el .env (lista de correos separados por coma)');
 
   const port = Number(process.env.SMTP_PORT ?? 2525);
   const transporter = nodemailer.createTransport({
