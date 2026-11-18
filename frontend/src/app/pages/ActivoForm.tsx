@@ -179,6 +179,9 @@ function Grid2({ children }: { children: React.ReactNode }) {
   return <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{children}</div>;
 }
 
+// Los campos de fecha nativos tienen un ancho propio en el celular: se fuerza al ancho de la celda y al alto de los demás campos
+const dateClass = `${inputClass} h-[38px] appearance-none min-w-0 max-w-full`;
+
 function Grid3({ children }: { children: React.ReactNode }) {
   return <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">{children}</div>;
 }
@@ -195,7 +198,7 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className="space-y-1">
+    <div className="space-y-1 min-w-0">
       <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">
         {label}
         {required && <span className="text-red-500 ml-0.5">*</span>}
@@ -1158,7 +1161,7 @@ export default function ActivoForm() {
                 type="date"
                 value={form.fechaCambioPC}
                 onChange={e => setForm(prev => ({ ...prev, fechaCambioPC: e.target.value }))}
-                className={inputClass}
+                className={dateClass}
               />
             </Field>
             <Field label="Fecha Último Mantenimiento">
@@ -1166,7 +1169,7 @@ export default function ActivoForm() {
                 type="date"
                 value={form.fechaUltimoMantenimiento}
                 onChange={e => setForm(prev => ({ ...prev, fechaUltimoMantenimiento: e.target.value }))}
-                className={inputClass}
+                className={dateClass}
               />
             </Field>
             <Field label="Estado" required>

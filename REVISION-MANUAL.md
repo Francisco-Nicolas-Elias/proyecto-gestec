@@ -118,17 +118,17 @@ Mismo checklist que Desktop, probado desde el celular o la vista mobile. Marcar 
 - [x] Qué ve cada rol (administrador / operaciones / docente_empleado) *(mobile 2026-11-03)*
 
 ### 2. Equipos (`/activos`)
-- [ ] Listado — filtros, orden, columnas (incluye columna Fuente)
-- [ ] Crear equipo — todos los campos, incluida Fuente de alimentación
-- [ ] Editar equipo — sincronización de RAM, Almacenamiento, Procesador, Placa de Video, Placa Madre, Fuente, Impresora
-- [ ] Historial automático (diff de cambios) al editar
-- [ ] Detalle de equipo — Hardware, Otros Periféricos, Fuente
-- [ ] Tab "Historial Componentes" (movimientos del equipo)
-- [ ] Tab "Tickets" del equipo
-- [ ] Eliminar equipo
-- [ ] Exportar Excel/PDF del listado de equipos
-- [ ] Exportar PDF del historial de un equipo individual (dentro del detalle, tab Historial)
-- [ ] Permisos por rol (quién puede crear/editar/eliminar)
+- [x] Listado — filtros, orden, columnas (incluye columna Fuente) *(mobile 2026-11-18)*
+- [x] Crear equipo — todos los campos, incluida Fuente de alimentación *(mobile 2026-11-18 — se ajustó que los campos de fecha desbordaban la tarjeta)*
+- [x] Editar equipo — sincronización de RAM, Almacenamiento, Procesador, Placa de Video, Placa Madre, Fuente, Impresora *(mobile 2026-11-18)*
+- [x] Historial automático (diff de cambios) al editar *(mobile 2026-11-18)*
+- [x] Detalle de equipo — Hardware, Otros Periféricos, Fuente *(mobile 2026-11-18)*
+- [x] Tab "Historial Componentes" (movimientos del equipo) *(mobile 2026-11-18)*
+- [x] Tab "Tickets" del equipo *(mobile 2026-11-18)*
+- [x] Eliminar equipo *(mobile 2026-11-18)*
+- [x] Exportar Excel/PDF del listado de equipos *(mobile 2026-11-18)*
+- [x] Exportar PDF del historial de un equipo individual (dentro del detalle, tab Historial) *(mobile 2026-11-18)*
+- [x] Permisos por rol (quién puede crear/editar/eliminar) *(mobile 2026-11-18)*
 
 ### 3. Tickets (`/tickets`)
 - [x] Listado — filtros (estado, prioridad, tipo), búsqueda, orden *(mobile 2026-11-17)*
