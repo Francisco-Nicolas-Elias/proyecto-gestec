@@ -1,6 +1,6 @@
 # Plantilla de VirtualHost para GESTEC en Apache.
 # Dominio: gestec.ies21.edu.ar. Antes de usar: reemplazar /var/www/gestec por la ruta real del servidor si difiere.
-# Requiere: a2enmod proxy proxy_http rewrite ssl
+# Requiere: a2enmod proxy proxy_http rewrite ssl headers
 
 <VirtualHost *:80>
     ServerName gestec.ies21.edu.ar
@@ -19,17 +19,27 @@
 
     DocumentRoot /var/www/gestec/frontend/dist
 
+    # Cabeceras de seguridad. HSTS sin includeSubDomains a propósito: otros subdominios de ies21.edu.ar
+    # podrían no tener HTTPS. No se define Content-Security-Policy: una política mal ajustada bloquearía
+    # los adjuntos de Supabase o los estilos de la interfaz; si se agrega, probarla antes en modo Report-Only.
+    Header always set Strict-Transport-Security "max-age=31536000"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "microphone=(self), camera=(), geolocation=()"
+
     <Directory /var/www/gestec/frontend/dist>
         Options -Indexes
-        AllowOverride All
+        AllowOverride None
         Require all granted
         # SPA fallback: rutas de React Router que no son un archivo real van a index.html
         FallbackResource /index.html
     </Directory>
 
     ProxyPreserveHost On
-    ProxyPass /api http://localhost:3000/api
-    ProxyPassReverse /api http://localhost:3000/api
+    # El backend escucha solo en 127.0.0.1 (ver backend/src/server.ts): usar la IP y no "localhost" evita que Apache pruebe IPv6
+    ProxyPass /api http://127.0.0.1:3000/api
+    ProxyPassReverse /api http://127.0.0.1:3000/api
 
     ErrorLog ${APACHE_LOG_DIR}/gestec-error.log
     CustomLog ${APACHE_LOG_DIR}/gestec-access.log combined

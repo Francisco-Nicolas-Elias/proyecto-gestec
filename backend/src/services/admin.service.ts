@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import { Rol } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../middlewares/error.middleware';
+import { invalidarCacheUsuario } from '../middlewares/auth.middleware';
 import { addLogService } from './logs.service';
 
 // ── Usuarios ──────────────────────────────────────────────────────────────────
@@ -26,7 +27,12 @@ export async function updateUsuarioService(
   id: string,
   data: { nombre?: string; rol?: Rol; area?: string; password?: string },
   adminNombre: string,
+  adminId: string,
 ) {
+  // Evita que el único administrador se quite el rol a sí mismo y deje el sistema sin administración
+  if (id === adminId && data.rol && data.rol !== Rol.administrador) {
+    throw new AppError(400, 'No podés cambiar tu propio rol de administrador');
+  }
   const updateData: any = { ...data };
   if (data.password) {
     updateData.password = await bcrypt.hash(data.password, 12);
@@ -37,6 +43,7 @@ export async function updateUsuarioService(
     data: updateData,
     omit: { password: true },
   });
+  invalidarCacheUsuario(id);
   await addLogService(`Usuario "${usuario.nombre}" editado`, 'Administracion', adminNombre, 'administrador');
   return usuario;
 }
@@ -46,6 +53,7 @@ export async function deleteUsuarioService(id: string, adminId: string, adminNom
   const usuario = await prisma.usuario.findUnique({ where: { id } });
   if (!usuario) throw new AppError(404, 'Usuario no encontrado');
   await prisma.usuario.delete({ where: { id } });
+  invalidarCacheUsuario(id);
   await addLogService(`Usuario "${usuario.nombre}" eliminado`, 'Administracion', adminNombre, 'administrador');
 }
 
@@ -59,6 +67,7 @@ export async function toggleBloqueoUsuarioService(id: string, adminId: string, a
     data: { bloqueado: nuevo, ...(nuevo ? {} : { intentosFallidos: 0 }) },
     omit: { password: true },
   });
+  invalidarCacheUsuario(id);
   const accion = nuevo ? 'bloqueado' : 'desbloqueado';
   await addLogService(`Usuario "${usuario.nombre}" ${accion}`, 'Administracion', adminNombre, 'administrador');
   return actualizado;

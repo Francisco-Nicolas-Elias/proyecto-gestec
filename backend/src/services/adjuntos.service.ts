@@ -1,5 +1,5 @@
 import { Rol, TipoAdjunto } from '@prisma/client';
-import path from 'path';
+import { tiposCompatibles, extensionPara } from '../lib/fileSignature';
 import { prisma } from '../lib/prisma';
 import { supabase, BUCKET } from '../lib/supabaseStorage';
 import { AppError } from '../middlewares/error.middleware';
@@ -47,7 +47,12 @@ export async function uploadAdjuntoService(
       if (!comentario || comentario.autorId !== userId) throw new AppError(403, 'No podés adjuntar archivos a comentarios ajenos');
     }
   }
-  const ext = path.extname(originalName) || '.bin';
+  // El tipo que declara el navegador se contrasta con el contenido real del archivo; la extensión sale del tipo verificado
+  const compatibles = tiposCompatibles(buffer);
+  if (!compatibles || !compatibles.includes(mimeType)) {
+    throw new AppError(400, 'El contenido del archivo no coincide con su tipo o no es un formato permitido');
+  }
+  const ext = extensionPara(mimeType);
   const storageKey = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
 
   const { error } = await supabase.storage

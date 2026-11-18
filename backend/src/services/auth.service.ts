@@ -6,12 +6,22 @@ import { AppError } from '../middlewares/error.middleware';
 import { sendVerificationEmail, sendPasswordResetEmail } from '../lib/email';
 import { addLogService } from './logs.service';
 
+// Los tokens de verificación y de recuperación se guardan solo como hash (SHA-256): si se filtra la base,
+// los valores guardados no sirven para armar el enlace. Al usuario se le manda el token original por mail.
+function hashToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+// Hash descartable para gastar el mismo tiempo de bcrypt cuando el correo no existe: así la demora de
+// la respuesta no delata qué correos tienen cuenta.
+const DUMMY_HASH = bcrypt.hashSync('contraseña-descartable-no-usar', 12);
+
 export async function loginService(email: string, password: string) {
   const usuario = await prisma.usuario.findUnique({ where: { email } });
 
   if (usuario?.bloqueado) throw new AppError(403, 'Tu cuenta está bloqueada. Contactá al administrador.');
 
-  const valid = usuario ? await bcrypt.compare(password, usuario.password) : false;
+  const valid = await bcrypt.compare(password, usuario ? usuario.password : DUMMY_HASH) && !!usuario;
 
   if (!usuario || !valid) {
     if (usuario) {
@@ -29,6 +39,10 @@ export async function loginService(email: string, password: string) {
       } else {
         await prisma.usuario.update({ where: { id: usuario.id }, data: { intentosFallidos: intentos } });
       }
+    } else {
+      // Correo inexistente: se hace una escritura vacía para que la respuesta tarde lo mismo que
+      // cuando el correo existe (donde se suma un intento fallido) y la demora no delate la diferencia.
+      await prisma.usuario.updateMany({ where: { id: '__sin_usuario__' }, data: { intentosFallidos: 0 } });
     }
 
     throw new AppError(401, 'Email o contraseña incorrectos');
@@ -77,7 +91,7 @@ export async function registroService(nombre: string, email: string, password: s
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
   await prisma.registroPendiente.create({
-    data: { nombre, email, passwordHash, token, expiresAt },
+    data: { nombre, email, passwordHash, token: hashToken(token), expiresAt },
   });
 
   await sendVerificationEmail(email, nombre, token);
@@ -86,11 +100,12 @@ export async function registroService(nombre: string, email: string, password: s
 }
 
 export async function verificarEmailService(token: string) {
-  const registro = await prisma.registroPendiente.findUnique({ where: { token } });
+  const tokenHash = hashToken(token);
+  const registro = await prisma.registroPendiente.findUnique({ where: { token: tokenHash } });
   if (!registro) throw new AppError(404, 'El enlace de verificación es inválido');
 
   if (registro.expiresAt < new Date()) {
-    await prisma.registroPendiente.delete({ where: { token } });
+    await prisma.registroPendiente.delete({ where: { token: tokenHash } });
     throw new AppError(410, 'El enlace de verificación ha expirado. Registrate nuevamente.');
   }
 
@@ -104,7 +119,7 @@ export async function verificarEmailService(token: string) {
       },
       omit: { password: true },
     });
-    await tx.registroPendiente.delete({ where: { token } });
+    await tx.registroPendiente.delete({ where: { token: tokenHash } });
     return u;
   });
 
@@ -130,7 +145,7 @@ export async function solicitarRecuperacionService(email: string) {
 
   await prisma.usuario.update({
     where: { id: usuario.id },
-    data: { resetPasswordToken: token, resetPasswordExpiry: expiry },
+    data: { resetPasswordToken: hashToken(token), resetPasswordExpiry: expiry },
   });
 
   await sendPasswordResetEmail(usuario.email, usuario.nombre, token);
@@ -139,7 +154,7 @@ export async function solicitarRecuperacionService(email: string) {
 }
 
 export async function resetPasswordService(token: string, nuevaPassword: string) {
-  const usuario = await prisma.usuario.findUnique({ where: { resetPasswordToken: token } });
+  const usuario = await prisma.usuario.findUnique({ where: { resetPasswordToken: hashToken(token) } });
 
   if (!usuario || !usuario.resetPasswordExpiry) throw new AppError(400, 'El enlace es inválido o ya fue usado');
   if (usuario.resetPasswordExpiry < new Date()) throw new AppError(410, 'El enlace de recuperación ha expirado. Solicitá uno nuevo.');

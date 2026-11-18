@@ -10,7 +10,7 @@ export async function getUsuariosStaff(req: Request, res: Response, next: NextFu
   try { res.json(await svc.getUsuariosStaffService()); } catch (err) { next(err); }
 }
 export async function updateUsuario(req: Request, res: Response, next: NextFunction) {
-  try { res.json(await svc.updateUsuarioService(req.params.id, req.body, req.user!.nombre)); } catch (err) { next(err); }
+  try { res.json(await svc.updateUsuarioService(req.params.id, req.body, req.user!.nombre, req.user!.id)); } catch (err) { next(err); }
 }
 export async function deleteUsuario(req: Request, res: Response, next: NextFunction) {
   try {

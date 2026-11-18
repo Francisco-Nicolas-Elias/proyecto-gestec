@@ -90,7 +90,7 @@ Completar **todos** estos valores:
 |----------|---------------------|
 | `DATABASE_URL` | La de Supabase en modo *Transaction* (puerto 6543), con `?pgbouncer=true&connection_limit=10`. Se copia de Supabase → Project Settings → Database → Connection string. |
 | `DIRECT_URL` | La de Supabase directa (puerto 5432, sin pgbouncer). La usan las migraciones **y el backup**. |
-| `JWT_SECRET` | Un secreto largo y aleatorio. Generarlo con: `openssl rand -base64 48` y pegar el resultado. **Distinto al de desarrollo.** |
+| `JWT_SECRET` | Un secreto largo y aleatorio. Generarlo con: `openssl rand -base64 48` y pegar el resultado. **Distinto al de desarrollo.** **Mínimo 32 caracteres: con menos, el backend se niega a arrancar en producción.** |
 | `JWT_EXPIRES_IN` | `"8h"` |
 | `PORT` | `3000` |
 | `NODE_ENV` | `production` (importante: activa las cookies seguras y el `trust proxy` del rate limiting) |
@@ -160,7 +160,7 @@ ls /var/www/gestec/backend/dist/server.js /var/www/gestec/frontend/dist/index.ht
 ## 4. Habilitar módulos de Apache
 
 ```bash
-sudo a2enmod proxy proxy_http rewrite ssl
+sudo a2enmod proxy proxy_http rewrite ssl headers
 sudo apache2ctl configtest
 ```
 
@@ -276,12 +276,12 @@ pm2 startup
 ```bash
 pm2 status
 pm2 logs gestec-backend --lines 30
-curl -s http://localhost:3000/health
+curl -s http://127.0.0.1:3000/health
 ```
 
 - `pm2 status` muestra `gestec-backend` en `online`.
-- Los logs muestran `Conectado a PostgreSQL` y `Servidor corriendo en http://localhost:3000`.
-- `curl http://localhost:3000/health` responde con un JSON de estado (no un error de conexión).
+- Los logs muestran `Conectado a PostgreSQL` y `Servidor corriendo en http://127.0.0.1:3000` (en producción el backend escucha solo en esa dirección, a propósito).
+- `curl http://127.0.0.1:3000/health` responde con un JSON de estado (no un error de conexión).
 
 **Si falla:**
 - `errored` o reinicios constantes → ver `pm2 logs gestec-backend --err --lines 50`. Causas típicas: falta `dist/server.js` (no se hizo el build), `.env` mal completado, o Supabase pausado (ver sección 13).
@@ -472,6 +472,7 @@ Checklist (tildar cada punto):
 
 - [ ] `curl -I` responde `HTTP/2 200` y el navegador muestra el candado sin advertencias.
 - [ ] `http://gestec.ies21.edu.ar` redirige solo a `https://`.
+- [ ] **Cabeceras de seguridad:** `curl -sI https://gestec.ies21.edu.ar | grep -iE "strict-transport|x-content-type|x-frame|referrer"` muestra las cuatro. Si falta alguna, revisar que el módulo `headers` esté habilitado (`sudo a2enmod headers`).
 - [ ] **Login real desde una red distinta a la de la institución** (datos móviles del celular), para confirmar que el acceso público funciona de punta a punta.
 - [ ] Recorrer rápido las pantallas principales (Dashboard, Equipos, Tickets, Stock, Tareas) con un usuario real.
 - [ ] **Probar el flujo de mails en producción:** registrar un usuario de prueba y recuperar contraseña; tienen que llegar mails con links a `https://gestec.ies21.edu.ar/...` (no a `localhost`). Si llegan con `localhost`, `FRONTEND_URL` está mal.
