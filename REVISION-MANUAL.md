@@ -162,14 +162,14 @@ Mismo checklist que Desktop, probado desde el celular o la vista mobile. Marcar 
 
 ### 6. Administración (`/admin`)
 - [x] Usuarios — editar (nombre/rol/área), bloquear/desbloquear, eliminar *(mobile 2026-11-17 — la grilla muestra todas las columnas; en Mobile las filas son de una línea, se desliza hacia el costado y las acciones quedan fijas a la derecha)*
-- [ ] Ubicaciones — crear, editar, eliminar (bloquea si tiene equipos asociados)
-- [ ] Áreas — crear, editar, eliminar (bloquea si tiene usuarios asociados)
-- [ ] Roles — confirmar que la vista de solo lectura refleja los permisos reales de cada rol
-- [ ] Componentes (catálogo de tipos) — crear, editar, eliminar (bloquea si tiene componentes/stock asociados)
-- [ ] Marcas — crear, editar, eliminar (bloquea si tiene componentes asociados)
-- [ ] Proveedores — crear, editar, eliminar (bloquea si tiene componentes/stock asociados)
-- [ ] Logs — listado, filtros, exportar, botón "Limpiar todo"
-- [ ] Confirmar que solo `administrador` puede acceder a `/admin`
+- [x] Ubicaciones — crear, editar, eliminar (bloquea si tiene equipos asociados) *(mobile 2026-11-18)*
+- [x] Áreas — crear, editar, eliminar (bloquea si tiene usuarios asociados) *(mobile 2026-11-18)*
+- [x] Roles — confirmar que la vista de solo lectura refleja los permisos reales de cada rol *(mobile 2026-11-18)*
+- [x] Componentes (catálogo de tipos) — crear, editar, eliminar (bloquea si tiene componentes/stock asociados) *(mobile 2026-11-18)*
+- [x] Marcas — crear, editar, eliminar (bloquea si tiene componentes asociados) *(mobile 2026-11-18)*
+- [x] Proveedores — crear, editar, eliminar (bloquea si tiene componentes/stock asociados) *(mobile 2026-11-18)*
+- [x] Logs — listado, filtros, exportar, botón "Limpiar todo" *(mobile 2026-11-18)*
+- [x] Confirmar que solo `administrador` puede acceder a `/admin` *(mobile 2026-11-18)*
 
 ### 7. Información institucional (`/informacion`)
 - [x] Ver datos de contacto (teléfono, teléfono interno, horarios, correos) *(mobile 2026-11-17)*
@@ -177,8 +177,8 @@ Mismo checklist que Desktop, probado desde el celular o la vista mobile. Marcar 
 - [x] Permisos por rol (quién puede editar) *(mobile 2026-11-17)*
 
 ### 8. Transversales
-- [ ] Modo oscuro en todas las pantallas
-- [ ] Notificaciones (campana) — se marcan como leídas, el clic redirige bien
-- [ ] Orientación vertical y horizontal, y distintos anchos de pantalla (sin scroll horizontal, nada cortado)
-- [ ] Sesión expirada — redirección a login
-- [ ] Exportar PDF de Logs (Admin)
+- [x] Modo oscuro en todas las pantallas *(mobile 2026-11-18)*
+- [x] Notificaciones (campana) — se marcan como leídas, el clic redirige bien *(mobile 2026-11-18)*
+- [x] Orientación vertical y horizontal, y distintos anchos de pantalla (sin scroll horizontal, nada cortado) *(mobile 2026-11-18)*
+- [x] Sesión expirada — redirección a login *(mobile 2026-11-18 — probado con la sesión en 30s pasada al arrancar el backend, sin tocar el .env)*
+- [x] Exportar PDF de Logs (Admin) *(mobile 2026-11-18)*
