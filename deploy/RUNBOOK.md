@@ -20,7 +20,7 @@ Este runbook se ejecuta **después** de terminar la revisión manual (desktop y 
 9. Arrancar el backend con PM2
 10. Backup automático de la base de datos
 11. Verificación final
-12. Operación y mantenimiento (actualizar, renovar SSL, backups, qué se puede romper)
+12. Operación y mantenimiento (actualizar, renovar SSL, backups, qué se puede romper, deshacer el deploy)
 13. Solución de problemas
 
 ---
@@ -33,9 +33,12 @@ Tener resuelto **antes** de entrar al servidor. Si falta algo de esto, el deploy
 - [ ] **DNS:** el registro `gestec.ies21.edu.ar` tiene que apuntar (registro A) a la IP pública del servidor. Lo gestiona quien administra el DNS de `ies21.edu.ar`. Comprobarlo desde cualquier PC: `nslookup gestec.ies21.edu.ar` debe devolver la IP del servidor. **Sin esto Let's Encrypt (sección 6) falla.**
 - [ ] **Firewall de la institución / router:** los puertos **80 y 443** del servidor tienen que estar accesibles desde internet (el sistema es de acceso público). Si el servidor está detrás de un firewall o NAT de la red de la institución, hay que pedir que abran/redirijan esos dos puertos. Esto es independiente del `ufw` del servidor (sección 8).
 - [ ] **Acceso al repositorio:** el servidor tiene que poder hacer `git clone` (repo privado → usar un token de acceso personal de GitHub o una deploy key).
-- [ ] **Datos para el `backend/.env`** (ver sección 2) a mano: URLs de Supabase (`DATABASE_URL` y `DIRECT_URL`) y credenciales SMTP.
+- [ ] **Datos para el `backend/.env`** (ver sección 2) a mano: URLs de Supabase (`DATABASE_URL` y `DIRECT_URL`) y credenciales SMTP. Llevarlos en el zip de claves; **la contraseña del zip se pasa por otro medio** (en persona o por llamada), nunca junto con el zip ni por un grupo de WhatsApp.
 - [ ] **Cuenta de Google para los backups:** `<correo-de-la-cuenta-de-backups>`. La persona que haga la sección 10 necesita poder iniciar sesión con esa cuenta en una PC (usuario, contraseña y, si tiene verificación en dos pasos, el celular con el código).
 - [ ] **Una PC con navegador** (Windows está bien) para autorizar a rclone (sección 10, paso 3).
+- [ ] **Salida a internet del servidor (conexiones hacia afuera).** Además de que el servidor sea accesible desde afuera (puertos 80 y 443), tiene que poder **conectarse hacia afuera**. Si la red de la institución filtra tráfico, hay que pedir acceso a: el registro de npm (`registry.npmjs.org`) y `cdn.sheetjs.com` (de ahí se baja la librería de Excel: si está bloqueado, `pnpm install` falla), GitHub, Supabase (puertos 5432 y 6543), el servidor SMTP (puerto 465), Google Drive (para los backups) y Let's Encrypt. Probarlo desde el servidor: `curl -sI https://registry.npmjs.org | head -1` y `curl -sI https://cdn.sheetjs.com | head -1` (tienen que responder una línea `HTTP/...`).
+- [ ] **Mail para Let's Encrypt (sección 6).** Decidir antes qué mail institucional lo recibe. Avisa si el certificado está por vencer y no se renovó, así que tiene que ser uno que alguien lea.
+- [ ] **Un segundo administrador.** Los usuarios solo se crean por auto-registro y el rol de administrador se asigna desde Admin → Usuarios. Si el único administrador se bloquea (10 intentos fallidos de contraseña), nadie puede desbloquearlo desde el sistema. Antes del deploy, que una segunda persona se registre y promoverla a administrador.
 
 ---
 
@@ -52,6 +55,17 @@ git --version
 - `node -v` muestra **v22 o superior** (el backend exige `>=22`). Si es más viejo, hay que actualizar Node antes de seguir (no continuar con una versión menor).
 - `apache2 -v` muestra la versión de Apache.
 - `pnpm -v` muestra una versión (si no estaba, se instala con la parte `||`).
+
+**Si `node -v` muestra una versión menor a 22**, actualizar Node antes de seguir. Primero confirmar que ningún otro sitio o servicio de la institución dependa de la versión actual de Node (`pm2 list` y preguntar al área de sistemas), porque la actualización es global. Con el repositorio oficial de NodeSource:
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install -y nodejs
+node -v
+```
+
+`node -v` tiene que mostrar `v22.` seguido de números. Si en el servidor ya hay otra instalación de Node (por ejemplo con `nvm`), puede que `node -v` siga mostrando la versión vieja: en ese caso abrir una terminal nueva y volver a comprobar.
+
 
 **Antes de tocar Apache, ver qué hay ya configurado** (si el servidor aloja otros sitios de la institución, no hay que romperlos):
 
@@ -318,7 +332,16 @@ pg_dump --version
 rclone version
 ```
 
-Chequeo de versión: `pg_dump` **no puede ser más viejo** que el Postgres de Supabase. Ver la versión de Postgres de Supabase (Dashboard → Project Settings → Infrastructure) y comparar. Si `pg_dump` es menor, el backup falla con `server version mismatch`; en ese caso instalar un cliente más nuevo desde el repositorio oficial de PostgreSQL (PGDG) antes de seguir.
+Chequeo de versión: `pg_dump` **no puede ser más viejo** que el Postgres de Supabase. El proyecto actual de Supabase usa **PostgreSQL 17** (se verificó 17.11; se puede confirmar en Dashboard → Project Settings → Infrastructure). El `postgresql-client` que instala Ubuntu por defecto es **más viejo** (14 en Ubuntu 22.04, 16 en Ubuntu 24.04), así que con `pg_dump --version` menor a 17 el backup **falla** con `server version mismatch`. Hay que instalar el cliente 17 desde el repositorio oficial de PostgreSQL (PGDG), antes de seguir:
+
+```bash
+sudo apt install -y postgresql-common
+sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh
+sudo apt install -y postgresql-client-17
+pg_dump --version
+```
+
+`pg_dump --version` tiene que mostrar `17.` seguido de números. (Si más adelante Supabase actualiza su versión de Postgres, repetir el chequeo y usar el cliente de la versión nueva.)
 
 ### Paso 2 — Preparar carpetas y el script
 
@@ -445,6 +468,14 @@ sudo crontab -l
 
 Al día siguiente de programarlo, **comprobar que corrió solo**: el log (`sudo cat /var/log/gestec-backup.log`) tiene que tener una entrada nueva de las 3 AM. Si no aparece, el cron no está funcionando.
 
+**Zona horaria del servidor:** el cron usa la hora que tenga configurada el servidor, no la de tu celular. Antes de programar el backup, comprobarla con:
+
+```bash
+timedatectl
+```
+
+Mirar la línea `Time zone`. Si no es la de Argentina, y no hay otros servicios del servidor que dependan de la zona actual, se puede cambiar con `sudo timedatectl set-timezone America/Argentina/Cordoba`. Si no se cambia, el backup corre igual, pero "a las 3 AM" será de la zona horaria que tenga el servidor.
+
 ### Paso 6 — Probar una restauración (hacerlo al menos una vez)
 
 Un backup que nunca se restauró no está confirmado como bueno. **Nunca restaurar sobre la base de producción**: el dump no usa `--clean` y pisaría/ensuciaría datos reales. Probarlo contra una base **vacía y separada** (por ejemplo, otro proyecto gratuito de Supabase creado solo para la prueba, o un Postgres local):
@@ -475,6 +506,7 @@ Checklist (tildar cada punto):
 - [ ] **Cabeceras de seguridad:** `curl -sI https://gestec.ies21.edu.ar | grep -iE "strict-transport|x-content-type|x-frame|referrer"` muestra las cuatro. Si falta alguna, revisar que el módulo `headers` esté habilitado (`sudo a2enmod headers`).
 - [ ] **Login real desde una red distinta a la de la institución** (datos móviles del celular), para confirmar que el acceso público funciona de punta a punta.
 - [ ] Recorrer rápido las pantallas principales (Dashboard, Equipos, Tickets, Stock, Tareas) con un usuario real.
+- [ ] **Grabar un audio con el micrófono desde el celular** (Tickets → Crear reporte → adjuntar audio). Es la única verificación que quedó pendiente de la revisión manual: el navegador solo permite usar el micrófono con HTTPS, por eso no se pudo probar en desarrollo.
 - [ ] **Probar el flujo de mails en producción:** registrar un usuario de prueba y recuperar contraseña; tienen que llegar mails con links a `https://gestec.ies21.edu.ar/...` (no a `localhost`). Si llegan con `localhost`, `FRONTEND_URL` está mal.
 - [ ] `pm2 logs gestec-backend` sin errores al recibir tráfico real.
 - [ ] `pm2 startup` + `pm2 save` ejecutados (prueba definitiva: reiniciar el servidor con `sudo reboot` en un momento tranquilo y confirmar que el sitio vuelve solo).
@@ -565,6 +597,45 @@ Hace el mismo proceso de autorización del paso 3.b–3.d de la sección 10 (com
 - **Se reinicia el servidor:** PM2 y Apache tienen que volver solos (por eso `pm2 startup`). Verificar con `pm2 status` y abriendo el sitio.
 - **Disco lleno:** los logs de PM2/Apache y los backups locales ocupan espacio. Revisar con `df -h`. Los dumps de la base se limpian solos a los 7 días, **pero la carpeta de adjuntos (`/var/backups/gestec-adjuntos`) no se limpia nunca** y crece con cada archivo subido: revisar su tamaño con `sudo du -sh /var/backups/gestec-adjuntos`.
 - **Cambiar `JWT_SECRET`:** cierra la sesión de todos los usuarios. Hacerlo solo si se sospecha que el secreto se filtró.
+
+### 12.6. Deshacer el deploy (vuelta atrás)
+
+Si algo sale mal y hay que dejar el servidor como estaba, **sin tocar los demás sitios de la institución**:
+
+1. **Sacar GESTEC de Apache** (el nombre `gestec` es el del archivo `sites-available/gestec.conf`):
+
+   ```bash
+   sudo a2dissite gestec
+   sudo systemctl reload apache2
+   sudo apache2ctl -S
+   ```
+
+   El sitio deja de responder y los demás VirtualHosts siguen igual. `apache2ctl -S` permite comprobarlo.
+
+2. **Parar el backend:**
+
+   ```bash
+   pm2 stop gestec-backend
+   ```
+
+   (para sacarlo del todo: `pm2 delete gestec-backend` y después `pm2 save`).
+
+3. **Desactivar el backup automático:** `sudo crontab -e` y poner un `#` al principio de la línea del backup.
+
+4. **Si lo que falló fue una actualización** (y no la instalación inicial), en vez de apagar todo se puede volver a la versión anterior:
+
+   ```bash
+   cd /var/www/gestec
+   git log --oneline -5
+   git checkout <commit-anterior>
+   cd backend && pnpm install && pnpm build
+   cd ../frontend && pnpm install && pnpm build
+   pm2 restart gestec-backend --update-env
+   ```
+
+   Para volver a la versión más nueva: `git checkout main` y repetir los pasos de build y reinicio.
+
+**Importante:** las migraciones de la base (`pnpm db:deploy`) **no se deshacen solas** al volver el código atrás. Si la versión nueva cambió la base de datos, hay que restaurar desde el backup (sección 10, paso 6) o corregirla a mano. El dominio y el certificado SSL no hace falta tocarlos.
 
 ---
 
