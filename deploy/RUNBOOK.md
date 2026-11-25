@@ -147,6 +147,28 @@ cd /var/www/gestec/backend
 pnpm install
 pnpm db:generate
 pnpm build
+```
+
+**Migraciones de la base (no saltear este paso).** Antes de aplicar nada, ver en qué estado está el historial de migraciones de la base:
+
+```bash
+pnpm exec prisma migrate status
+```
+
+- Si dice `Database schema is up to date!`, no hay nada que hacer: pasar directo a `pnpm db:deploy`.
+- Si lista como pendiente **`20260520000000_add_ticket_nro`** (es lo esperado con la base actual): esa migración agrega la columna `nro` de `tickets`, pero esa columna **ya existe** en la base (se agregó antes con `db push`, fuera del historial). Si se aplicara, fallaría con `column "nro" ... already exists` y la migración quedaría marcada como fallida, bloqueando los deploys siguientes. Hay que marcarla como **ya aplicada**, una sola vez:
+
+```bash
+pnpm exec prisma migrate resolve --applied 20260520000000_add_ticket_nro
+pnpm exec prisma migrate status
+```
+
+  El segundo `migrate status` tiene que decir ahora `Database schema is up to date!`.
+- Si lista **otra** migración pendiente distinta de esa, o dice algo de *drift* o de una migración fallida: **parar y no seguir** (ver "Si falla").
+
+Después, aplicar las migraciones que falten y buildear el frontend:
+
+```bash
 pnpm db:deploy
 
 cd /var/www/gestec/frontend
@@ -156,7 +178,7 @@ pnpm build
 
 **Qué tiene que pasar:**
 - `pnpm build` del backend termina sin errores y crea `backend/dist/server.js`.
-- `pnpm db:deploy` (aplica migraciones pendientes) dice algo como `No pending migrations to apply` o aplica las que falten. Como la base ya existe y tiene datos, lo normal es que no haya nada pendiente.
+- `pnpm db:deploy` (aplica migraciones pendientes) dice `No pending migrations to apply`. Como la base ya existe y tiene datos, no tiene que haber nada pendiente una vez resuelta la migración de `nro`.
 - `pnpm build` del frontend termina sin errores y crea `frontend/dist/index.html`.
 
 **Verificar:**
